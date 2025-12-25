@@ -1,0 +1,77 @@
+{
+  "project_root": {
+    "src": {
+      "data": {
+        "_comment": "BACKEND EMULADO (La Verdad Operativa)",
+        "corpus": {
+          "_files": [
+            "critica_socratica_lagrange.me",
+            "miedo_al_miedo.me",
+            "legitimidad_y_silencio.me"
+          ]
+        },
+        "topology": {
+          "_files": [
+            "nodes.json",
+            "edges.json",
+            "socratic_questions.json"
+          ]
+        },
+        "media": {
+          "_files": [
+            "episodes.json"
+          ]
+        }
+      },
+      "components": {
+        "_comment": "INTERFAZ DE FRICCIÓN",
+        "_files": [
+          "LagrangeMap.tsx",
+          "LagrangeNav.tsx",
+          "EpisodePlayer.tsx",
+          "LabPromptEditor.tsx",
+          "SocraticOracle.tsx",
+          "NodeDetail.tsx"
+        ]
+      },
+      "pages": {
+        "_comment": "CAPAS PLATÓNICAS DE NAVEGACIÓN",
+        "_files": [
+          "Index.tsx",
+          "Map.tsx",
+          "Lab.tsx",
+          "Admin.tsx",
+          "Podcast.tsx",
+          "Auth.tsx"
+        ]
+      },
+      "utils": {
+        "_comment": "LÓGICA DEL AGENTE",
+        "_files": [
+          "aiPipeline.ts",
+          "corpusSync.ts",
+          "narrativeMatrix.ts",
+          "dataService.ts"
+        ]
+      },
+      "config": {
+        "_comment": "CONFIGURACIÓN DEL ARQUITECTO",
+        "_files": [
+          "Lagrange_Architect_Prompt_v2.md",
+          "Lagrange_IO_Director.js"
+        ]
+      }
+    },
+    "public": {
+      "audio": {
+        "episodes": {}
+      }
+    }
+  },
+  "metadata": {
+    "version": "0.1.0",
+    "sprint": "0 - Génesis Estructural",
+    "mandamiento": "Neutralización del Miedo",
+    "timestamp": "Sistema Génesis"
+  }
+}

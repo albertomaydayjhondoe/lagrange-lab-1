@@ -1,0 +1,107 @@
+[
+  {
+    "id": "Q01",
+    "eje": "Miedo",
+    "nivel": 1,
+    "tension": 0.8,
+    "texto": "¿Qué pasaría si el miedo que sientes no fuera tuyo, sino implantado?"
+  },
+  {
+    "id": "Q02",
+    "eje": "Miedo",
+    "nivel": 2,
+    "tension": 0.9,
+    "texto": "¿A quién beneficia que tengas miedo de hacer esa pregunta?"
+  },
+  {
+    "id": "Q03",
+    "eje": "Miedo",
+    "nivel": 3,
+    "tension": 0.95,
+    "texto": "Si el miedo desapareciera ahora mismo, ¿qué harías que no te atreves a hacer?"
+  },
+  {
+    "id": "Q04",
+    "eje": "Control",
+    "nivel": 1,
+    "tension": 0.75,
+    "texto": "¿Quién decidió que esa era la forma correcta de hacer las cosas?"
+  },
+  {
+    "id": "Q05",
+    "eje": "Control",
+    "nivel": 2,
+    "tension": 0.85,
+    "texto": "¿Cuántas de tus decisiones de hoy fueron realmente tuyas?"
+  },
+  {
+    "id": "Q06",
+    "eje": "Control",
+    "nivel": 3,
+    "tension": 0.92,
+    "texto": "Si pudieras ver todos los hilos que te mueven, ¿seguirías bailando?"
+  },
+  {
+    "id": "Q07",
+    "eje": "SaludMental",
+    "nivel": 1,
+    "tension": 0.7,
+    "texto": "¿Tu ansiedad es un fallo tuyo o una respuesta lógica a un sistema ilógico?"
+  },
+  {
+    "id": "Q08",
+    "eje": "SaludMental",
+    "nivel": 2,
+    "tension": 0.82,
+    "texto": "¿Qué pasaría si tu malestar no necesitara ser curado, sino escuchado?"
+  },
+  {
+    "id": "Q09",
+    "eje": "SaludMental",
+    "nivel": 3,
+    "tension": 0.88,
+    "texto": "¿Quién gana dinero con que te sientas roto?"
+  },
+  {
+    "id": "Q10",
+    "eje": "Legitimidad",
+    "nivel": 1,
+    "tension": 0.78,
+    "texto": "¿Por qué crees que su versión de los hechos es la verdadera?"
+  },
+  {
+    "id": "Q11",
+    "eje": "Legitimidad",
+    "nivel": 2,
+    "tension": 0.87,
+    "texto": "¿Quién te enseñó a dudar de ti mismo antes que de la autoridad?"
+  },
+  {
+    "id": "Q12",
+    "eje": "Legitimidad",
+    "nivel": 3,
+    "tension": 0.93,
+    "texto": "Si el silencio es violencia, ¿quién es el agresor cuando todos callan?"
+  },
+  {
+    "id": "Q13",
+    "eje": "Responsabilidad",
+    "nivel": 1,
+    "tension": 0.72,
+    "texto": "¿Por qué las consecuencias siempre caen del mismo lado?"
+  },
+  {
+    "id": "Q14",
+    "eje": "Responsabilidad",
+    "nivel": 2,
+    "tension": 0.84,
+    "texto": "¿Qué pasaría si quien causó el daño tuviera que repararlo?"
+  },
+  {
+    "id": "Q15",
+    "eje": "Responsabilidad",
+    "nivel": 3,
+    "tension": 0.96,
+    "texto": "¿Cuánto tiempo más vas a cargar con un peso que no es tuyo?"
+  }
+]

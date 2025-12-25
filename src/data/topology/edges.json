@@ -1,0 +1,44 @@
+[
+  {
+    "id": "e1",
+    "source": "miedo",
+    "target": "control",
+    "tension": 0.9,
+    "label": "El miedo legitima el control"
+  },
+  {
+    "id": "e2",
+    "source": "miedo",
+    "target": "salud-mental",
+    "tension": 0.85,
+    "label": "El miedo deteriora la salud mental"
+  },
+  {
+    "id": "e3",
+    "source": "control",
+    "target": "legitimidad",
+    "tension": 0.75,
+    "label": "El control busca legitimarse"
+  },
+  {
+    "id": "e4",
+    "source": "legitimidad",
+    "target": "responsabilidad",
+    "tension": 0.8,
+    "label": "La legitimidad evade responsabilidad"
+  },
+  {
+    "id": "e5",
+    "source": "salud-mental",
+    "target": "responsabilidad",
+    "tension": 0.7,
+    "label": "¿Quién responde por el daño?"
+  },
+  {
+    "id": "e6",
+    "source": "miedo",
+    "target": "legitimidad",
+    "tension": 0.95,
+    "label": "El miedo silencia la crítica"
+  }
+]

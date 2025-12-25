@@ -1,0 +1,32 @@
+[
+  {
+    "id": "EP01",
+    "title": "El Miedo Fundacional",
+    "description": "Exploración del miedo como herramienta de control social",
+    "duration": "45:00",
+    "audioFile": null,
+    "transcript": null,
+    "nodes": ["miedo", "control"],
+    "status": "pendiente"
+  },
+  {
+    "id": "EP02",
+    "title": "Biología del Silencio",
+    "description": "Cómo el cuerpo aprende a callar",
+    "duration": "38:00",
+    "audioFile": null,
+    "transcript": null,
+    "nodes": ["miedo", "salud-mental"],
+    "status": "pendiente"
+  },
+  {
+    "id": "EP03",
+    "title": "La Legitimidad del Opresor",
+    "description": "Quién decide qué es verdad y qué es locura",
+    "duration": "52:00",
+    "audioFile": null,
+    "transcript": null,
+    "nodes": ["legitimidad", "control"],
+    "status": "pendiente"
+  }
+]

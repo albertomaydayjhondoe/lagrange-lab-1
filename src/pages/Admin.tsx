@@ -4,9 +4,9 @@ import { LagrangeNav } from '@/components/LagrangeNav';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Lock, Database, Network, MessageSquare } from 'lucide-react';
-import nodesData from '@/data/nodes.json';
-import edgesData from '@/data/edges.json';
-import questionsData from '@/data/socratic_questions.json';
+import nodesData from '@/data/topology/nodes.json';
+import edgesData from '@/data/topology/edges.json';
+import questionsData from '@/data/topology/socratic_questions.json';
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -137,15 +137,15 @@ const Admin = () => {
             className="mt-8 grid md:grid-cols-3 gap-4"
           >
             <div className="p-4 rounded-lg bg-card border border-border">
-              <span className="text-3xl font-mono text-primary">{nodesData.nodes.length}</span>
+              <span className="text-3xl font-mono text-primary">{nodesData.length}</span>
               <p className="text-sm text-muted-foreground">Nodos activos</p>
             </div>
             <div className="p-4 rounded-lg bg-card border border-border">
-              <span className="text-3xl font-mono text-lagrange-node">{edgesData.edges.length}</span>
+              <span className="text-3xl font-mono text-lagrange-node">{edgesData.length}</span>
               <p className="text-sm text-muted-foreground">Tensiones mapeadas</p>
             </div>
             <div className="p-4 rounded-lg bg-card border border-border">
-              <span className="text-3xl font-mono text-lagrange-calm">{questionsData.questions.length}</span>
+              <span className="text-3xl font-mono text-lagrange-calm">{questionsData.length}</span>
               <p className="text-sm text-muted-foreground">Preguntas socráticas</p>
             </div>
           </motion.div>
