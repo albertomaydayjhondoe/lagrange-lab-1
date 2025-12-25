@@ -1,0 +1,54 @@
+{
+  "nodes": [
+    {
+      "id": "miedo",
+      "label": "Miedo",
+      "description": "Cómo opera el miedo como mecanismo de control social",
+      "x": 400,
+      "y": 200,
+      "weight": 1,
+      "color": "tension"
+    },
+    {
+      "id": "control",
+      "label": "Control",
+      "description": "Las estructuras de poder y dominación institucional",
+      "x": 600,
+      "y": 300,
+      "weight": 0.8,
+      "color": "node"
+    },
+    {
+      "id": "salud_mental",
+      "label": "Salud Mental",
+      "description": "La patologización del disenso como herramienta de silenciamiento",
+      "x": 300,
+      "y": 400,
+      "weight": 0.9,
+      "color": "calm"
+    },
+    {
+      "id": "legitimidad",
+      "label": "Legitimidad",
+      "description": "Quién define lo verdadero y por qué mecanismos",
+      "x": 500,
+      "y": 450,
+      "weight": 0.7,
+      "color": "gold"
+    },
+    {
+      "id": "responsabilidad",
+      "label": "Responsabilidad",
+      "description": "La distribución asimétrica de la carga moral",
+      "x": 650,
+      "y": 150,
+      "weight": 0.6,
+      "color": "node"
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2024-12-25",
+    "description": "Topología de ejes estructurales del Sistema Lagrange"
+  }
+}

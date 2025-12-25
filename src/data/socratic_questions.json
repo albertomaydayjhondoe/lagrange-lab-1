@@ -1,0 +1,114 @@
+{
+  "questions": [
+    {
+      "id": "Q01",
+      "eje": "miedo",
+      "nivel": 1,
+      "tension": 0.9,
+      "texto": "¿El miedo que sientes es tuyo, o fue depositado en ti por quien se beneficia de tu inacción?"
+    },
+    {
+      "id": "Q02",
+      "eje": "miedo",
+      "nivel": 2,
+      "tension": 0.85,
+      "texto": "Si el miedo paraliza, ¿a quién conviene tu parálisis?"
+    },
+    {
+      "id": "Q03",
+      "eje": "control",
+      "nivel": 1,
+      "tension": 0.8,
+      "texto": "¿Quién definió las reglas del juego que ahora te dicen que estás perdiendo?"
+    },
+    {
+      "id": "Q04",
+      "eje": "control",
+      "nivel": 2,
+      "tension": 0.75,
+      "texto": "Cuando te piden que 'seas razonable', ¿de quién es la razón que invocan?"
+    },
+    {
+      "id": "Q05",
+      "eje": "control",
+      "nivel": 3,
+      "tension": 0.9,
+      "texto": "¿El consenso que te presentan fue construido con tu voz, o sobre tu silencio?"
+    },
+    {
+      "id": "Q06",
+      "eje": "salud_mental",
+      "nivel": 1,
+      "tension": 0.85,
+      "texto": "Cuando te llaman 'demasiado sensible', ¿quién estableció el umbral de sensibilidad aceptable?"
+    },
+    {
+      "id": "Q07",
+      "eje": "salud_mental",
+      "nivel": 2,
+      "tension": 0.8,
+      "texto": "¿Tu malestar es síntoma de enfermedad personal o respuesta sana a un entorno enfermo?"
+    },
+    {
+      "id": "Q08",
+      "eje": "salud_mental",
+      "nivel": 3,
+      "tension": 0.9,
+      "texto": "Si la adaptación al sistema es el criterio de salud, ¿qué dice eso del sistema?"
+    },
+    {
+      "id": "Q09",
+      "eje": "legitimidad",
+      "nivel": 1,
+      "tension": 0.7,
+      "texto": "¿La verdad oficial lo es porque es verdadera, o porque quien la proclama tiene poder?"
+    },
+    {
+      "id": "Q10",
+      "eje": "legitimidad",
+      "nivel": 2,
+      "tension": 0.85,
+      "texto": "Cuando te piden pruebas, ¿por qué ellos no necesitan probar su inocencia?"
+    },
+    {
+      "id": "Q11",
+      "eje": "legitimidad",
+      "nivel": 3,
+      "tension": 0.95,
+      "texto": "¿El silencio de los testigos es neutralidad o complicidad?"
+    },
+    {
+      "id": "Q12",
+      "eje": "responsabilidad",
+      "nivel": 1,
+      "tension": 0.6,
+      "texto": "Si la culpa se difumina en 'el sistema', ¿quién toma las decisiones dentro de él?"
+    },
+    {
+      "id": "Q13",
+      "eje": "responsabilidad",
+      "nivel": 2,
+      "tension": 0.8,
+      "texto": "¿Por qué tu responsabilidad se exige al milímetro y la de ellos se perdona por 'contexto'?"
+    },
+    {
+      "id": "Q14",
+      "eje": "responsabilidad",
+      "nivel": 3,
+      "tension": 0.9,
+      "texto": "Cuando dicen 'todos tenemos nuestra parte', ¿están distribuyendo responsabilidad o diluyéndola?"
+    },
+    {
+      "id": "Q15",
+      "eje": "miedo",
+      "nivel": 3,
+      "tension": 1.0,
+      "texto": "¿Qué pasaría si dejaras de tener miedo? ¿Quién tendría que empezar a tenerlo?"
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2024-12-25",
+    "source": "Corpus Socrático Lagrange"
+  }
+}

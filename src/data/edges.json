@@ -1,0 +1,51 @@
+{
+  "edges": [
+    {
+      "id": "e1",
+      "source": "miedo",
+      "target": "control",
+      "tension": 0.9,
+      "label": "El miedo legitima el control"
+    },
+    {
+      "id": "e2",
+      "source": "control",
+      "target": "salud_mental",
+      "tension": 0.7,
+      "label": "El control patologiza la resistencia"
+    },
+    {
+      "id": "e3",
+      "source": "salud_mental",
+      "target": "legitimidad",
+      "tension": 0.8,
+      "label": "La patología deslegitima la voz"
+    },
+    {
+      "id": "e4",
+      "source": "legitimidad",
+      "target": "responsabilidad",
+      "tension": 0.6,
+      "label": "La legitimidad redistribuye la culpa"
+    },
+    {
+      "id": "e5",
+      "source": "responsabilidad",
+      "target": "miedo",
+      "tension": 0.85,
+      "label": "La responsabilidad genera miedo"
+    },
+    {
+      "id": "e6",
+      "source": "miedo",
+      "target": "salud_mental",
+      "tension": 0.75,
+      "label": "El miedo se somatiza"
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2024-12-25",
+    "description": "Tensiones entre nodos del grafo Lagrange"
+  }
+}
