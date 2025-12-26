@@ -4,104 +4,279 @@
     "eje": "Miedo",
     "nivel": 1,
     "tension": 0.8,
-    "texto": "¿Qué pasaría si el miedo que sientes no fuera tuyo, sino implantado?"
+    "texto": "¿Qué pasaría si el miedo que sientes no fuera tuyo, sino implantado?",
+    "corpus_ref": "critica_socratica_lagrange.me"
   },
   {
     "id": "Q02",
     "eje": "Miedo",
     "nivel": 2,
     "tension": 0.9,
-    "texto": "¿A quién beneficia que tengas miedo de hacer esa pregunta?"
+    "texto": "¿A quién beneficia que tengas miedo de hacer esa pregunta?",
+    "corpus_ref": "critica_socratica_lagrange.me"
   },
   {
     "id": "Q03",
     "eje": "Miedo",
     "nivel": 3,
     "tension": 0.95,
-    "texto": "Si el miedo desapareciera ahora mismo, ¿qué harías que no te atreves a hacer?"
+    "texto": "Si el miedo desapareciera ahora mismo, ¿qué harías que no te atreves a hacer?",
+    "corpus_ref": "critica_socratica_lagrange.me"
   },
   {
     "id": "Q04",
-    "eje": "Control",
-    "nivel": 1,
-    "tension": 0.75,
-    "texto": "¿Quién decidió que esa era la forma correcta de hacer las cosas?"
+    "eje": "Miedo",
+    "nivel": 2,
+    "tension": 0.85,
+    "texto": "¿Cuánto de lo que llamas 'prudencia' es en realidad miedo disfrazado?",
+    "corpus_ref": "miedo_al_miedo.me"
   },
   {
     "id": "Q05",
-    "eje": "Control",
-    "nivel": 2,
-    "tension": 0.85,
-    "texto": "¿Cuántas de tus decisiones de hoy fueron realmente tuyas?"
+    "eje": "Miedo",
+    "nivel": 3,
+    "tension": 0.92,
+    "texto": "¿Qué miedos heredaste sin cuestionarlos?",
+    "corpus_ref": "miedo_al_miedo.me"
   },
   {
     "id": "Q06",
     "eje": "Control",
-    "nivel": 3,
-    "tension": 0.92,
-    "texto": "Si pudieras ver todos los hilos que te mueven, ¿seguirías bailando?"
+    "nivel": 1,
+    "tension": 0.75,
+    "texto": "¿Quién decidió que esa era la forma correcta de hacer las cosas?",
+    "corpus_ref": "critica_socratica_lagrange.me"
   },
   {
     "id": "Q07",
-    "eje": "SaludMental",
-    "nivel": 1,
-    "tension": 0.7,
-    "texto": "¿Tu ansiedad es un fallo tuyo o una respuesta lógica a un sistema ilógico?"
+    "eje": "Control",
+    "nivel": 2,
+    "tension": 0.85,
+    "texto": "¿Cuántas de tus decisiones de hoy fueron realmente tuyas?",
+    "corpus_ref": "critica_socratica_lagrange.me"
   },
   {
     "id": "Q08",
-    "eje": "SaludMental",
-    "nivel": 2,
-    "tension": 0.82,
-    "texto": "¿Qué pasaría si tu malestar no necesitara ser curado, sino escuchado?"
+    "eje": "Control",
+    "nivel": 3,
+    "tension": 0.92,
+    "texto": "Si pudieras ver todos los hilos que te mueven, ¿seguirías bailando?",
+    "corpus_ref": "critica_socratica_lagrange.me"
   },
   {
     "id": "Q09",
-    "eje": "SaludMental",
-    "nivel": 3,
+    "eje": "Control",
+    "nivel": 2,
     "tension": 0.88,
-    "texto": "¿Quién gana dinero con que te sientas roto?"
+    "texto": "¿Cuántas de tus opiniones elegiste tú y cuántas fueron instaladas?",
+    "corpus_ref": "critica_socratica_lagrange.me"
   },
   {
     "id": "Q10",
-    "eje": "Legitimidad",
-    "nivel": 1,
-    "tension": 0.78,
-    "texto": "¿Por qué crees que su versión de los hechos es la verdadera?"
+    "eje": "Control",
+    "nivel": 3,
+    "tension": 0.94,
+    "texto": "¿Qué pasaría si lo que llamas 'sentido común' fuera propaganda exitosa?",
+    "corpus_ref": "miedo_al_miedo.me"
   },
   {
     "id": "Q11",
-    "eje": "Legitimidad",
-    "nivel": 2,
-    "tension": 0.87,
-    "texto": "¿Quién te enseñó a dudar de ti mismo antes que de la autoridad?"
+    "eje": "SaludMental",
+    "nivel": 1,
+    "tension": 0.7,
+    "texto": "¿Tu ansiedad es un fallo tuyo o una respuesta lógica a un sistema ilógico?",
+    "corpus_ref": "miedo_al_miedo.me"
   },
   {
     "id": "Q12",
-    "eje": "Legitimidad",
-    "nivel": 3,
-    "tension": 0.93,
-    "texto": "Si el silencio es violencia, ¿quién es el agresor cuando todos callan?"
+    "eje": "SaludMental",
+    "nivel": 2,
+    "tension": 0.82,
+    "texto": "¿Qué pasaría si tu malestar no necesitara ser curado, sino escuchado?",
+    "corpus_ref": "miedo_al_miedo.me"
   },
   {
     "id": "Q13",
-    "eje": "Responsabilidad",
-    "nivel": 1,
-    "tension": 0.72,
-    "texto": "¿Por qué las consecuencias siempre caen del mismo lado?"
+    "eje": "SaludMental",
+    "nivel": 3,
+    "tension": 0.88,
+    "texto": "¿Quién gana dinero con que te sientas roto?",
+    "corpus_ref": "miedo_al_miedo.me"
   },
   {
     "id": "Q14",
-    "eje": "Responsabilidad",
+    "eje": "SaludMental",
     "nivel": 2,
     "tension": 0.84,
-    "texto": "¿Qué pasaría si quien causó el daño tuviera que repararlo?"
+    "texto": "¿Cuántos diagnósticos son en realidad etiquetas de control social?",
+    "corpus_ref": "miedo_al_miedo.me"
   },
   {
     "id": "Q15",
+    "eje": "SaludMental",
+    "nivel": 3,
+    "tension": 0.91,
+    "texto": "¿Por qué la desobediencia se patologiza mientras la sumisión se premia?",
+    "corpus_ref": "miedo_al_miedo.me"
+  },
+  {
+    "id": "Q16",
+    "eje": "SaludMental",
+    "nivel": 1,
+    "tension": 0.76,
+    "texto": "¿Estás deprimido o simplemente lúcido?",
+    "corpus_ref": "miedo_al_miedo.me"
+  },
+  {
+    "id": "Q17",
+    "eje": "Legitimidad",
+    "nivel": 1,
+    "tension": 0.78,
+    "texto": "¿Por qué crees que su versión de los hechos es la verdadera?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q18",
+    "eje": "Legitimidad",
+    "nivel": 2,
+    "tension": 0.87,
+    "texto": "¿Quién te enseñó a dudar de ti mismo antes que de la autoridad?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q19",
+    "eje": "Legitimidad",
+    "nivel": 3,
+    "tension": 0.93,
+    "texto": "Si el silencio es violencia, ¿quién es el agresor cuando todos callan?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q20",
+    "eje": "Legitimidad",
+    "nivel": 2,
+    "tension": 0.85,
+    "texto": "¿Cuánta de la 'historia oficial' escribieron los vencedores?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q21",
+    "eje": "Legitimidad",
+    "nivel": 3,
+    "tension": 0.91,
+    "texto": "¿Un sello oficial convierte una mentira en verdad?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q22",
+    "eje": "Legitimidad",
+    "nivel": 1,
+    "tension": 0.79,
+    "texto": "¿Por qué confías más en quien tiene poder que en quien tiene razón?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q23",
+    "eje": "Responsabilidad",
+    "nivel": 1,
+    "tension": 0.72,
+    "texto": "¿Por qué las consecuencias siempre caen del mismo lado?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q24",
+    "eje": "Responsabilidad",
+    "nivel": 2,
+    "tension": 0.84,
+    "texto": "¿Qué pasaría si quien causó el daño tuviera que repararlo?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q25",
     "eje": "Responsabilidad",
     "nivel": 3,
     "tension": 0.96,
-    "texto": "¿Cuánto tiempo más vas a cargar con un peso que no es tuyo?"
+    "texto": "¿Cuánto tiempo más vas a cargar con un peso que no es tuyo?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q26",
+    "eje": "Responsabilidad",
+    "nivel": 2,
+    "tension": 0.86,
+    "texto": "¿Cuántas veces has callado sabiendo que debías hablar?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q27",
+    "eje": "Responsabilidad",
+    "nivel": 3,
+    "tension": 0.92,
+    "texto": "Si observas una injusticia y callas, ¿eres neutral o cómplice?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q28",
+    "eje": "Responsabilidad",
+    "nivel": 1,
+    "tension": 0.74,
+    "texto": "¿Quién paga el precio de tu comodidad?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q29",
+    "eje": "Miedo",
+    "nivel": 1,
+    "tension": 0.77,
+    "texto": "¿Qué te dijeron que era peligroso pensar?",
+    "corpus_ref": "critica_socratica_lagrange.me"
+  },
+  {
+    "id": "Q30",
+    "eje": "Control",
+    "nivel": 1,
+    "tension": 0.73,
+    "texto": "¿Quién escribió el manual de lo que es 'normal'?",
+    "corpus_ref": "critica_socratica_lagrange.me"
+  },
+  {
+    "id": "Q31",
+    "eje": "Miedo",
+    "nivel": 2,
+    "tension": 0.89,
+    "texto": "¿El cortisol que produces sirve a tus intereses o a los de otro?",
+    "corpus_ref": "miedo_al_miedo.me"
+  },
+  {
+    "id": "Q32",
+    "eje": "Control",
+    "nivel": 3,
+    "tension": 0.93,
+    "texto": "¿Cuántos de tus hábitos son en realidad rituales de sumisión?",
+    "corpus_ref": "miedo_al_miedo.me"
+  },
+  {
+    "id": "Q33",
+    "eje": "Legitimidad",
+    "nivel": 2,
+    "tension": 0.88,
+    "texto": "¿Qué archivos se 'perdieron' convenientemente?",
+    "corpus_ref": "legitimidad_y_silencio.me"
+  },
+  {
+    "id": "Q34",
+    "eje": "SaludMental",
+    "nivel": 2,
+    "tension": 0.86,
+    "texto": "¿Tu terapeuta trabaja para ti o para que sigas funcionando en el sistema?",
+    "corpus_ref": "miedo_al_miedo.me"
+  },
+  {
+    "id": "Q35",
+    "eje": "Responsabilidad",
+    "nivel": 2,
+    "tension": 0.87,
+    "texto": "¿Documentar la injusticia es suficiente o necesitas actuar?",
+    "corpus_ref": "legitimidad_y_silencio.me"
   }
 ]

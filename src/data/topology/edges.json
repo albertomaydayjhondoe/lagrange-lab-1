@@ -3,42 +3,96 @@
     "id": "e1",
     "source": "miedo",
     "target": "control",
-    "tension": 0.9,
-    "label": "El miedo legitima el control"
+    "tension": 0.92,
+    "label": "El miedo es el adhesivo que mantiene las estructuras de control",
+    "type": "causal"
   },
   {
     "id": "e2",
     "source": "miedo",
     "target": "salud-mental",
     "tension": 0.85,
-    "label": "El miedo deteriora la salud mental"
+    "label": "El miedo crónico deteriora la salud mental colectiva",
+    "type": "consequence"
   },
   {
     "id": "e3",
     "source": "control",
     "target": "legitimidad",
-    "tension": 0.75,
-    "label": "El control busca legitimarse"
+    "tension": 0.81,
+    "label": "El control busca fabricar legitimidad",
+    "type": "enabler"
   },
   {
     "id": "e4",
     "source": "legitimidad",
     "target": "responsabilidad",
-    "tension": 0.8,
-    "label": "La legitimidad evade responsabilidad"
+    "tension": 0.88,
+    "label": "La legitimidad fabricada evade responsabilidades reales",
+    "type": "tension"
   },
   {
     "id": "e5",
     "source": "salud-mental",
     "target": "responsabilidad",
-    "tension": 0.7,
-    "label": "¿Quién responde por el daño?"
+    "tension": 0.77,
+    "label": "¿Quién responde por el daño psicológico sistémico?",
+    "type": "tension"
   },
   {
     "id": "e6",
     "source": "miedo",
     "target": "legitimidad",
-    "tension": 0.95,
-    "label": "El miedo silencia la crítica"
+    "tension": 0.79,
+    "label": "El miedo otorga legitimidad a quien promete protección",
+    "type": "enabler"
+  },
+  {
+    "id": "e7",
+    "source": "miedo",
+    "target": "silencio",
+    "tension": 0.94,
+    "label": "El miedo produce silenciamiento individual y colectivo",
+    "type": "causal"
+  },
+  {
+    "id": "e8",
+    "source": "silencio",
+    "target": "legitimidad",
+    "tension": 0.93,
+    "label": "El silencio colectivo legitima la narrativa dominante",
+    "type": "mechanism"
+  },
+  {
+    "id": "e9",
+    "source": "patologizacion",
+    "target": "control",
+    "tension": 0.87,
+    "label": "Diagnosticar al disidente es una forma de control",
+    "type": "mechanism"
+  },
+  {
+    "id": "e10",
+    "source": "patologizacion",
+    "target": "salud-mental",
+    "tension": 0.89,
+    "label": "La patologización convierte respuestas sanas en enfermedad",
+    "type": "mechanism"
+  },
+  {
+    "id": "e11",
+    "source": "responsabilidad",
+    "target": "miedo",
+    "tension": 0.77,
+    "label": "La distribución injusta de responsabilidad genera más miedo",
+    "type": "cycle"
+  },
+  {
+    "id": "e12",
+    "source": "control",
+    "target": "salud-mental",
+    "tension": 0.85,
+    "label": "El control sistemático deteriora la salud mental colectiva",
+    "type": "consequence"
   }
 ]
