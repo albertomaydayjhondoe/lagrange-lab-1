@@ -10,6 +10,10 @@
  * Fuente: Lagrange Backend Boost
  */
 
+import nodesData from '@/data/topology/nodes.json';
+import edgesData from '@/data/topology/edges.json';
+import questionsData from '@/data/topology/socratic_questions.json';
+
 export type AxisType = 'Miedo' | 'Control' | 'SaludMental' | 'Legitimidad' | 'Responsabilidad';
 
 export interface CorpusFragment {
@@ -21,6 +25,38 @@ export interface CorpusFragment {
   keywords: string[];
 }
 
+export interface TopologyNode {
+  id: string;
+  label: string;
+  description: string;
+  x: number;
+  y: number;
+  weight: number;
+  color: string;
+  axis: string;
+  type?: string;
+  corpus_refs?: string[];
+  question_count?: number;
+}
+
+export interface TopologyEdge {
+  id: string;
+  source: string;
+  target: string;
+  tension: number;
+  label: string;
+  type?: string;
+}
+
+export interface SocraticQuestion {
+  id: string;
+  eje: string;
+  nivel: number;
+  tension: number;
+  texto: string;
+  corpus_ref?: string;
+}
+
 export interface SyncResult {
   fragmentsProcessed: number;
   nodesUpdated: number;
@@ -28,60 +64,229 @@ export interface SyncResult {
   timestamp: Date;
 }
 
+export interface CorpusStats {
+  totalNodes: number;
+  totalEdges: number;
+  totalQuestions: number;
+  axisDistribution: Record<string, number>;
+  averageTension: number;
+  corpusFiles: string[];
+}
+
 /**
- * Parsea un archivo .me (Markdown Extendido) y extrae fragmentos
- * TODO: Implementar parser completo de Markdown Extendido
+ * Obtiene todos los nodos de la topología
  */
-export const parseCorpusFile = async (filename: string): Promise<CorpusFragment[]> => {
-  console.log(`>> Parseando archivo corpus: ${filename}`);
-  
-  // TODO: Implementar lógica de parsing de Markdown Extendido (.me)
-  // 1. Leer contenido del archivo
-  // 2. Extraer metadata (eje, tensión, estado)
-  // 3. Identificar fragmentos clave
-  // 4. Calcular peso narrativo
-  
-  return [];
+export const getNodes = (): TopologyNode[] => {
+  return nodesData as TopologyNode[];
 };
 
 /**
- * Extrae entidades y relaciones de los fragmentos del corpus
+ * Obtiene todas las aristas de la topología
  */
-export const extractEntities = (fragments: CorpusFragment[]): {
-  entities: string[];
-  relations: Array<{ source: string; target: string; weight: number }>;
+export const getEdges = (): TopologyEdge[] => {
+  return edgesData as TopologyEdge[];
+};
+
+/**
+ * Obtiene todas las preguntas socráticas
+ */
+export const getQuestions = (): SocraticQuestion[] => {
+  return questionsData as SocraticQuestion[];
+};
+
+/**
+ * Obtiene nodos por eje de tensión
+ */
+export const getNodesByAxis = (axis: AxisType): TopologyNode[] => {
+  return getNodes().filter(node => node.axis === axis);
+};
+
+/**
+ * Obtiene preguntas por eje de tensión
+ */
+export const getQuestionsByAxis = (axis: AxisType): SocraticQuestion[] => {
+  return getQuestions().filter(q => q.eje === axis);
+};
+
+/**
+ * Obtiene preguntas por nivel de profundidad
+ */
+export const getQuestionsByLevel = (level: 1 | 2 | 3): SocraticQuestion[] => {
+  return getQuestions().filter(q => q.nivel === level);
+};
+
+/**
+ * Obtiene aristas conectadas a un nodo específico
+ */
+export const getEdgesForNode = (nodeId: string): TopologyEdge[] => {
+  return getEdges().filter(edge => 
+    edge.source === nodeId || edge.target === nodeId
+  );
+};
+
+/**
+ * Calcula la tensión promedio de un eje
+ */
+export const getAxisTension = (axis: AxisType): number => {
+  const questions = getQuestionsByAxis(axis);
+  if (questions.length === 0) return 0;
+  
+  const totalTension = questions.reduce((sum, q) => sum + q.tension, 0);
+  return totalTension / questions.length;
+};
+
+/**
+ * Obtiene estadísticas completas del corpus
+ */
+export const getCorpusStats = (): CorpusStats => {
+  const nodes = getNodes();
+  const edges = getEdges();
+  const questions = getQuestions();
+
+  const axisDistribution: Record<string, number> = {};
+  questions.forEach(q => {
+    axisDistribution[q.eje] = (axisDistribution[q.eje] || 0) + 1;
+  });
+
+  const totalTension = questions.reduce((sum, q) => sum + q.tension, 0);
+
+  return {
+    totalNodes: nodes.length,
+    totalEdges: edges.length,
+    totalQuestions: questions.length,
+    axisDistribution,
+    averageTension: questions.length > 0 ? totalTension / questions.length : 0,
+    corpusFiles: [
+      'critica_socratica_lagrange.me',
+      'miedo_al_miedo.me',
+      'legitimidad_y_silencio.me'
+    ]
+  };
+};
+
+/**
+ * Obtiene una pregunta aleatoria ponderada por tensión
+ * Las preguntas con mayor tensión tienen más probabilidad de aparecer
+ */
+export const getWeightedRandomQuestion = (): SocraticQuestion | null => {
+  const questions = getQuestions();
+  if (questions.length === 0) return null;
+
+  // Calcular peso total
+  const totalWeight = questions.reduce((sum, q) => sum + q.tension, 0);
+  
+  // Seleccionar aleatoriamente basado en peso
+  let random = Math.random() * totalWeight;
+  
+  for (const question of questions) {
+    random -= question.tension;
+    if (random <= 0) {
+      return question;
+    }
+  }
+  
+  return questions[questions.length - 1];
+};
+
+/**
+ * Encuentra el camino de tensión más alto entre dos ejes
+ */
+export const findTensionPath = (fromAxis: AxisType, toAxis: AxisType): TopologyEdge[] => {
+  const nodes = getNodes();
+  const edges = getEdges();
+  
+  const fromNodes = nodes.filter(n => n.axis === fromAxis).map(n => n.id);
+  const toNodes = nodes.filter(n => n.axis === toAxis).map(n => n.id);
+  
+  // Encontrar aristas que conectan ambos ejes
+  return edges.filter(edge => 
+    (fromNodes.includes(edge.source) && toNodes.includes(edge.target)) ||
+    (fromNodes.includes(edge.target) && toNodes.includes(edge.source))
+  ).sort((a, b) => b.tension - a.tension);
+};
+
+/**
+ * Genera un "recorrido de fricción" - secuencia de preguntas que aumentan la tensión
+ */
+export const generateFrictionJourney = (startAxis?: AxisType): SocraticQuestion[] => {
+  const questions = getQuestions();
+  
+  // Filtrar por eje si se especifica
+  let pool = startAxis 
+    ? questions.filter(q => q.eje === startAxis)
+    : [...questions];
+  
+  // Ordenar por nivel y tensión
+  pool.sort((a, b) => {
+    if (a.nivel !== b.nivel) return a.nivel - b.nivel;
+    return a.tension - b.tension;
+  });
+  
+  // Seleccionar una pregunta de cada nivel
+  const journey: SocraticQuestion[] = [];
+  
+  for (let level = 1; level <= 3; level++) {
+    const levelQuestions = pool.filter(q => q.nivel === level);
+    if (levelQuestions.length > 0) {
+      const randomIndex = Math.floor(Math.random() * levelQuestions.length);
+      journey.push(levelQuestions[randomIndex]);
+    }
+  }
+  
+  return journey;
+};
+
+/**
+ * Valida la integridad del corpus contra la topología
+ */
+export const validateCorpusIntegrity = (): {
+  isValid: boolean;
+  issues: string[];
 } => {
-  console.log(`>> Extrayendo entidades de ${fragments.length} fragmentos...`);
+  console.log(">> Validando integridad del corpus...");
   
-  // TODO: Implementar extracción de entidades con NLP o reglas
-  // 1. Identificar sustantivos clave (potenciales nodos)
-  // 2. Detectar verbos de relación (potenciales aristas)
-  // 3. Calcular co-ocurrencia para pesos
+  const issues: string[] = [];
+  const nodes = getNodes();
+  const edges = getEdges();
+  const questions = getQuestions();
   
-  return { entities: [], relations: [] };
+  // Verificar que todos los ejes tienen preguntas
+  const axes: AxisType[] = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
+  for (const axis of axes) {
+    const axisQuestions = questions.filter(q => q.eje === axis);
+    if (axisQuestions.length === 0) {
+      issues.push(`Eje "${axis}" no tiene preguntas asociadas`);
+    }
+  }
+  
+  // Verificar que no hay aristas huérfanas
+  const nodeIds = new Set(nodes.map(n => n.id));
+  for (const edge of edges) {
+    if (!nodeIds.has(edge.source)) {
+      issues.push(`Arista "${edge.id}" tiene origen huérfano: ${edge.source}`);
+    }
+    if (!nodeIds.has(edge.target)) {
+      issues.push(`Arista "${edge.id}" tiene destino huérfano: ${edge.target}`);
+    }
+  }
+  
+  // Verificar rangos de tensión
+  for (const question of questions) {
+    if (question.tension < 0 || question.tension > 1) {
+      issues.push(`Pregunta "${question.id}" tiene tensión fuera de rango: ${question.tension}`);
+    }
+  }
+  
+  console.log(`>> Validación completada. ${issues.length} problemas encontrados.`);
+  
+  return {
+    isValid: issues.length === 0,
+    issues
+  };
 };
 
 /**
- * Actualiza la topología basándose en el análisis del corpus
- */
-export const updateTopology = async (
-  entities: string[],
-  relations: Array<{ source: string; target: string; weight: number }>
-): Promise<{ nodesUpdated: number; edgesCreated: number }> => {
-  console.log(">> Actualizando topología del grafo...");
-  
-  // TODO: Implementar actualización de nodes.json y edges.json
-  // 1. Comparar entidades con nodos existentes
-  // 2. Crear nuevos nodos si es necesario
-  // 3. Actualizar pesos de aristas existentes
-  // 4. Crear nuevas aristas para relaciones detectadas
-  
-  return { nodesUpdated: 0, edgesCreated: 0 };
-};
-
-/**
- * Función principal de sincronización
- * Ejecuta el pipeline completo: Corpus → Análisis → Topología
+ * Función principal de sincronización (para futura implementación dinámica)
  */
 export const syncCorpus = async (): Promise<SyncResult> => {
   console.log("═══════════════════════════════════════════════");
@@ -89,62 +294,23 @@ export const syncCorpus = async (): Promise<SyncResult> => {
   console.log(">> Primer Mandamiento: Neutralización del Miedo");
   console.log("═══════════════════════════════════════════════");
 
-  const corpusFiles = [
-    'critica_socratica_lagrange.me',
-    'miedo_al_miedo.me',
-    'legitimidad_y_silencio.me'
-  ];
-
-  let totalFragments = 0;
-  const allFragments: CorpusFragment[] = [];
-
-  // 1. Parsear todos los archivos del corpus
-  for (const file of corpusFiles) {
-    const fragments = await parseCorpusFile(file);
-    allFragments.push(...fragments);
-    totalFragments += fragments.length;
-  }
-
-  // 2. Extraer entidades y relaciones
-  const { entities, relations } = extractEntities(allFragments);
-
-  // 3. Actualizar topología
-  const { nodesUpdated, edgesCreated } = await updateTopology(entities, relations);
+  const stats = getCorpusStats();
+  const validation = validateCorpusIntegrity();
 
   console.log("═══════════════════════════════════════════════");
   console.log(">> SINCRONIZACIÓN COMPLETADA");
-  console.log(`>> Fragmentos procesados: ${totalFragments}`);
-  console.log(`>> Nodos actualizados: ${nodesUpdated}`);
-  console.log(`>> Aristas creadas: ${edgesCreated}`);
+  console.log(`>> Nodos en topología: ${stats.totalNodes}`);
+  console.log(`>> Aristas en topología: ${stats.totalEdges}`);
+  console.log(`>> Preguntas socráticas: ${stats.totalQuestions}`);
+  console.log(`>> Tensión promedio: ${(stats.averageTension * 100).toFixed(1)}%`);
+  console.log(`>> Integridad: ${validation.isValid ? '✓ Válida' : '✗ Con problemas'}`);
   console.log(">> El sistema está vivo. La topología respira.");
   console.log("═══════════════════════════════════════════════");
 
   return {
-    fragmentsProcessed: totalFragments,
-    nodesUpdated,
-    edgesCreated,
+    fragmentsProcessed: stats.totalQuestions,
+    nodesUpdated: stats.totalNodes,
+    edgesCreated: stats.totalEdges,
     timestamp: new Date()
-  };
-};
-
-/**
- * Valida la integridad del corpus contra la topología
- */
-export const validateCorpusIntegrity = async (): Promise<{
-  isValid: boolean;
-  issues: string[];
-}> => {
-  console.log(">> Validando integridad del corpus...");
-  
-  const issues: string[] = [];
-  
-  // TODO: Implementar validaciones
-  // 1. Verificar que todos los nodos tienen contenido asociado
-  // 2. Verificar que no hay aristas huérfanas
-  // 3. Verificar coherencia de pesos de tensión
-  
-  return {
-    isValid: issues.length === 0,
-    issues
   };
 };
