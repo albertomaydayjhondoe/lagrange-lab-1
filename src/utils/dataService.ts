@@ -17,6 +17,9 @@ export interface LagrangeNode {
   weight: number;
   color: string;
   axis: AxisType;
+  type?: 'core' | 'mechanism' | 'biological' | 'resistance';
+  corpus_refs?: string[];
+  question_count?: number;
 }
 
 export interface LagrangeEdge {
@@ -25,6 +28,7 @@ export interface LagrangeEdge {
   target: string;
   tension: number;
   label: string;
+  type?: 'causal' | 'consequence' | 'enabler' | 'mechanism' | 'tension' | 'cycle' | 'feedback' | 'biological' | 'resistance' | 'conflict';
 }
 
 export interface SocraticQuestion {

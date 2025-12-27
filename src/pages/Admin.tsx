@@ -1,17 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2 } from 'lucide-react';
 import nodesData from '@/data/topology/nodes.json';
 import edgesData from '@/data/topology/edges.json';
 import questionsData from '@/data/topology/socratic_questions.json';
+import type { User, Session } from '@supabase/supabase-js';
 
 const Admin = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  if (!isAuthenticated) {
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!session) {
     return (
       <div className="min-h-screen bg-background">
         <LagrangeNav />
@@ -33,10 +72,10 @@ const Admin = () => {
               el sistema. God mode.
             </p>
             <Button
-              onClick={() => setIsAuthenticated(true)}
+              onClick={() => navigate('/auth')}
               className="font-serif bg-primary hover:bg-primary/90"
             >
-              Acceder (Demo)
+              Iniciar Sesión
             </Button>
           </motion.div>
         </main>
@@ -55,7 +94,7 @@ const Admin = () => {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <div className="inline-block px-3 py-1 rounded-full bg-lagrange-tension/10 text-lagrange-tension text-xs font-mono uppercase tracking-wider mb-2">
                   God Mode
@@ -63,12 +102,16 @@ const Admin = () => {
                 <h1 className="font-serif text-4xl text-foreground">
                   Panel de Control
                 </h1>
+                <p className="text-sm text-muted-foreground mt-1 font-mono">
+                  {user?.email}
+                </p>
               </div>
               <Button
                 variant="outline"
-                onClick={() => setIsAuthenticated(false)}
-                className="font-mono text-sm"
+                onClick={handleLogout}
+                className="font-mono text-sm gap-2"
               >
+                <LogOut className="w-4 h-4" />
                 Cerrar sesión
               </Button>
             </div>
