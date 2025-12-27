@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { path: '/', label: 'Caverna', description: 'La narrativa' },
   { path: '/map', label: 'Dialéctica', description: 'El mapa' },
+  { path: '/podcast', label: 'Podcast', description: 'El audio' },
   { path: '/lab', label: 'Academia', description: 'El laboratorio' },
   { path: '/admin', label: 'Poder', description: 'El control' },
 ];
