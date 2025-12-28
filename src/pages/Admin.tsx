@@ -6,7 +6,8 @@ import { LagrangeNav } from '@/components/LagrangeNav';
 import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users, UserPlus, BookOpen } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users, UserPlus, BookOpen, Archive } from 'lucide-react';
+import { createGlobalBackup, downloadZip } from '@/utils/globalBackup';
 import { NodeEditor } from '@/components/admin/NodeEditor';
 import { EdgeEditor } from '@/components/admin/EdgeEditor';
 import { QuestionEditor } from '@/components/admin/QuestionEditor';
@@ -157,6 +158,22 @@ const Admin = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success('Datos exportados correctamente');
+  };
+
+  const [backupLoading, setBackupLoading] = useState(false);
+
+  const handleGlobalBackup = async () => {
+    setBackupLoading(true);
+    try {
+      const blob = await createGlobalBackup();
+      downloadZip(blob);
+      toast.success('Backup global creado correctamente');
+    } catch (error) {
+      console.error('Backup error:', error);
+      toast.error('Error al crear backup: ' + (error as Error).message);
+    } finally {
+      setBackupLoading(false);
+    }
   };
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -317,6 +334,18 @@ const Admin = () => {
                     >
                       <Upload className="w-4 h-4" />
                       Importar JSON
+                    </Button>
+                    <Button
+                      onClick={handleGlobalBackup}
+                      disabled={dataLoading || backupLoading}
+                      className="font-mono text-sm gap-2 bg-red-600 hover:bg-red-700 text-white border-red-600"
+                    >
+                      {backupLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Archive className="w-4 h-4" />
+                      )}
+                      Backup ZIP
                     </Button>
                   </>
                 )}
