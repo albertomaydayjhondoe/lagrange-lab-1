@@ -1,8 +1,14 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { LabPromptEditor } from '@/components/LabPromptEditor';
+import { SocraticDialogue } from '@/components/SocraticDialogue';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MessageSquare, FlaskConical } from 'lucide-react';
 
 const Lab = () => {
+  const [activeTab, setActiveTab] = useState('dialogue');
+
   return (
     <div className="min-h-screen bg-background">
       <LagrangeNav />
@@ -27,14 +33,37 @@ const Lab = () => {
             </p>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-card/50 backdrop-blur-sm rounded-2xl border border-border p-8"
-          >
-            <LabPromptEditor />
-          </motion.div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="dialogue" className="gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Diálogo Continuo
+              </TabsTrigger>
+              <TabsTrigger value="prompt" className="gap-2">
+                <FlaskConical className="w-4 h-4" />
+                Editor de Prompts
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="dialogue">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <SocraticDialogue />
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="prompt">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-card/50 backdrop-blur-sm rounded-2xl border border-border p-8"
+              >
+                <LabPromptEditor />
+              </motion.div>
+            </TabsContent>
+          </Tabs>
 
           <motion.div
             initial={{ opacity: 0 }}
