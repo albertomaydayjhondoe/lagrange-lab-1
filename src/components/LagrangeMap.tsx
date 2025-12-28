@@ -12,6 +12,7 @@ import {
   calculateTensionState,
   TensionState 
 } from '@/utils/narrativeMatrix';
+import { saveInteraction } from '@/utils/interactionService';
 import { Button } from '@/components/ui/button';
 import { X, Zap, Link2, Brain, Filter } from 'lucide-react';
 
@@ -396,6 +397,14 @@ export function LagrangeMap() {
     registerInteraction(nodeId);
     setSelectedNode(nodeId);
     
+    // Persist interaction to database
+    const tensionState = tensionStates.get(nodeId);
+    saveInteraction({
+      nodeId,
+      interactionType: 'click',
+      tensionLevel: tensionState?.currentWeight || 0,
+    });
+    
     setTensionStates(prev => {
       const newStates = new Map(prev);
       const node = nodes.find(n => n.id === nodeId);
@@ -404,7 +413,7 @@ export function LagrangeMap() {
       }
       return newStates;
     });
-  }, [nodes, edges]);
+  }, [nodes, edges, tensionStates]);
 
   const selectedNodeData = selectedNode ? nodes.find(n => n.id === selectedNode) : null;
 

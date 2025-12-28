@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { AudioPlayer } from '@/components/AudioPlayer';
 import { fetchEpisodes, Episode, getNodeById } from '@/utils/dataService';
 import { 
   Play, 
@@ -19,12 +20,12 @@ import {
 interface EpisodeCardProps {
   episode: Episode;
   isExpanded: boolean;
-  isPlaying: boolean;
+  isActive: boolean;
   onToggleExpand: () => void;
-  onTogglePlay: () => void;
+  onSetActive: () => void;
 }
 
-function EpisodeCard({ episode, isExpanded, isPlaying, onToggleExpand, onTogglePlay }: EpisodeCardProps) {
+function EpisodeCard({ episode, isExpanded, isActive, onToggleExpand, onSetActive }: EpisodeCardProps) {
   const connectedNodes = episode.nodes?.map(nodeId => getNodeById(nodeId)).filter(Boolean) || [];
 
   const statusColors = {
@@ -38,7 +39,9 @@ function EpisodeCard({ episode, isExpanded, isPlaying, onToggleExpand, onToggleP
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card rounded-xl border border-border overflow-hidden"
+      className={`bg-card rounded-xl border overflow-hidden transition-colors ${
+        isActive ? 'border-primary' : 'border-border'
+      }`}
     >
       {/* Header */}
       <div className="p-6">
@@ -67,17 +70,35 @@ function EpisodeCard({ episode, isExpanded, isPlaying, onToggleExpand, onToggleP
           <Button
             variant="outline"
             size="icon"
-            onClick={onTogglePlay}
+            onClick={onSetActive}
             disabled={!episode.audioFile}
-            className={`h-14 w-14 rounded-full ${isPlaying ? 'bg-primary text-primary-foreground' : ''}`}
+            className={`h-14 w-14 rounded-full ${isActive ? 'bg-primary text-primary-foreground' : ''}`}
           >
-            {isPlaying ? (
+            {isActive ? (
               <Pause className="w-6 h-6" />
             ) : (
               <Play className="w-6 h-6 ml-1" />
             )}
           </Button>
         </div>
+
+        {/* Audio Player */}
+        <AnimatePresence>
+          {isActive && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 overflow-hidden"
+            >
+              <AudioPlayer
+                src={episode.audioFile}
+                title={episode.title}
+                isActive={isActive}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Connected nodes */}
         {connectedNodes.length > 0 && (
@@ -136,7 +157,7 @@ function EpisodeCard({ episode, isExpanded, isPlaying, onToggleExpand, onToggleP
 const Podcast = () => {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [expandedEpisode, setExpandedEpisode] = useState<string | null>(null);
-  const [playingEpisode, setPlayingEpisode] = useState<string | null>(null);
+  const [activeEpisode, setActiveEpisode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -150,8 +171,8 @@ const Podcast = () => {
     setExpandedEpisode(prev => prev === episodeId ? null : episodeId);
   };
 
-  const handleTogglePlay = (episodeId: string) => {
-    setPlayingEpisode(prev => prev === episodeId ? null : episodeId);
+  const handleSetActive = (episodeId: string) => {
+    setActiveEpisode(prev => prev === episodeId ? null : episodeId);
   };
 
   const activeCount = episodes.filter(e => e.status === 'activo').length;
@@ -229,9 +250,9 @@ const Podcast = () => {
                   <EpisodeCard
                     episode={episode}
                     isExpanded={expandedEpisode === episode.id}
-                    isPlaying={playingEpisode === episode.id}
+                    isActive={activeEpisode === episode.id}
                     onToggleExpand={() => handleToggleExpand(episode.id)}
-                    onTogglePlay={() => handleTogglePlay(episode.id)}
+                    onSetActive={() => handleSetActive(episode.id)}
                   />
                 </motion.div>
               ))
