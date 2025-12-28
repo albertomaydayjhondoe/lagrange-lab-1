@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.ai-curate-text]
 verify_jwt = false
+
+[functions.podcast-storage]
+verify_jwt = true
