@@ -17,6 +17,8 @@ import {
 import { saveInteraction } from '@/utils/interactionService';
 import { Button } from '@/components/ui/button';
 import { X, Zap, Link2, Brain, Filter } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 const typeColors: Record<string, string> = {
   core: 'var(--primary)',
@@ -247,12 +249,7 @@ function NodeDetailPanel({ node, tensionState, connectedNodes, onClose, onNaviga
   }, [node.id]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      className="absolute top-4 right-4 w-96 max-h-[calc(100%-2rem)] overflow-hidden rounded-xl bg-card/95 backdrop-blur-xl border border-border shadow-2xl"
-    >
+    <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-5 border-b border-border bg-secondary/30">
         <div className="flex items-start justify-between">
@@ -357,11 +354,12 @@ function NodeDetailPanel({ node, tensionState, connectedNodes, onClose, onNaviga
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 export function LagrangeMap() {
+  const isMobile = useIsMobile();
   const [nodes, setNodes] = useState<LagrangeNode[]>([]);
   const [edges, setEdges] = useState<LagrangeEdge[]>([]);
   const [axisColors, setAxisColors] = useState<Record<string, string>>({});
@@ -473,18 +471,34 @@ export function LagrangeMap() {
     setScale(prev => Math.max(0.5, Math.min(2, prev + delta)));
   }, []);
 
+  const DetailPanelContent = selectedNodeData ? (
+    <NodeDetailPanel
+      node={selectedNodeData}
+      tensionState={tensionStates.get(selectedNodeData.id) || {
+        nodeId: selectedNodeData.id,
+        currentWeight: selectedNodeData.weight,
+        vibrationIntensity: 0.5,
+        connectedTensions: 0
+      }}
+      connectedNodes={connectedNodes}
+      onClose={() => setSelectedNode(null)}
+      onNavigateToNode={handleNodeClick}
+      axisColors={axisColors}
+    />
+  ) : null;
+
   return (
-    <div className="relative w-full h-full min-h-[600px]">
+    <div className="relative w-full h-full min-h-[400px] md:min-h-[600px]">
       {/* Filter controls */}
-      <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2">
+      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 flex flex-wrap gap-1 md:gap-2 max-w-[calc(100%-1rem)] md:max-w-none">
         <Button
           variant={axisFilter === null ? "default" : "outline"}
           size="sm"
           onClick={() => setAxisFilter(null)}
-          className="h-8 text-xs font-mono"
+          className="h-7 md:h-8 text-xs font-mono px-2 md:px-3"
         >
           <Filter className="w-3 h-3 mr-1" />
-          Todos
+          <span className="hidden sm:inline">Todos</span>
         </Button>
         {uniqueAxes.map(axis => (
           <Button
@@ -492,24 +506,24 @@ export function LagrangeMap() {
             variant={axisFilter === axis ? "default" : "outline"}
             size="sm"
             onClick={() => setAxisFilter(axis === axisFilter ? null : axis)}
-            className="h-8 text-xs font-mono"
+            className="h-7 md:h-8 text-xs font-mono px-2 md:px-3"
             style={axisFilter === axis ? {
               backgroundColor: axesList.find(a => a.id === axis)?.color,
               borderColor: axesList.find(a => a.id === axis)?.color,
             } : {}}
           >
-            {axis}
+            {axis.length > 8 && isMobile ? axis.substring(0, 5) + '...' : axis}
           </Button>
         ))}
       </div>
 
       {/* Zoom controls */}
-      <div className="absolute bottom-4 left-4 z-10 flex gap-2">
+      <div className="absolute bottom-2 left-2 md:bottom-4 md:left-4 z-10 flex gap-1 md:gap-2">
         <Button
           variant="outline"
           size="sm"
           onClick={() => handleZoom(0.1)}
-          className="h-8 w-8 p-0 font-mono"
+          className="h-7 w-7 md:h-8 md:w-8 p-0 font-mono"
         >
           +
         </Button>
@@ -517,7 +531,7 @@ export function LagrangeMap() {
           variant="outline"
           size="sm"
           onClick={() => handleZoom(-0.1)}
-          className="h-8 w-8 p-0 font-mono"
+          className="h-7 w-7 md:h-8 md:w-8 p-0 font-mono"
         >
           −
         </Button>
@@ -525,13 +539,11 @@ export function LagrangeMap() {
           variant="outline"
           size="sm"
           onClick={() => { setScale(1); setPan({ x: 0, y: 0 }); }}
-          className="h-8 px-2 text-xs font-mono"
+          className="h-7 md:h-8 px-2 text-xs font-mono"
         >
           Reset
         </Button>
       </div>
-
-      {/* SVG Map */}
       <svg
         viewBox={`${-pan.x} ${-pan.y} ${800 / scale} ${600 / scale}`}
         className="w-full h-full"
@@ -591,33 +603,39 @@ export function LagrangeMap() {
         </g>
       </svg>
 
-      {/* Selected node detail panel */}
-      <AnimatePresence>
-        {selectedNodeData && (
-          <NodeDetailPanel
-            node={selectedNodeData}
-            tensionState={tensionStates.get(selectedNodeData.id) || {
-              nodeId: selectedNodeData.id,
-              currentWeight: selectedNodeData.weight,
-              vibrationIntensity: 0.5,
-              connectedTensions: 0
-            }}
-            connectedNodes={connectedNodes}
-            onClose={() => setSelectedNode(null)}
-            onNavigateToNode={handleNodeClick}
-            axisColors={axisColors}
-          />
-        )}
-      </AnimatePresence>
+      {/* Selected node detail panel - Desktop */}
+      {!isMobile && (
+        <AnimatePresence>
+          {selectedNodeData && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="absolute top-4 right-4 w-80 lg:w-96 max-h-[calc(100%-2rem)] overflow-hidden rounded-xl bg-card/95 backdrop-blur-xl border border-border shadow-2xl"
+            >
+              {DetailPanelContent}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
 
-      {/* Legend */}
-      <div className="absolute bottom-4 right-4 p-4 rounded-xl bg-card/80 backdrop-blur-sm border border-border">
-        <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">Leyenda</h4>
-        <div className="space-y-2">
+      {/* Selected node detail panel - Mobile Sheet */}
+      {isMobile && (
+        <Sheet open={!!selectedNodeData} onOpenChange={(open) => !open && setSelectedNode(null)}>
+          <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl p-0">
+            {DetailPanelContent}
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Legend - Hidden on mobile, shown as compact on tablet+ */}
+      <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 p-2 md:p-4 rounded-xl bg-card/80 backdrop-blur-sm border border-border hidden sm:block">
+        <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-2 md:mb-3">Leyenda</h4>
+        <div className="space-y-1 md:space-y-2">
           {axesList.map(axis => (
             <div key={axis.id} className="flex items-center gap-2">
               <div 
-                className="w-3 h-3 rounded-full"
+                className="w-2 h-2 md:w-3 md:h-3 rounded-full"
                 style={{ backgroundColor: axis.color }}
               />
               <span className="text-xs text-muted-foreground">{axis.label}</span>

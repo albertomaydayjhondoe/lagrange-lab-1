@@ -172,21 +172,21 @@ const Podcast = () => {
       <FogOverlay />
       <LagrangeNav />
       
-      <main className="pt-24 pb-12 px-6">
+      <main className="pt-20 md:pt-24 pb-8 md:pb-12 px-4 md:px-6">
         <div className="container mx-auto max-w-4xl">
           {/* Hero */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
+            className="text-center mb-8 md:mb-12"
           >
-            <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-6 glow-gold">
-              <Mic className="w-8 h-8 text-primary" />
+            <div className="w-16 h-16 md:w-20 md:h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4 md:mb-6 glow-gold">
+              <Mic className="w-6 h-6 md:w-8 md:h-8 text-primary" />
             </div>
-            <h1 className="font-serif text-4xl md:text-5xl text-foreground mb-4">
+            <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl text-foreground mb-3 md:mb-4">
               El Podcast
             </h1>
-            <p className="text-muted-foreground font-serif max-w-2xl mx-auto">
+            <p className="text-muted-foreground font-serif max-w-2xl mx-auto text-sm md:text-base">
               Conversaciones que desestabilizan certezas. Cada episodio es un nodo 
               que se conecta con la topología del miedo y el control.
             </p>
@@ -197,16 +197,16 @@ const Podcast = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="grid grid-cols-2 gap-4 mb-8"
+            className="grid grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8"
           >
-            <div className="p-4 rounded-xl bg-card border border-border text-center">
-              <Radio className="w-5 h-5 mx-auto mb-2 text-primary" />
-              <span className="text-2xl font-mono text-foreground">{episodes.length}</span>
+            <div className="p-3 md:p-4 rounded-xl bg-card border border-border text-center">
+              <Radio className="w-4 h-4 md:w-5 md:h-5 mx-auto mb-1 md:mb-2 text-primary" />
+              <span className="text-xl md:text-2xl font-mono text-foreground">{episodes.length}</span>
               <p className="text-xs text-muted-foreground mt-1">Episodios</p>
             </div>
-            <div className="p-4 rounded-xl bg-card border border-border text-center">
-              <Play className="w-5 h-5 mx-auto mb-2 text-lagrange-node" />
-              <span className="text-2xl font-mono text-foreground">
+            <div className="p-3 md:p-4 rounded-xl bg-card border border-border text-center">
+              <Play className="w-4 h-4 md:w-5 md:h-5 mx-auto mb-1 md:mb-2 text-lagrange-node" />
+              <span className="text-xl md:text-2xl font-mono text-foreground">
                 {episodes.filter(e => e.eje).map(e => e.eje).filter((v, i, a) => a.indexOf(v) === i).length}
               </span>
               <p className="text-xs text-muted-foreground mt-1">Ejes temáticos</p>
