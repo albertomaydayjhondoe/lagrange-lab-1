@@ -6,7 +6,7 @@ import { LagrangeNav } from '@/components/LagrangeNav';
 import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users, UserPlus } from 'lucide-react';
 import { NodeEditor } from '@/components/admin/NodeEditor';
 import { EdgeEditor } from '@/components/admin/EdgeEditor';
 import { QuestionEditor } from '@/components/admin/QuestionEditor';
@@ -15,6 +15,7 @@ import { EpisodeEditor } from '@/components/admin/EpisodeEditor';
 import { AxesEditor, ThematicAxis } from '@/components/admin/AxesEditor';
 import { DialogueEditor } from '@/components/admin/DialogueEditor';
 import { RolesEditor } from '@/components/admin/RolesEditor';
+import { AccessRequestsEditor } from '@/components/admin/AccessRequestsEditor';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -367,10 +368,16 @@ const Admin = () => {
                     Diálogos
                   </TabsTrigger>
                   {isAdmin && (
-                    <TabsTrigger value="roles" className="font-mono text-sm gap-2">
-                      <Users className="w-4 h-4" />
-                      Roles
-                    </TabsTrigger>
+                    <>
+                      <TabsTrigger value="requests" className="font-mono text-sm gap-2">
+                        <UserPlus className="w-4 h-4" />
+                        Solicitudes
+                      </TabsTrigger>
+                      <TabsTrigger value="roles" className="font-mono text-sm gap-2">
+                        <Users className="w-4 h-4" />
+                        Roles
+                      </TabsTrigger>
+                    </>
                   )}
                 </TabsList>
 
@@ -469,19 +476,34 @@ const Admin = () => {
                 </TabsContent>
 
                 {isAdmin && (
-                  <TabsContent value="roles">
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="bg-card rounded-xl border border-border p-6"
-                    >
-                      <h2 className="font-serif text-xl mb-4">Gestión de Roles</h2>
-                      <p className="text-sm text-muted-foreground mb-6">
-                        Asigna roles Platón a usuarios para darles acceso completo sin neblina.
-                      </p>
-                      <RolesEditor isAdmin={isAdmin} />
-                    </motion.div>
-                  </TabsContent>
+                  <>
+                    <TabsContent value="requests">
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="bg-card rounded-xl border border-border p-6"
+                      >
+                        <h2 className="font-serif text-xl mb-4">Solicitudes de Acceso</h2>
+                        <p className="text-sm text-muted-foreground mb-6">
+                          Revisa y aprueba solicitudes de acceso Platón. Al aprobar, se asigna automáticamente el rol.
+                        </p>
+                        <AccessRequestsEditor isAdmin={isAdmin} />
+                      </motion.div>
+                    </TabsContent>
+                    <TabsContent value="roles">
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="bg-card rounded-xl border border-border p-6"
+                      >
+                        <h2 className="font-serif text-xl mb-4">Gestión de Roles</h2>
+                        <p className="text-sm text-muted-foreground mb-6">
+                          Asigna roles Platón a usuarios para darles acceso completo sin neblina.
+                        </p>
+                        <RolesEditor isAdmin={isAdmin} />
+                      </motion.div>
+                    </TabsContent>
+                  </>
                 )}
               </Tabs>
 
