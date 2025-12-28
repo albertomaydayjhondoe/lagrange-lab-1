@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Plus, Trash2, Save, Edit2, X } from 'lucide-react';
+import { fetchAxes, ThematicAxis } from '@/utils/dataService';
 
 interface SocraticQuestion {
   id: string;
@@ -22,21 +23,29 @@ interface QuestionEditorProps {
   isAdmin: boolean;
 }
 
-const EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
-
 export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditorProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<SocraticQuestion>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [filterEje, setFilterEje] = useState<string>('');
+  const [axes, setAxes] = useState<ThematicAxis[]>([]);
   const [newQuestion, setNewQuestion] = useState<Partial<SocraticQuestion>>({
     id: '',
-    eje: 'Miedo',
+    eje: '',
     nivel: 1,
     tension: 0.8,
     texto: '',
     corpus_ref: ''
   });
+
+  useEffect(() => {
+    fetchAxes().then(data => {
+      setAxes(data);
+      if (data.length > 0 && !newQuestion.eje) {
+        setNewQuestion(prev => ({ ...prev, eje: data[0].id }));
+      }
+    });
+  }, []);
 
   const filteredQuestions = filterEje 
     ? questions.filter(q => q.eje === filterEje)
@@ -106,9 +115,10 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
     } else {
       toast.success('Pregunta creada');
       setIsCreating(false);
+      const defaultAxis = axes[0];
       setNewQuestion({
         id: '',
-        eje: 'Miedo',
+        eje: defaultAxis?.id || '',
         nivel: 1,
         tension: 0.8,
         texto: '',
@@ -119,14 +129,11 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
   };
 
   const getEjeColor = (eje: string) => {
-    const colors: Record<string, string> = {
-      'Miedo': 'bg-red-500/20 text-red-400',
-      'Control': 'bg-orange-500/20 text-orange-400',
-      'SaludMental': 'bg-green-500/20 text-green-400',
-      'Legitimidad': 'bg-blue-500/20 text-blue-400',
-      'Responsabilidad': 'bg-purple-500/20 text-purple-400'
-    };
-    return colors[eje] || 'bg-secondary text-muted-foreground';
+    const axis = axes.find(a => a.id === eje);
+    if (axis?.color) {
+      return `bg-[${axis.color}]/20 text-[${axis.color}]`;
+    }
+    return 'bg-secondary text-muted-foreground';
   };
 
   return (
@@ -140,14 +147,15 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
           >
             Todos ({questions.length})
           </Button>
-          {EJES.map(eje => (
+          {axes.map(axis => (
             <Button
-              key={eje}
+              key={axis.id}
               size="sm"
-              variant={filterEje === eje ? 'default' : 'outline'}
-              onClick={() => setFilterEje(eje)}
+              variant={filterEje === axis.id ? 'default' : 'outline'}
+              onClick={() => setFilterEje(axis.id)}
+              style={{ borderColor: axis.color }}
             >
-              {eje} ({questions.filter(q => q.eje === eje).length})
+              {axis.label} ({questions.filter(q => q.eje === axis.id).length})
             </Button>
           ))}
         </div>
@@ -180,8 +188,8 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
               value={newQuestion.eje}
               onChange={(e) => setNewQuestion({ ...newQuestion, eje: e.target.value })}
             >
-              {EJES.map(eje => (
-                <option key={eje} value={eje}>{eje}</option>
+              {axes.map(axis => (
+                <option key={axis.id} value={axis.id}>{axis.label}</option>
               ))}
             </select>
             <select
@@ -235,8 +243,8 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
                     value={editData.eje}
                     onChange={(e) => setEditData({ ...editData, eje: e.target.value })}
                   >
-                    {EJES.map(eje => (
-                      <option key={eje} value={eje}>{eje}</option>
+                    {axes.map(axis => (
+                      <option key={axis.id} value={axis.id}>{axis.label}</option>
                     ))}
                   </select>
                   <select

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Plus, Trash2, Save, Edit2, X } from 'lucide-react';
+import { fetchAxes, ThematicAxis } from '@/utils/dataService';
 
 interface TopologyNode {
   id: string;
@@ -31,6 +32,7 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<TopologyNode>>({});
   const [isCreating, setIsCreating] = useState(false);
+  const [axes, setAxes] = useState<ThematicAxis[]>([]);
   const [newNode, setNewNode] = useState<Partial<TopologyNode>>({
     id: '',
     label: '',
@@ -39,11 +41,20 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
     y: 300,
     weight: 0.5,
     color: '#3b82f6',
-    axis: 'Miedo',
+    axis: '',
     type: 'core',
     corpus_refs: [],
     question_count: 0
   });
+
+  useEffect(() => {
+    fetchAxes().then(data => {
+      setAxes(data);
+      if (data.length > 0 && !newNode.axis) {
+        setNewNode(prev => ({ ...prev, axis: data[0].id, color: data[0].color }));
+      }
+    });
+  }, []);
 
   const startEdit = (node: TopologyNode) => {
     setEditingId(node.id);
@@ -114,6 +125,7 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
     } else {
       toast.success('Nodo creado');
       setIsCreating(false);
+      const defaultAxis = axes[0];
       setNewNode({
         id: '',
         label: '',
@@ -121,8 +133,8 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
         x: 400,
         y: 300,
         weight: 0.5,
-        color: '#3b82f6',
-        axis: 'Miedo',
+        color: defaultAxis?.color || '#3b82f6',
+        axis: defaultAxis?.id || '',
         type: 'core',
         corpus_refs: [],
         question_count: 0
@@ -163,11 +175,22 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
               value={newNode.label}
               onChange={(e) => setNewNode({ ...newNode, label: e.target.value })}
             />
-            <Input
-              placeholder="Axis"
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={newNode.axis}
-              onChange={(e) => setNewNode({ ...newNode, axis: e.target.value })}
-            />
+              onChange={(e) => {
+                const selectedAxis = axes.find(a => a.id === e.target.value);
+                setNewNode({ 
+                  ...newNode, 
+                  axis: e.target.value,
+                  color: selectedAxis?.color || newNode.color
+                });
+              }}
+            >
+              {axes.map(axis => (
+                <option key={axis.id} value={axis.id}>{axis.label}</option>
+              ))}
+            </select>
             <Input
               placeholder="Color (#hex)"
               value={newNode.color}
@@ -228,11 +251,22 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
                     onChange={(e) => setEditData({ ...editData, label: e.target.value })}
                     placeholder="Label"
                   />
-                  <Input
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={editData.axis || ''}
-                    onChange={(e) => setEditData({ ...editData, axis: e.target.value })}
-                    placeholder="Axis"
-                  />
+                    onChange={(e) => {
+                      const selectedAxis = axes.find(a => a.id === e.target.value);
+                      setEditData({ 
+                        ...editData, 
+                        axis: e.target.value,
+                        color: selectedAxis?.color || editData.color
+                      });
+                    }}
+                  >
+                    {axes.map(axis => (
+                      <option key={axis.id} value={axis.id}>{axis.label}</option>
+                    ))}
+                  </select>
                   <Input
                     value={editData.color || ''}
                     onChange={(e) => setEditData({ ...editData, color: e.target.value })}

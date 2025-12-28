@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   fetchNodes, 
   fetchEdges, 
+  fetchAxes,
   LagrangeNode, 
   LagrangeEdge,
+  ThematicAxis,
   fetchQuestionsForNode
 } from '@/utils/dataService';
 import { 
@@ -15,15 +17,6 @@ import {
 import { saveInteraction } from '@/utils/interactionService';
 import { Button } from '@/components/ui/button';
 import { X, Zap, Link2, Brain, Filter } from 'lucide-react';
-
-// Color mapping for axis types
-const axisColors: Record<string, string> = {
-  Miedo: 'var(--lagrange-tension)',
-  Control: '35 90% 50%',
-  SaludMental: 'var(--lagrange-calm)',
-  Legitimidad: '220 70% 55%',
-  Responsabilidad: '280 60% 55%',
-};
 
 const typeColors: Record<string, string> = {
   core: 'var(--primary)',
@@ -40,14 +33,16 @@ interface MapNodeProps {
   isFiltered: boolean;
   onClick: () => void;
   scale: number;
+  axisColors: Record<string, string>;
 }
 
-function MapNode({ node, tensionState, isSelected, isHighlighted, isFiltered, onClick, scale }: MapNodeProps) {
+function MapNode({ node, tensionState, isSelected, isHighlighted, isFiltered, onClick, scale, axisColors }: MapNodeProps) {
   const baseSize = 50;
   const sizeMultiplier = 1 + tensionState.currentWeight * 0.6;
   const size = baseSize * sizeMultiplier;
   
-  const nodeColor = axisColors[node.axis] || 'var(--primary)';
+  // Use node's own color directly (hex from database)
+  const nodeColor = node.color || axisColors[node.axis] || '#3b82f6';
   const opacity = isFiltered ? 1 : 0.2;
 
   return (
@@ -68,7 +63,7 @@ function MapNode({ node, tensionState, isSelected, isHighlighted, isFiltered, on
           cy={node.y}
           r={size * 1.2}
           fill="none"
-          stroke={`hsl(${nodeColor})`}
+          stroke={nodeColor}
           strokeWidth={2}
           opacity={0.6}
           animate={{
@@ -88,7 +83,7 @@ function MapNode({ node, tensionState, isSelected, isHighlighted, isFiltered, on
         cx={node.x}
         cy={node.y}
         r={size * 0.9}
-        fill={`hsl(${nodeColor})`}
+        fill={nodeColor}
         opacity={0.15}
         animate={{
           r: [size * 0.8, size * 1.1, size * 0.8],
@@ -107,7 +102,7 @@ function MapNode({ node, tensionState, isSelected, isHighlighted, isFiltered, on
         cy={node.y}
         r={size / 2}
         fill="hsl(var(--card))"
-        stroke={`hsl(${nodeColor})`}
+        stroke={nodeColor}
         strokeWidth={isSelected ? 4 : 2}
         animate={{
           scale: isSelected ? 1.15 : 1,
@@ -120,7 +115,7 @@ function MapNode({ node, tensionState, isSelected, isHighlighted, isFiltered, on
         cx={node.x}
         cy={node.y}
         r={size / 4}
-        fill={`hsl(${nodeColor})`}
+        fill={nodeColor}
         opacity={0.4 + tensionState.vibrationIntensity * 0.4}
       />
       
@@ -241,9 +236,10 @@ interface NodeDetailPanelProps {
   connectedNodes: LagrangeNode[];
   onClose: () => void;
   onNavigateToNode: (nodeId: string) => void;
+  axisColors: Record<string, string>;
 }
 
-function NodeDetailPanel({ node, tensionState, connectedNodes, onClose, onNavigateToNode }: NodeDetailPanelProps) {
+function NodeDetailPanel({ node, tensionState, connectedNodes, onClose, onNavigateToNode, axisColors }: NodeDetailPanelProps) {
   const [questions, setQuestions] = useState<any[]>([]);
 
   useEffect(() => {
@@ -264,8 +260,8 @@ function NodeDetailPanel({ node, tensionState, connectedNodes, onClose, onNaviga
             <span 
               className="inline-block px-2 py-0.5 rounded-full text-xs font-mono uppercase tracking-wider mb-2"
               style={{ 
-                backgroundColor: `hsl(${axisColors[node.axis]} / 0.15)`,
-                color: `hsl(${axisColors[node.axis]})`
+                backgroundColor: `${axisColors[node.axis] || node.color}15`,
+                color: axisColors[node.axis] || node.color
               }}
             >
               {node.axis}
@@ -327,7 +323,7 @@ function NodeDetailPanel({ node, tensionState, connectedNodes, onClose, onNaviga
                   onClick={() => onNavigateToNode(n.id)}
                   className="px-3 py-1.5 rounded-full text-xs font-mono bg-secondary hover:bg-secondary/80 transition-colors"
                   style={{ 
-                    borderLeft: `3px solid hsl(${axisColors[n.axis]})` 
+                    borderLeft: `3px solid ${axisColors[n.axis] || n.color}` 
                   }}
                 >
                   {n.label}
@@ -368,6 +364,8 @@ function NodeDetailPanel({ node, tensionState, connectedNodes, onClose, onNaviga
 export function LagrangeMap() {
   const [nodes, setNodes] = useState<LagrangeNode[]>([]);
   const [edges, setEdges] = useState<LagrangeEdge[]>([]);
+  const [axisColors, setAxisColors] = useState<Record<string, string>>({});
+  const [axesList, setAxesList] = useState<ThematicAxis[]>([]);
   const [tensionStates, setTensionStates] = useState<Map<string, TensionState>>(new Map());
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
@@ -377,12 +375,24 @@ export function LagrangeMap() {
 
   useEffect(() => {
     async function loadData() {
-      const [loadedNodes, loadedEdges] = await Promise.all([
+      const [loadedNodes, loadedEdges, loadedAxes] = await Promise.all([
         fetchNodes(),
-        fetchEdges()
+        fetchEdges(),
+        fetchAxes()
       ]);
       setNodes(loadedNodes);
       setEdges(loadedEdges);
+      setAxesList(loadedAxes);
+      
+      // Build axisColors from database
+      const colors: Record<string, string> = {};
+      loadedAxes.forEach(axis => {
+        // Convert hex color to HSL-like format for compatibility
+        colors[axis.id] = axis.color.startsWith('#') 
+          ? `0 0% 50%` // Fallback, will use hex directly
+          : axis.color;
+      });
+      setAxisColors(colors);
       
       const states = new Map<string, TensionState>();
       loadedNodes.forEach(node => {
@@ -484,8 +494,8 @@ export function LagrangeMap() {
             onClick={() => setAxisFilter(axis === axisFilter ? null : axis)}
             className="h-8 text-xs font-mono"
             style={axisFilter === axis ? {
-              backgroundColor: `hsl(${axisColors[axis]})`,
-              borderColor: `hsl(${axisColors[axis]})`,
+              backgroundColor: axesList.find(a => a.id === axis)?.color,
+              borderColor: axesList.find(a => a.id === axis)?.color,
             } : {}}
           >
             {axis}
@@ -575,6 +585,7 @@ export function LagrangeMap() {
               isFiltered={isNodeFiltered(node)}
               onClick={() => handleNodeClick(node.id)}
               scale={scale}
+              axisColors={axisColors}
             />
           ))}
         </g>
@@ -594,6 +605,7 @@ export function LagrangeMap() {
             connectedNodes={connectedNodes}
             onClose={() => setSelectedNode(null)}
             onNavigateToNode={handleNodeClick}
+            axisColors={axisColors}
           />
         )}
       </AnimatePresence>
@@ -602,13 +614,13 @@ export function LagrangeMap() {
       <div className="absolute bottom-4 right-4 p-4 rounded-xl bg-card/80 backdrop-blur-sm border border-border">
         <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">Leyenda</h4>
         <div className="space-y-2">
-          {Object.entries(axisColors).slice(0, 5).map(([axis, color]) => (
-            <div key={axis} className="flex items-center gap-2">
+          {axesList.map(axis => (
+            <div key={axis.id} className="flex items-center gap-2">
               <div 
                 className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: `hsl(${color})` }}
+                style={{ backgroundColor: axis.color }}
               />
-              <span className="text-xs text-muted-foreground">{axis}</span>
+              <span className="text-xs text-muted-foreground">{axis.label}</span>
             </div>
           ))}
         </div>
