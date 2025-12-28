@@ -5,10 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2 } from 'lucide-react';
 import { NodeEditor } from '@/components/admin/NodeEditor';
 import { EdgeEditor } from '@/components/admin/EdgeEditor';
 import { QuestionEditor } from '@/components/admin/QuestionEditor';
+import { AudioGenerator } from '@/components/admin/AudioGenerator';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -312,7 +313,7 @@ const Admin = () => {
           ) : (
             <>
               <Tabs defaultValue="nodes" className="space-y-6">
-                <TabsList className="bg-card border border-border">
+                <TabsList className="bg-card border border-border flex-wrap h-auto">
                   <TabsTrigger value="nodes" className="font-mono text-sm gap-2">
                     <Database className="w-4 h-4" />
                     Nodos ({nodes.length})
@@ -324,6 +325,10 @@ const Admin = () => {
                   <TabsTrigger value="questions" className="font-mono text-sm gap-2">
                     <MessageSquare className="w-4 h-4" />
                     Preguntas ({questions.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="audio" className="font-mono text-sm gap-2">
+                    <Volume2 className="w-4 h-4" />
+                    Audio TTS
                   </TabsTrigger>
                 </TabsList>
 
@@ -362,6 +367,20 @@ const Admin = () => {
                   >
                     <h2 className="font-serif text-xl mb-4">Preguntas Socráticas</h2>
                     <QuestionEditor questions={questions} onRefresh={fetchData} isAdmin={isAdmin} />
+                  </motion.div>
+                </TabsContent>
+
+                <TabsContent value="audio">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="bg-card rounded-xl border border-border p-6"
+                  >
+                    <h2 className="font-serif text-xl mb-4">Generador de Audio TTS</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Genera audio de las preguntas socráticas usando ElevenLabs TTS.
+                    </p>
+                    <AudioGenerator questions={questions} />
                   </motion.div>
                 </TabsContent>
               </Tabs>

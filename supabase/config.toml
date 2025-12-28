@@ -2,3 +2,6 @@ project_id = "rwfqswiwalygzfojyeqk"
 
 [functions.socratic-oracle]
 verify_jwt = false
+
+[functions.elevenlabs-tts]
+verify_jwt = false
