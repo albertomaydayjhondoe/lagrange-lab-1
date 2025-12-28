@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.ai-dialogue-summary]
 verify_jwt = false
+
+[functions.ai-curate-text]
+verify_jwt = false
