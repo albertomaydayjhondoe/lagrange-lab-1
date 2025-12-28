@@ -5,22 +5,27 @@ import { LabPromptEditor } from '@/components/LabPromptEditor';
 import { SocraticDialogue } from '@/components/SocraticDialogue';
 import { NarrativeGenerator } from '@/components/NarrativeGenerator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, FlaskConical, PenTool } from 'lucide-react';
+import { MessageSquare, PenTool } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+
+const ADMIN_EMAIL = 'sampayo@gmail.com';
 
 const Lab = () => {
   const [activeTab, setActiveTab] = useState('dialogue');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setIsAuthenticated(!!session);
+        setIsAdmin(session?.user?.email === ADMIN_EMAIL);
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
+      setIsAdmin(session?.user?.email === ADMIN_EMAIL);
     });
 
     return () => subscription.unsubscribe();
@@ -51,7 +56,7 @@ const Lab = () => {
           </motion.div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="dialogue" className="gap-2">
                 <MessageSquare className="w-4 h-4" />
                 Diálogo
@@ -59,10 +64,6 @@ const Lab = () => {
               <TabsTrigger value="generator" className="gap-2">
                 <PenTool className="w-4 h-4" />
                 Generador
-              </TabsTrigger>
-              <TabsTrigger value="prompt" className="gap-2">
-                <FlaskConical className="w-4 h-4" />
-                Prompts
               </TabsTrigger>
             </TabsList>
 
@@ -80,17 +81,7 @@ const Lab = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <NarrativeGenerator isAuthenticated={isAuthenticated} />
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="prompt">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-card/50 backdrop-blur-sm rounded-2xl border border-border p-8"
-              >
-                <LabPromptEditor />
+                <NarrativeGenerator isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
               </motion.div>
             </TabsContent>
           </Tabs>

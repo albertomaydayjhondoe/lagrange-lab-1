@@ -367,17 +367,17 @@ export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
                 <div className="flex items-center justify-between">
                   <h3 className="font-serif text-lg">{selectedDialogue.title}</h3>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => exportToTxt(selectedDialogue)}
-                      className="gap-2"
-                    >
-                      <Download className="w-4 h-4" />
-                      TXT
-                    </Button>
                     {isAdmin && (
                       <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => exportToTxt(selectedDialogue)}
+                          className="gap-2"
+                        >
+                          <Download className="w-4 h-4" />
+                          TXT
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -451,20 +451,22 @@ export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
                   <div className="p-4 rounded-lg bg-muted/50 border">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium text-sm">Resumen (IA)</h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => generateSummary(selectedDialogue)}
-                        disabled={generatingSummary}
-                        className="gap-1 text-xs h-7"
-                      >
-                        {generatingSummary ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-3 h-3" />
-                        )}
-                        Regenerar
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => generateSummary(selectedDialogue)}
+                          disabled={generatingSummary}
+                          className="gap-1 text-xs h-7"
+                        >
+                          {generatingSummary ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3 h-3" />
+                          )}
+                          Regenerar
+                        </Button>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">{selectedDialogue.summary}</p>
                   </div>
@@ -472,20 +474,22 @@ export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
                   <div className="p-4 rounded-lg bg-muted/50 border">
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-muted-foreground">Sin resumen</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => generateSummary(selectedDialogue)}
-                        disabled={generatingSummary}
-                        className="gap-2"
-                      >
-                        {generatingSummary ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-4 h-4" />
-                        )}
-                        Generar resumen IA
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => generateSummary(selectedDialogue)}
+                          disabled={generatingSummary}
+                          className="gap-2"
+                        >
+                          {generatingSummary ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4" />
+                          )}
+                          Generar resumen IA
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}

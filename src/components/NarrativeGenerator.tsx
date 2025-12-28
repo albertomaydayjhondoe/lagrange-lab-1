@@ -10,6 +10,7 @@ import { fetchAxes, ThematicAxis } from '@/utils/dataService';
 
 interface NarrativeGeneratorProps {
   isAuthenticated: boolean;
+  isAdmin: boolean;
 }
 
 interface SavedDialogue {
@@ -25,7 +26,7 @@ interface CorpusPrompt {
   eje: string;
 }
 
-export function NarrativeGenerator({ isAuthenticated }: NarrativeGeneratorProps) {
+export function NarrativeGenerator({ isAuthenticated, isAdmin }: NarrativeGeneratorProps) {
   const [selectedSource, setSelectedSource] = useState<'dialogue' | 'prompt'>('dialogue');
   const [selectedDialogueId, setSelectedDialogueId] = useState<string>('');
   const [selectedPromptId, setSelectedPromptId] = useState<string>('');
@@ -141,6 +142,10 @@ export function NarrativeGenerator({ isAuthenticated }: NarrativeGeneratorProps)
   };
 
   const handleCopy = async () => {
+    if (!isAdmin) {
+      toast.error('Solo el admin puede copiar textos generados');
+      return;
+    }
     await navigator.clipboard.writeText(narrative);
     setCopied(true);
     toast.success('Texto copiado');
@@ -327,21 +332,28 @@ export function NarrativeGenerator({ isAuthenticated }: NarrativeGeneratorProps)
           <div className="mt-6 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-serif text-lg">Resultado</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopy}
-                className="gap-2"
-              >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copied ? 'Copiado' : 'Copiar'}
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopy}
+                  className="gap-2"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copiado' : 'Copiar'}
+                </Button>
+              )}
             </div>
             <div className="p-4 bg-secondary/50 rounded-lg border border-border">
               <p className="text-foreground whitespace-pre-wrap font-serif leading-relaxed">
                 {narrative}
               </p>
             </div>
+            {!isAdmin && (
+              <p className="text-xs text-muted-foreground text-center">
+                Solo el administrador puede copiar y descargar textos generados
+              </p>
+            )}
           </div>
         )}
       </CardContent>
