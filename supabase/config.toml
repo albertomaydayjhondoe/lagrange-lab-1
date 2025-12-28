@@ -8,3 +8,15 @@ verify_jwt = true
 
 [functions.generate-narrative]
 verify_jwt = true
+
+[functions.ai-nodes]
+verify_jwt = true
+
+[functions.ai-edges]
+verify_jwt = true
+
+[functions.ai-questions]
+verify_jwt = true
+
+[functions.ai-episodes]
+verify_jwt = true

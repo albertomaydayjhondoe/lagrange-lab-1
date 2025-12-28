@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Plus, Trash2, Save, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, Save, Edit2, X, Sparkles, Loader2, Lightbulb } from 'lucide-react';
+import { aiGenerateEdge, aiSuggestMissingEdges } from '@/utils/aiStructuralService';
 
 interface TopologyEdge {
   id: string;
@@ -26,6 +27,8 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<TopologyEdge>>({});
   const [isCreating, setIsCreating] = useState(false);
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [newEdge, setNewEdge] = useState<Partial<TopologyEdge>>({
     id: '',
     source: '',
@@ -115,10 +118,68 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
     return nodes.find(n => n.id === id)?.label || id;
   };
 
+  const handleAiGenerate = async () => {
+    if (!newEdge.source || !newEdge.target) {
+      toast.error('Selecciona source y target primero');
+      return;
+    }
+    setAiLoading('generate');
+    try {
+      const result = await aiGenerateEdge(newEdge.source, newEdge.target);
+      setNewEdge({
+        ...newEdge,
+        id: `e${edges.length + 1}`,
+        label: result.label,
+        type: result.type,
+        tension: result.tension
+      });
+      toast.success('Tensión generada por IA');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error generando tensión');
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
+  const handleAiSuggestMissing = async () => {
+    setAiLoading('suggest');
+    try {
+      const result = await aiSuggestMissingEdges();
+      setAiSuggestions(result.sugerencias || []);
+      toast.success(`${result.sugerencias?.length || 0} conexiones sugeridas`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error en sugerencias');
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
+  const applySuggestion = (sug: any) => {
+    setNewEdge({
+      id: `e${edges.length + 1}`,
+      source: sug.source,
+      target: sug.target,
+      label: sug.label,
+      type: sug.type,
+      tension: sug.tension
+    });
+    setIsCreating(true);
+    setAiSuggestions([]);
+  };
+
   return (
     <div className="space-y-4">
       {isAdmin && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2 flex-wrap">
+          <Button
+            onClick={handleAiSuggestMissing}
+            variant="outline"
+            className="gap-2"
+            disabled={aiLoading === 'suggest'}
+          >
+            {aiLoading === 'suggest' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
+            IA Detectar Faltantes
+          </Button>
           <Button
             onClick={() => setIsCreating(!isCreating)}
             variant={isCreating ? "outline" : "default"}
@@ -128,6 +189,27 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
             {isCreating ? 'Cancelar' : 'Nueva Tensión'}
           </Button>
         </div>
+      )}
+
+      {aiSuggestions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-primary/10 border border-primary/30 rounded-lg p-4 space-y-2"
+        >
+          <div className="flex justify-between items-center">
+            <h4 className="font-semibold text-primary text-sm">Conexiones sugeridas por IA</h4>
+            <Button size="sm" variant="ghost" onClick={() => setAiSuggestions([])}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          {aiSuggestions.map((sug, i) => (
+            <div key={i} className="flex items-center justify-between bg-card p-2 rounded text-sm">
+              <span>{getNodeLabel(sug.source)} → {getNodeLabel(sug.target)}: {sug.label}</span>
+              <Button size="sm" onClick={() => applySuggestion(sug)}>Usar</Button>
+            </div>
+          ))}
+        </motion.div>
       )}
 
       {isCreating && (
@@ -180,10 +262,21 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
             value={newEdge.label || ''}
             onChange={(e) => setNewEdge({ ...newEdge, label: e.target.value })}
           />
-          <Button onClick={createEdge} className="gap-2">
-            <Save className="w-4 h-4" />
-            Crear
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleAiGenerate}
+              variant="outline"
+              className="gap-2"
+              disabled={aiLoading === 'generate' || !newEdge.source || !newEdge.target}
+            >
+              {aiLoading === 'generate' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              IA Generar
+            </Button>
+            <Button onClick={createEdge} className="gap-2">
+              <Save className="w-4 h-4" />
+              Crear
+            </Button>
+          </div>
         </motion.div>
       )}
 

@@ -1,0 +1,164 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { action, nodeId, context } = await req.json();
+    
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error("Supabase config missing");
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Fetch nodes and axes from Supabase
+    const [nodesRes, axesRes, edgesRes] = await Promise.all([
+      supabase.from("topology_nodes").select("*"),
+      supabase.from("thematic_axes").select("*").eq("is_active", true),
+      supabase.from("topology_edges").select("*"),
+    ]);
+
+    if (nodesRes.error) throw new Error(nodesRes.error.message);
+    if (axesRes.error) throw new Error(axesRes.error.message);
+    if (edgesRes.error) throw new Error(edgesRes.error.message);
+
+    const nodes = nodesRes.data || [];
+    const axes = axesRes.data || [];
+    const edges = edgesRes.data || [];
+
+    // Build dynamic system prompt from DB data
+    const axesList = axes.map((a: any) => `- **${a.label}**: ${a.description || a.id}`).join("\n");
+    const nodesList = nodes.map((n: any) => `- ${n.label} (${n.axis}): ${n.description}`).join("\n");
+
+    const SYSTEM_PROMPT = `Eres el Arquitecto Topológico del Sistema Lagrange. Analizas y generas contenido sobre la red conceptual de tensiones.
+
+## Ejes Temáticos Activos:
+${axesList}
+
+## Nodos Actuales:
+${nodesList}
+
+Tu misión es:
+- Analizar conexiones entre conceptos
+- Sugerir nuevos nodos o modificaciones
+- Explorar tensiones latentes
+- Generar descripciones profundas
+
+Responde siempre en JSON estructurado según la acción solicitada.`;
+
+    let userPrompt = "";
+    let responseFormat = {};
+
+    switch (action) {
+      case "analyze":
+        const targetNode = nodes.find((n: any) => n.id === nodeId);
+        const nodeEdges = edges.filter((e: any) => e.source === nodeId || e.target === nodeId);
+        userPrompt = `Analiza el nodo "${targetNode?.label || nodeId}":
+- Descripción actual: ${targetNode?.description || "Sin descripción"}
+- Conexiones: ${nodeEdges.map((e: any) => `${e.source}→${e.target} (${e.label})`).join(", ")}
+- Contexto adicional: ${context || "ninguno"}
+
+Genera un análisis profundo con:
+1. Tensiones detectadas
+2. Conexiones potenciales faltantes
+3. Preguntas de fricción asociadas
+
+Responde en JSON: { "analisis": string, "tensiones": string[], "conexiones_sugeridas": [{source, target, label}], "preguntas": string[] }`;
+        break;
+
+      case "suggest":
+        userPrompt = `Basándote en la topología actual, sugiere un nuevo nodo conceptual que:
+- Conecte tensiones existentes de forma novedosa
+- Aporte fricción cognitiva
+- Se relacione con: ${context || "los ejes principales"}
+
+Responde en JSON: { "id": string, "label": string, "description": string, "axis": string, "type": "core"|"mechanism", "suggested_edges": [{target, label, tension}] }`;
+        break;
+
+      case "describe":
+        const node = nodes.find((n: any) => n.id === nodeId);
+        userPrompt = `Genera una descripción narrativa profunda para el nodo "${node?.label || nodeId}":
+- Descripción actual: ${node?.description || "Sin descripción"}
+- Eje: ${node?.axis || "Sin eje"}
+
+La descripción debe:
+- Explorar la naturaleza del concepto
+- Conectar con otros nodos relacionados
+- Provocar reflexión crítica
+
+Responde en JSON: { "description_short": string (max 100 chars), "description_full": string (300+ palabras), "key_tensions": string[] }`;
+        break;
+
+      default:
+        throw new Error(`Acción no reconocida: ${action}`);
+    }
+
+    console.log(`AI Nodes - Action: ${action}, Node: ${nodeId || "N/A"}`);
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Límite de peticiones excedido" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Créditos agotados" }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw new Error("Error en AI gateway");
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || "";
+
+    // Parse JSON response
+    let parsed;
+    try {
+      const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || [null, content];
+      parsed = JSON.parse(jsonMatch[1] || content);
+    } catch {
+      parsed = { raw: content, action };
+    }
+
+    return new Response(JSON.stringify({ action, nodeId, result: parsed }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  } catch (error) {
+    console.error("AI Nodes error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Error desconocido" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
