@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LagrangeNav } from '@/components/LagrangeNav';
+import { LagrangeFooter } from '@/components/LagrangeFooter';
+import { FogOverlay } from '@/components/FogOverlay';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AudioPlayer } from '@/components/AudioPlayer';
@@ -166,7 +168,8 @@ const Podcast = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
+      <FogOverlay />
       <LagrangeNav />
       
       <main className="pt-24 pb-12 px-6">
@@ -256,6 +259,8 @@ const Podcast = () => {
           </motion.div>
         </div>
       </main>
+      
+      <LagrangeFooter />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { LagrangeNav } from '@/components/LagrangeNav';
+import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -127,7 +128,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <LagrangeNav />
       
       <main className="pt-24 pb-12 px-6">
@@ -330,6 +331,8 @@ const Profile = () => {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+      
+      <LagrangeFooter />
     </div>
   );
 };
