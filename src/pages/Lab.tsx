@@ -1,13 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { LabPromptEditor } from '@/components/LabPromptEditor';
 import { SocraticDialogue } from '@/components/SocraticDialogue';
+import { NarrativeGenerator } from '@/components/NarrativeGenerator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, FlaskConical } from 'lucide-react';
+import { MessageSquare, FlaskConical, PenTool } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Lab = () => {
   const [activeTab, setActiveTab] = useState('dialogue');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setIsAuthenticated(!!session);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,14 +51,18 @@ const Lab = () => {
           </motion.div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="dialogue" className="gap-2">
                 <MessageSquare className="w-4 h-4" />
-                Diálogo Continuo
+                Diálogo
+              </TabsTrigger>
+              <TabsTrigger value="generator" className="gap-2">
+                <PenTool className="w-4 h-4" />
+                Generador
               </TabsTrigger>
               <TabsTrigger value="prompt" className="gap-2">
                 <FlaskConical className="w-4 h-4" />
-                Editor de Prompts
+                Prompts
               </TabsTrigger>
             </TabsList>
 
@@ -51,6 +72,15 @@ const Lab = () => {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <SocraticDialogue />
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="generator">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <NarrativeGenerator isAuthenticated={isAuthenticated} />
               </motion.div>
             </TabsContent>
 

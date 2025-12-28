@@ -4,4 +4,7 @@ project_id = "rwfqswiwalygzfojyeqk"
 verify_jwt = false
 
 [functions.elevenlabs-tts]
-verify_jwt = false
+verify_jwt = true
+
+[functions.generate-narrative]
+verify_jwt = true
