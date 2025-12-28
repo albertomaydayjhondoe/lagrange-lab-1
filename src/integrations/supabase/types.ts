@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      podcast_episodes: {
+        Row: {
+          audio_url: string
+          created_at: string
+          description: string | null
+          duration_seconds: number | null
+          eje: string | null
+          id: string
+          published: boolean | null
+          published_at: string | null
+          question_ids: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          eje?: string | null
+          id?: string
+          published?: boolean | null
+          published_at?: string | null
+          question_ids?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          eje?: string | null
+          id?: string
+          published?: boolean | null
+          published_at?: string | null
+          question_ids?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
