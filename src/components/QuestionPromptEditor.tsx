@@ -7,11 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Sparkles, Send, Loader2, Save, ArrowRight, FileText, HelpCircle } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sparkles, Loader2, Save, ArrowRight, FileText, HelpCircle, History, Download, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAxes, ThematicAxis } from '@/utils/dataService';
 import { generateContextualQuestion, AIQuestion } from '@/utils/aiService';
+import jsPDF from 'jspdf';
+
+const ADMIN_EMAIL = 'sampayo@gmail.com';
 
 interface QuestionPromptEditorProps {
   isAuthenticated: boolean;
@@ -21,6 +25,15 @@ interface QuestionPromptEditorProps {
 interface GeneratedContent {
   question: AIQuestion;
   narrative: string;
+}
+
+interface QuestionHistoryItem {
+  id: string;
+  userQuestion: string;
+  oracleResponse: string;
+  narrative: string;
+  eje: string;
+  timestamp: Date;
 }
 
 export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: QuestionPromptEditorProps) {
@@ -33,25 +46,52 @@ export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: 
   const [saveTitle, setSaveTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [questionHistory, setQuestionHistory] = useState<QuestionHistoryItem[]>([]);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
-    const loadAxes = async () => {
+    const loadData = async () => {
       try {
         const axesData = await fetchAxes();
         setAxes(axesData);
         if (axesData.length > 0) {
           setSelectedEje(axesData[0].id);
         }
+
+        // Check admin status
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsAdmin(session?.user?.email === ADMIN_EMAIL);
+
+        // Load history from localStorage for admin
+        if (session?.user?.email === ADMIN_EMAIL) {
+          const savedHistory = localStorage.getItem('questionHistory');
+          if (savedHistory) {
+            const parsed = JSON.parse(savedHistory);
+            setQuestionHistory(parsed.map((item: QuestionHistoryItem) => ({
+              ...item,
+              timestamp: new Date(item.timestamp)
+            })));
+          }
+        }
       } catch (error) {
-        console.error('Error loading axes:', error);
+        console.error('Error loading data:', error);
       } finally {
         setLoading(false);
       }
     };
-    loadAxes();
+    loadData();
   }, []);
 
-  const handleGenerate = async () => {
+  // Persist history to localStorage
+  useEffect(() => {
+    if (isAdmin && questionHistory.length > 0) {
+      localStorage.setItem('questionHistory', JSON.stringify(questionHistory));
+    }
+  }, [questionHistory, isAdmin]);
+
+  const handleGenerate = async (length: 'medium' | 'long' = 'medium') => {
     if (!userQuestion.trim()) {
       toast.error('Escribe una pregunta o reflexión');
       return;
@@ -64,27 +104,40 @@ export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: 
 
     setIsGenerating(true);
     try {
-      // Generate AI response question
       const aiQuestion = await generateContextualQuestion(userQuestion.trim(), selectedEje);
 
-      // Generate narrative text from the question
       const { data, error } = await supabase.functions.invoke('generate-narrative', {
         body: {
           sourceType: 'custom',
           customText: `${userQuestion}\n\nPregunta generada: ${aiQuestion.pregunta}`,
           eje: selectedEje,
-          length: 'medium'
+          length
         }
       });
 
       if (error) throw error;
 
-      setGeneratedContent({
+      const content: GeneratedContent = {
         question: aiQuestion,
         narrative: data.narrative || ''
-      });
+      };
 
-      toast.success('Contenido generado');
+      setGeneratedContent(content);
+
+      // Add to history for admin
+      if (isAdmin) {
+        const historyItem: QuestionHistoryItem = {
+          id: crypto.randomUUID(),
+          userQuestion: userQuestion.trim(),
+          oracleResponse: aiQuestion.pregunta,
+          narrative: content.narrative,
+          eje: selectedEje,
+          timestamp: new Date()
+        };
+        setQuestionHistory(prev => [historyItem, ...prev].slice(0, 50)); // Keep last 50
+      }
+
+      toast.success(`Contenido generado (~${data.wordCount} palabras)`);
     } catch (error) {
       console.error('Error generating:', error);
       toast.error('Error al generar contenido');
@@ -104,7 +157,6 @@ export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No autenticado');
 
-      // Save as dialogue with the generated content
       const dialogueContent = [
         {
           type: 'user',
@@ -162,6 +214,118 @@ export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: 
     toast.success('Trasladado a Diálogo');
   };
 
+  const handleReuseQuestion = (item: QuestionHistoryItem) => {
+    setUserQuestion(item.userQuestion);
+    setSelectedEje(item.eje);
+    setShowHistoryPanel(false);
+    toast.success('Pregunta cargada');
+  };
+
+  const handleExportPDF = async (item?: QuestionHistoryItem) => {
+    const contentToExport = item || (generatedContent ? {
+      userQuestion,
+      oracleResponse: generatedContent.question.pregunta,
+      narrative: generatedContent.narrative,
+      eje: selectedEje,
+      timestamp: new Date()
+    } : null);
+
+    if (!contentToExport) {
+      toast.error('No hay contenido para exportar');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 20;
+      const maxWidth = pageWidth - margin * 2;
+      let yPosition = 20;
+
+      // Title
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Sistema Lagrange', margin, yPosition);
+      yPosition += 10;
+
+      // Subtitle with axis
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      const axisLabel = axes.find(a => a.id === contentToExport.eje)?.label || contentToExport.eje;
+      pdf.text(`Eje: ${axisLabel}`, margin, yPosition);
+      yPosition += 8;
+      pdf.text(`Fecha: ${new Date(contentToExport.timestamp).toLocaleDateString('es-ES')}`, margin, yPosition);
+      yPosition += 15;
+
+      // User Question
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Pregunta del Usuario:', margin, yPosition);
+      yPosition += 7;
+      pdf.setFont('helvetica', 'normal');
+      const userLines = pdf.splitTextToSize(contentToExport.userQuestion, maxWidth);
+      pdf.text(userLines, margin, yPosition);
+      yPosition += userLines.length * 6 + 10;
+
+      // Oracle Response
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Respuesta del Oráculo:', margin, yPosition);
+      yPosition += 7;
+      pdf.setFont('helvetica', 'italic');
+      const oracleLines = pdf.splitTextToSize(`"${contentToExport.oracleResponse}"`, maxWidth);
+      pdf.text(oracleLines, margin, yPosition);
+      yPosition += oracleLines.length * 6 + 10;
+
+      // Narrative
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Texto Generado:', margin, yPosition);
+      yPosition += 7;
+      pdf.setFont('helvetica', 'normal');
+      const narrativeLines = pdf.splitTextToSize(contentToExport.narrative, maxWidth);
+      
+      // Handle page breaks for long text
+      for (const line of narrativeLines) {
+        if (yPosition > pdf.internal.pageSize.getHeight() - 20) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        pdf.text(line, margin, yPosition);
+        yPosition += 6;
+      }
+
+      // Word count footer
+      yPosition += 10;
+      if (yPosition > pdf.internal.pageSize.getHeight() - 20) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+      pdf.setFontSize(9);
+      pdf.setTextColor(128);
+      const wordCount = contentToExport.narrative.split(/\s+/).length;
+      pdf.text(`Palabras: ${wordCount}`, margin, yPosition);
+
+      pdf.save(`lagrange-${axisLabel.toLowerCase()}-${Date.now()}.pdf`);
+      toast.success('PDF exportado');
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast.error('Error al exportar PDF');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeleteHistoryItem = (id: string) => {
+    setQuestionHistory(prev => prev.filter(item => item.id !== id));
+    toast.success('Eliminado del historial');
+  };
+
+  const handleClearHistory = () => {
+    setQuestionHistory([]);
+    localStorage.removeItem('questionHistory');
+    toast.success('Historial limpiado');
+  };
+
   const reset = () => {
     setUserQuestion('');
     setGeneratedContent(null);
@@ -192,147 +356,282 @@ export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: 
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-serif flex items-center gap-2">
-          <HelpCircle className="w-5 h-5 text-primary" />
-          Formular Pregunta Propia
-        </CardTitle>
-        <CardDescription>
-          Escribe tu pregunta o reflexión, el Oráculo responderá y generará un texto relacionado
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Eje Selection */}
-        <div className="space-y-2">
-          <Label>Eje temático</Label>
-          <Select value={selectedEje} onValueChange={setSelectedEje} disabled={isGenerating}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona un eje" />
-            </SelectTrigger>
-            <SelectContent>
-              {axes.map(axis => (
-                <SelectItem key={axis.id} value={axis.id}>
-                  <span className="flex items-center gap-2">
-                    <span 
-                      className="w-2 h-2 rounded-full" 
-                      style={{ backgroundColor: axis.color }}
-                    />
-                    {axis.label}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="font-serif flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-primary" />
+                Formular Pregunta Propia
+              </CardTitle>
+              <CardDescription>
+                Escribe tu pregunta, el Oráculo responderá y generará un texto
+              </CardDescription>
+            </div>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHistoryPanel(!showHistoryPanel)}
+                className="gap-2"
+              >
+                <History className="w-4 h-4" />
+                Historial ({questionHistory.length})
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Eje Selection */}
+          <div className="space-y-2">
+            <Label>Eje temático</Label>
+            <Select value={selectedEje} onValueChange={setSelectedEje} disabled={isGenerating}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un eje" />
+              </SelectTrigger>
+              <SelectContent>
+                {axes.map(axis => (
+                  <SelectItem key={axis.id} value={axis.id}>
+                    <span className="flex items-center gap-2">
+                      <span 
+                        className="w-2 h-2 rounded-full" 
+                        style={{ backgroundColor: axis.color }}
+                      />
+                      {axis.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Question Input */}
-        <div className="space-y-2">
-          <Label>Tu pregunta o reflexión</Label>
-          <Textarea
-            value={userQuestion}
-            onChange={(e) => setUserQuestion(e.target.value)}
-            placeholder="¿Qué contradicción quieres explorar? Escribe tu pregunta..."
-            className="min-h-[100px] resize-none"
-            disabled={isGenerating}
-          />
-          <p className="text-xs text-muted-foreground">
-            El sistema generará una respuesta socrática y un texto basado en tu pregunta
-          </p>
-        </div>
+          {/* Question Input */}
+          <div className="space-y-2">
+            <Label>Tu pregunta o reflexión</Label>
+            <Textarea
+              value={userQuestion}
+              onChange={(e) => setUserQuestion(e.target.value)}
+              placeholder="¿Qué contradicción quieres explorar? Escribe tu pregunta..."
+              className="min-h-[100px] resize-none"
+              disabled={isGenerating}
+            />
+          </div>
 
-        <Button 
-          onClick={handleGenerate} 
-          disabled={isGenerating || !userQuestion.trim() || !selectedEje}
-          className="w-full gap-2"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Generando...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" />
-              Generar Respuesta y Texto
-            </>
-          )}
-        </Button>
-
-        {/* Generated Content */}
-        <AnimatePresence>
-          {generatedContent && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-4 mt-6"
+          {/* Generate Buttons */}
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => handleGenerate('medium')} 
+              disabled={isGenerating || !userQuestion.trim() || !selectedEje}
+              className="flex-1 gap-2"
             >
-              {/* Oracle Response */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  Respuesta del Oráculo
-                </Label>
-                <blockquote className="bg-primary/5 border border-primary/20 rounded-lg p-4 font-serif text-lg leading-relaxed">
-                  <span className="text-primary opacity-50">"</span>
-                  {generatedContent.question.pregunta}
-                  <span className="text-primary opacity-50">"</span>
-                </blockquote>
-                <div className="flex gap-2 text-xs text-muted-foreground">
-                  <span className="px-2 py-0.5 bg-secondary rounded">
-                    {axes.find(a => a.id === generatedContent.question.eje)?.label || generatedContent.question.eje}
-                  </span>
-                  <span>Nivel {generatedContent.question.nivel}</span>
-                  <span>Tensión: {(generatedContent.question.tension * 100).toFixed(0)}%</span>
-                </div>
-              </div>
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Generar (~300 palabras)
+                </>
+              )}
+            </Button>
+            {isAdmin && (
+              <Button 
+                onClick={() => handleGenerate('long')} 
+                disabled={isGenerating || !userQuestion.trim() || !selectedEje}
+                variant="secondary"
+                className="gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Largo (~500)
+              </Button>
+            )}
+          </div>
 
-              {/* Generated Narrative */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary" />
-                  Texto Generado
-                </Label>
-                <div className="p-4 bg-secondary/50 rounded-lg border border-border max-h-[300px] overflow-y-auto">
-                  <p className="text-foreground whitespace-pre-wrap font-serif leading-relaxed">
-                    {generatedContent.narrative}
-                  </p>
+          {/* Generated Content */}
+          <AnimatePresence>
+            {generatedContent && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-4 mt-6"
+              >
+                {/* Oracle Response */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    Respuesta del Oráculo
+                  </Label>
+                  <blockquote className="bg-primary/5 border border-primary/20 rounded-lg p-4 font-serif text-lg leading-relaxed">
+                    <span className="text-primary opacity-50">"</span>
+                    {generatedContent.question.pregunta}
+                    <span className="text-primary opacity-50">"</span>
+                  </blockquote>
+                  <div className="flex gap-2 text-xs text-muted-foreground">
+                    <span className="px-2 py-0.5 bg-secondary rounded">
+                      {axes.find(a => a.id === generatedContent.question.eje)?.label || generatedContent.question.eje}
+                    </span>
+                    <span>Nivel {generatedContent.question.nivel}</span>
+                    <span>Tensión: {(generatedContent.question.tension * 100).toFixed(0)}%</span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowSaveDialog(true)}
-                  className="gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  Guardar
-                </Button>
-                {onTransferToDialogue && (
+                {/* Generated Narrative */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary" />
+                    Texto Generado ({generatedContent.narrative.split(/\s+/).length} palabras)
+                  </Label>
+                  <div className="p-4 bg-secondary/50 rounded-lg border border-border max-h-[300px] overflow-y-auto">
+                    <p className="text-foreground whitespace-pre-wrap font-serif leading-relaxed">
+                      {generatedContent.narrative}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-2">
                   <Button
-                    variant="default"
-                    onClick={handleTransfer}
+                    variant="outline"
+                    onClick={() => setShowSaveDialog(true)}
                     className="gap-2"
                   >
-                    <ArrowRight className="w-4 h-4" />
-                    Trasladar a Diálogo
+                    <Save className="w-4 h-4" />
+                    Guardar
                   </Button>
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      onClick={() => handleExportPDF()}
+                      disabled={isExporting}
+                      className="gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      {isExporting ? 'Exportando...' : 'Exportar PDF'}
+                    </Button>
+                  )}
+                  {onTransferToDialogue && (
+                    <Button
+                      variant="default"
+                      onClick={handleTransfer}
+                      className="gap-2"
+                    >
+                      <ArrowRight className="w-4 h-4" />
+                      Trasladar a Diálogo
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    onClick={reset}
+                    className="ml-auto"
+                  >
+                    Nueva Pregunta
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </CardContent>
+      </Card>
+
+      {/* History Panel for Admin */}
+      <AnimatePresence>
+        {isAdmin && showHistoryPanel && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="font-serif text-lg flex items-center gap-2">
+                    <History className="w-5 h-5 text-primary" />
+                    Historial de Preguntas
+                  </CardTitle>
+                  {questionHistory.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearHistory}
+                      className="gap-2 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Limpiar
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {questionHistory.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    No hay preguntas en el historial
+                  </p>
+                ) : (
+                  <ScrollArea className="h-[300px] pr-4">
+                    <div className="space-y-3">
+                      {questionHistory.map(item => (
+                        <div 
+                          key={item.id}
+                          className="p-3 rounded-lg border border-border bg-card hover:bg-secondary/30 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium line-clamp-2">
+                                {item.userQuestion}
+                              </p>
+                              <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
+                                <span className="px-2 py-0.5 bg-secondary rounded">
+                                  {axes.find(a => a.id === item.eje)?.label || item.eje}
+                                </span>
+                                <span>{item.timestamp.toLocaleDateString('es-ES')}</span>
+                                <span>{item.narrative.split(/\s+/).length} palabras</span>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleReuseQuestion(item)}
+                                title="Reutilizar pregunta"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleExportPDF(item)}
+                                title="Exportar PDF"
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteHistoryItem(item.id)}
+                                className="text-destructive hover:text-destructive"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground italic line-clamp-1">
+                            "{item.oracleResponse}"
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 )}
-                <Button
-                  variant="ghost"
-                  onClick={reset}
-                  className="ml-auto"
-                >
-                  Nueva Pregunta
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </CardContent>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Save Dialog */}
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
@@ -361,6 +660,6 @@ export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: 
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }
