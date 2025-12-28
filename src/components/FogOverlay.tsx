@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Lock, Send, X } from 'lucide-react';
+import { Lock, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export function FogOverlay() {
   const { isPlaton, loading, isAuthenticated } = useUserRole();
@@ -26,15 +27,30 @@ export function FogOverlay() {
 
     setSending(true);
     
-    // Open mailto with the user's email as subject/body
-    const subject = encodeURIComponent('Solicitud de Acceso Platón');
-    const body = encodeURIComponent(`Hola,\n\nSolicito acceso Platón para el Sistema Lagrange.\n\nMi correo de contacto: ${email}\n\nGracias.`);
-    window.location.href = `mailto:spaytk@gmail.com?subject=${subject}&body=${body}`;
-    
-    toast.success('Se abrirá tu cliente de correo para enviar la solicitud');
-    setSending(false);
-    setShowContactForm(false);
-    setEmail('');
+    try {
+      // Get current user if authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Insert access request into database
+      const { error } = await supabase
+        .from('access_requests')
+        .insert({
+          email: email.trim(),
+          user_id: user?.id || null,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      toast.success('Solicitud enviada correctamente. Te contactaremos pronto.');
+      setShowContactForm(false);
+      setEmail('');
+    } catch (error: any) {
+      console.error('Error submitting request:', error);
+      toast.error('Error al enviar la solicitud. Intenta de nuevo.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
