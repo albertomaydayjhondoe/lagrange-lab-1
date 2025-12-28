@@ -50,10 +50,21 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
   };
 
   const generateSingleAudio = async (text: string): Promise<{ base64: string; blob: Blob }> => {
-    // Get current session for admin auth
-    const { data: { session } } = await supabase.auth.getSession();
+    // Get fresh session for admin auth
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    if (!session) {
+    if (sessionError || !session) {
+      // Try to refresh the session
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshData.session) {
+        throw new Error('Sesión expirada. Por favor, inicia sesión de nuevo.');
+      }
+    }
+
+    // Get the current session after potential refresh
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    
+    if (!currentSession?.access_token) {
       throw new Error('Debes iniciar sesión como admin');
     }
 
@@ -63,13 +74,16 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${currentSession.access_token}`,
         },
         body: JSON.stringify({ text, voiceId: selectedVoice }),
       }
     );
 
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Sesión inválida. Por favor, cierra sesión e inicia de nuevo.');
+      }
       const error = await response.json();
       throw new Error(error.error || 'TTS generation failed');
     }
