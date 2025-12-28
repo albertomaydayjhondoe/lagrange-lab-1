@@ -219,6 +219,11 @@ export function SocraticDialogue() {
             generará una nueva pregunta que desafía tus asunciones y expone 
             contradicciones. No hay respuestas correctas, solo fricción productiva.
           </p>
+          {!isAuthenticated && (
+            <p className="text-xs text-muted-foreground mb-4 p-3 bg-secondary/30 rounded-lg">
+              Nota: Para guardar tus diálogos necesitas iniciar sesión
+            </p>
+          )}
           <Button
             size="lg"
             onClick={startDialogue}

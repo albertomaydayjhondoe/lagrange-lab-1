@@ -1,16 +1,42 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { User, LogIn } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+const ADMIN_EMAIL = 'sampayo@gmail.com';
 
 const navItems = [
   { path: '/', label: 'Caverna', description: 'La narrativa' },
   { path: '/map', label: 'Dialéctica', description: 'El mapa' },
   { path: '/podcast', label: 'Podcast', description: 'El audio' },
   { path: '/lab', label: 'Academia', description: 'El laboratorio' },
-  { path: '/admin', label: 'Poder', description: 'El control' },
 ];
 
 export function LagrangeNav() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+      setIsAdmin(session?.user?.email === ADMIN_EMAIL);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsAuthenticated(!!session);
+      setIsAdmin(session?.user?.email === ADMIN_EMAIL);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const allNavItems = isAdmin 
+    ? [...navItems, { path: '/admin', label: 'Poder', description: 'El control' }]
+    : navItems;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -29,7 +55,7 @@ export function LagrangeNav() {
           </Link>
 
           <div className="flex items-center gap-1">
-            {navItems.map((item) => (
+            {allNavItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -47,6 +73,34 @@ export function LagrangeNav() {
                 )}
               </Link>
             ))}
+
+            {/* Auth button */}
+            {isAuthenticated ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/profile')}
+                className={cn(
+                  "ml-2 gap-2",
+                  location.pathname === '/profile' 
+                    ? "text-primary bg-secondary/30" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <User className="w-4 h-4" />
+                Perfil
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/auth')}
+                className="ml-2 gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <LogIn className="w-4 h-4" />
+                Entrar
+              </Button>
+            )}
           </div>
         </div>
       </div>
