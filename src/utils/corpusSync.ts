@@ -1,20 +1,33 @@
 /**
  * corpusSync.ts
  *
- * Misión: Leer la "Verdad Operativa" (Archivos .me en /data/corpus)
- * y transmutarla en "Topología Viva" (/data/topology/).
+ * Misión: Sincronizar y validar la "Verdad Operativa" desde Supabase
+ * Todas las funciones ahora son async y usan el backend real.
  *
- * Primer Mandamiento: Neutralizar la gestión del miedo mediante
+ * Primer Mandamiento: Neutralización del Miedo mediante
  * la exposición de conexiones estructurales.
  * 
- * Fuente: Lagrange Backend Boost
+ * Fuente: Lagrange Fullstack - Sprint 2
  */
 
-import nodesData from '@/data/topology/nodes.json';
-import edgesData from '@/data/topology/edges.json';
-import questionsData from '@/data/topology/socratic_questions.json';
+import { 
+  fetchNodes, 
+  fetchEdges, 
+  fetchQuestions,
+  fetchEpisodes,
+  LagrangeNode,
+  LagrangeEdge,
+  SocraticQuestion,
+  Episode,
+  invalidateCache
+} from '@/utils/dataService';
 
 export type AxisType = 'Miedo' | 'Control' | 'SaludMental' | 'Legitimidad' | 'Responsabilidad';
+
+// Re-export types for backwards compatibility
+export type TopologyNode = LagrangeNode;
+export type TopologyEdge = LagrangeEdge;
+export type { SocraticQuestion, Episode };
 
 export interface CorpusFragment {
   id: string;
@@ -25,42 +38,11 @@ export interface CorpusFragment {
   keywords: string[];
 }
 
-export interface TopologyNode {
-  id: string;
-  label: string;
-  description: string;
-  x: number;
-  y: number;
-  weight: number;
-  color: string;
-  axis: string;
-  type?: string;
-  corpus_refs?: string[];
-  question_count?: number;
-}
-
-export interface TopologyEdge {
-  id: string;
-  source: string;
-  target: string;
-  tension: number;
-  label: string;
-  type?: string;
-}
-
-export interface SocraticQuestion {
-  id: string;
-  eje: string;
-  nivel: number;
-  tension: number;
-  texto: string;
-  corpus_ref?: string;
-}
-
 export interface SyncResult {
   fragmentsProcessed: number;
   nodesUpdated: number;
   edgesCreated: number;
+  episodesCount: number;
   timestamp: Date;
 }
 
@@ -68,58 +50,70 @@ export interface CorpusStats {
   totalNodes: number;
   totalEdges: number;
   totalQuestions: number;
+  totalEpisodes: number;
   axisDistribution: Record<string, number>;
   averageTension: number;
-  corpusFiles: string[];
+  dataSource: 'supabase';
 }
 
 /**
- * Obtiene todos los nodos de la topología
+ * Obtiene todos los nodos de la topología (async desde Supabase)
  */
-export const getNodes = (): TopologyNode[] => {
-  return nodesData as TopologyNode[];
+export const getNodes = async (): Promise<TopologyNode[]> => {
+  return fetchNodes();
 };
 
 /**
- * Obtiene todas las aristas de la topología
+ * Obtiene todas las aristas de la topología (async desde Supabase)
  */
-export const getEdges = (): TopologyEdge[] => {
-  return edgesData as TopologyEdge[];
+export const getEdges = async (): Promise<TopologyEdge[]> => {
+  return fetchEdges();
 };
 
 /**
- * Obtiene todas las preguntas socráticas
+ * Obtiene todas las preguntas socráticas (async desde Supabase)
  */
-export const getQuestions = (): SocraticQuestion[] => {
-  return questionsData as SocraticQuestion[];
+export const getQuestions = async (): Promise<SocraticQuestion[]> => {
+  return fetchQuestions();
+};
+
+/**
+ * Obtiene todos los episodios (async desde Supabase)
+ */
+export const getEpisodes = async (): Promise<Episode[]> => {
+  return fetchEpisodes();
 };
 
 /**
  * Obtiene nodos por eje de tensión
  */
-export const getNodesByAxis = (axis: AxisType): TopologyNode[] => {
-  return getNodes().filter(node => node.axis === axis);
+export const getNodesByAxis = async (axis: AxisType): Promise<TopologyNode[]> => {
+  const nodes = await getNodes();
+  return nodes.filter(node => node.axis === axis);
 };
 
 /**
  * Obtiene preguntas por eje de tensión
  */
-export const getQuestionsByAxis = (axis: AxisType): SocraticQuestion[] => {
-  return getQuestions().filter(q => q.eje === axis);
+export const getQuestionsByAxis = async (axis: AxisType): Promise<SocraticQuestion[]> => {
+  const questions = await getQuestions();
+  return questions.filter(q => q.eje === axis);
 };
 
 /**
  * Obtiene preguntas por nivel de profundidad
  */
-export const getQuestionsByLevel = (level: 1 | 2 | 3): SocraticQuestion[] => {
-  return getQuestions().filter(q => q.nivel === level);
+export const getQuestionsByLevel = async (level: 1 | 2 | 3): Promise<SocraticQuestion[]> => {
+  const questions = await getQuestions();
+  return questions.filter(q => q.nivel === level);
 };
 
 /**
  * Obtiene aristas conectadas a un nodo específico
  */
-export const getEdgesForNode = (nodeId: string): TopologyEdge[] => {
-  return getEdges().filter(edge => 
+export const getEdgesForNode = async (nodeId: string): Promise<TopologyEdge[]> => {
+  const edges = await getEdges();
+  return edges.filter(edge => 
     edge.source === nodeId || edge.target === nodeId
   );
 };
@@ -127,8 +121,8 @@ export const getEdgesForNode = (nodeId: string): TopologyEdge[] => {
 /**
  * Calcula la tensión promedio de un eje
  */
-export const getAxisTension = (axis: AxisType): number => {
-  const questions = getQuestionsByAxis(axis);
+export const getAxisTension = async (axis: AxisType): Promise<number> => {
+  const questions = await getQuestionsByAxis(axis);
   if (questions.length === 0) return 0;
   
   const totalTension = questions.reduce((sum, q) => sum + q.tension, 0);
@@ -136,12 +130,15 @@ export const getAxisTension = (axis: AxisType): number => {
 };
 
 /**
- * Obtiene estadísticas completas del corpus
+ * Obtiene estadísticas completas del corpus desde Supabase
  */
-export const getCorpusStats = (): CorpusStats => {
-  const nodes = getNodes();
-  const edges = getEdges();
-  const questions = getQuestions();
+export const getCorpusStats = async (): Promise<CorpusStats> => {
+  const [nodes, edges, questions, episodes] = await Promise.all([
+    getNodes(),
+    getEdges(),
+    getQuestions(),
+    getEpisodes()
+  ]);
 
   const axisDistribution: Record<string, number> = {};
   questions.forEach(q => {
@@ -154,13 +151,10 @@ export const getCorpusStats = (): CorpusStats => {
     totalNodes: nodes.length,
     totalEdges: edges.length,
     totalQuestions: questions.length,
+    totalEpisodes: episodes.length,
     axisDistribution,
     averageTension: questions.length > 0 ? totalTension / questions.length : 0,
-    corpusFiles: [
-      'critica_socratica_lagrange.me',
-      'miedo_al_miedo.me',
-      'legitimidad_y_silencio.me'
-    ]
+    dataSource: 'supabase'
   };
 };
 
@@ -168,8 +162,8 @@ export const getCorpusStats = (): CorpusStats => {
  * Obtiene una pregunta aleatoria ponderada por tensión
  * Las preguntas con mayor tensión tienen más probabilidad de aparecer
  */
-export const getWeightedRandomQuestion = (): SocraticQuestion | null => {
-  const questions = getQuestions();
+export const getWeightedRandomQuestion = async (): Promise<SocraticQuestion | null> => {
+  const questions = await getQuestions();
   if (questions.length === 0) return null;
 
   // Calcular peso total
@@ -191,9 +185,8 @@ export const getWeightedRandomQuestion = (): SocraticQuestion | null => {
 /**
  * Encuentra el camino de tensión más alto entre dos ejes
  */
-export const findTensionPath = (fromAxis: AxisType, toAxis: AxisType): TopologyEdge[] => {
-  const nodes = getNodes();
-  const edges = getEdges();
+export const findTensionPath = async (fromAxis: AxisType, toAxis: AxisType): Promise<TopologyEdge[]> => {
+  const [nodes, edges] = await Promise.all([getNodes(), getEdges()]);
   
   const fromNodes = nodes.filter(n => n.axis === fromAxis).map(n => n.id);
   const toNodes = nodes.filter(n => n.axis === toAxis).map(n => n.id);
@@ -208,8 +201,8 @@ export const findTensionPath = (fromAxis: AxisType, toAxis: AxisType): TopologyE
 /**
  * Genera un "recorrido de fricción" - secuencia de preguntas que aumentan la tensión
  */
-export const generateFrictionJourney = (startAxis?: AxisType): SocraticQuestion[] => {
-  const questions = getQuestions();
+export const generateFrictionJourney = async (startAxis?: AxisType): Promise<SocraticQuestion[]> => {
+  const questions = await getQuestions();
   
   // Filtrar por eje si se especifica
   let pool = startAxis 
@@ -237,18 +230,20 @@ export const generateFrictionJourney = (startAxis?: AxisType): SocraticQuestion[
 };
 
 /**
- * Valida la integridad del corpus contra la topología
+ * Valida la integridad del corpus contra la topología (desde Supabase)
  */
-export const validateCorpusIntegrity = (): {
+export const validateCorpusIntegrity = async (): Promise<{
   isValid: boolean;
   issues: string[];
-} => {
-  console.log(">> Validando integridad del corpus...");
+}> => {
+  console.log(">> Validando integridad del corpus desde Supabase...");
   
   const issues: string[] = [];
-  const nodes = getNodes();
-  const edges = getEdges();
-  const questions = getQuestions();
+  const [nodes, edges, questions] = await Promise.all([
+    getNodes(),
+    getEdges(),
+    getQuestions()
+  ]);
   
   // Verificar que todos los ejes tienen preguntas
   const axes: AxisType[] = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
@@ -286,31 +281,45 @@ export const validateCorpusIntegrity = (): {
 };
 
 /**
- * Función principal de sincronización (para futura implementación dinámica)
+ * Función principal de sincronización - ahora verifica datos desde Supabase
  */
 export const syncCorpus = async (): Promise<SyncResult> => {
   console.log("═══════════════════════════════════════════════");
-  console.log(">> INICIANDO SINCRONIZACIÓN DEL CORPUS LAGRANGE");
-  console.log(">> Primer Mandamiento: Neutralización del Miedo");
+  console.log(">> SINCRONIZACIÓN LAGRANGE - MODO FULLSTACK");
+  console.log(">> Fuente de datos: Supabase (Modo Dios activo)");
   console.log("═══════════════════════════════════════════════");
 
-  const stats = getCorpusStats();
-  const validation = validateCorpusIntegrity();
+  // Invalidar cache para obtener datos frescos
+  invalidateCache();
+
+  const stats = await getCorpusStats();
+  const validation = await validateCorpusIntegrity();
 
   console.log("═══════════════════════════════════════════════");
   console.log(">> SINCRONIZACIÓN COMPLETADA");
   console.log(`>> Nodos en topología: ${stats.totalNodes}`);
   console.log(`>> Aristas en topología: ${stats.totalEdges}`);
   console.log(`>> Preguntas socráticas: ${stats.totalQuestions}`);
+  console.log(`>> Episodios podcast: ${stats.totalEpisodes}`);
   console.log(`>> Tensión promedio: ${(stats.averageTension * 100).toFixed(1)}%`);
   console.log(`>> Integridad: ${validation.isValid ? '✓ Válida' : '✗ Con problemas'}`);
-  console.log(">> El sistema está vivo. La topología respira.");
+  console.log(`>> Fuente: ${stats.dataSource.toUpperCase()}`);
+  console.log(">> El sistema respira desde la nube.");
   console.log("═══════════════════════════════════════════════");
 
   return {
     fragmentsProcessed: stats.totalQuestions,
     nodesUpdated: stats.totalNodes,
     edgesCreated: stats.totalEdges,
+    episodesCount: stats.totalEpisodes,
     timestamp: new Date()
   };
+};
+
+/**
+ * Fuerza recarga de datos desde Supabase (invalida cache)
+ */
+export const forceRefresh = (): void => {
+  invalidateCache();
+  console.log(">> Cache invalidado. Próxima petición cargará datos frescos.");
 };
