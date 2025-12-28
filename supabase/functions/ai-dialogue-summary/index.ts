@@ -6,6 +6,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function validateInput(body: unknown): { dialogueId: string } {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Request body must be an object');
+  }
+
+  const input = body as Record<string, unknown>;
+
+  // Validate dialogueId (required)
+  if (!input.dialogueId || typeof input.dialogueId !== 'string') {
+    throw new Error('dialogueId is required and must be a string');
+  }
+  
+  if (!UUID_REGEX.test(input.dialogueId)) {
+    throw new Error('dialogueId must be a valid UUID');
+  }
+
+  return { dialogueId: input.dialogueId };
+}
+
 interface DialogueEntry {
   type: 'oracle' | 'user';
   content: string;
@@ -24,7 +46,28 @@ serve(async (req) => {
   }
 
   try {
-    const { dialogueId } = await req.json();
+    // Parse and validate input
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    let validatedInput;
+    try {
+      validatedInput = validateInput(body);
+    } catch (validationError) {
+      return new Response(
+        JSON.stringify({ error: (validationError as Error).message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { dialogueId } = validatedInput;
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;

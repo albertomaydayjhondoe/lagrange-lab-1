@@ -6,13 +6,110 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Input validation
+const VALID_ACTIONS = ['generate', 'script', 'suggest_series'];
+const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
+const MAX_ID_LENGTH = 100;
+const MAX_CONTEXT_LENGTH = 2000;
+const MAX_QUESTION_IDS = 20;
+
+function validateInput(body: unknown): {
+  action: string;
+  eje?: string;
+  questionIds?: string[];
+  context?: string;
+} {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Request body must be an object');
+  }
+
+  const input = body as Record<string, unknown>;
+
+  // Validate action (required)
+  if (!input.action || typeof input.action !== 'string') {
+    throw new Error('action is required and must be a string');
+  }
+  if (!VALID_ACTIONS.includes(input.action)) {
+    throw new Error(`action must be one of: ${VALID_ACTIONS.join(', ')}`);
+  }
+
+  const result: ReturnType<typeof validateInput> = {
+    action: input.action
+  };
+
+  // Validate eje
+  if (input.eje !== undefined) {
+    if (typeof input.eje !== 'string') {
+      throw new Error('eje must be a string');
+    }
+    if (!VALID_EJES.includes(input.eje)) {
+      throw new Error(`eje must be one of: ${VALID_EJES.join(', ')}`);
+    }
+    result.eje = input.eje;
+  }
+
+  // Validate questionIds
+  if (input.questionIds !== undefined) {
+    if (!Array.isArray(input.questionIds)) {
+      throw new Error('questionIds must be an array');
+    }
+    if (input.questionIds.length > MAX_QUESTION_IDS) {
+      throw new Error(`questionIds must have at most ${MAX_QUESTION_IDS} entries`);
+    }
+    
+    result.questionIds = input.questionIds.map((id, index) => {
+      if (typeof id !== 'string') {
+        throw new Error(`questionIds[${index}] must be a string`);
+      }
+      if (id.length > MAX_ID_LENGTH) {
+        throw new Error(`questionIds[${index}] must be less than ${MAX_ID_LENGTH} characters`);
+      }
+      return id.trim();
+    });
+  }
+
+  // Validate context
+  if (input.context !== undefined) {
+    if (typeof input.context !== 'string') {
+      throw new Error('context must be a string');
+    }
+    if (input.context.length > MAX_CONTEXT_LENGTH) {
+      throw new Error(`context must be less than ${MAX_CONTEXT_LENGTH} characters`);
+    }
+    result.context = input.context.trim();
+  }
+
+  return result;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { action, eje, questionIds, context } = await req.json();
+    // Parse and validate input
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    let validatedInput;
+    try {
+      validatedInput = validateInput(body);
+    } catch (validationError) {
+      return new Response(
+        JSON.stringify({ error: (validationError as Error).message }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { action, eje, questionIds, context } = validatedInput;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");

@@ -6,13 +6,104 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Input validation
+const VALID_ACTIONS = ['analyze', 'generate', 'suggest_missing'];
+const MAX_ID_LENGTH = 100;
+const MAX_CONTEXT_LENGTH = 2000;
+
+function validateInput(body: unknown): {
+  action: string;
+  sourceId?: string;
+  targetId?: string;
+  context?: string;
+} {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Request body must be an object');
+  }
+
+  const input = body as Record<string, unknown>;
+
+  // Validate action (required)
+  if (!input.action || typeof input.action !== 'string') {
+    throw new Error('action is required and must be a string');
+  }
+  if (!VALID_ACTIONS.includes(input.action)) {
+    throw new Error(`action must be one of: ${VALID_ACTIONS.join(', ')}`);
+  }
+
+  const result: ReturnType<typeof validateInput> = {
+    action: input.action
+  };
+
+  // Validate sourceId
+  if (input.sourceId !== undefined) {
+    if (typeof input.sourceId !== 'string') {
+      throw new Error('sourceId must be a string');
+    }
+    if (input.sourceId.length > MAX_ID_LENGTH) {
+      throw new Error(`sourceId must be less than ${MAX_ID_LENGTH} characters`);
+    }
+    result.sourceId = input.sourceId.trim();
+  }
+
+  // Validate targetId
+  if (input.targetId !== undefined) {
+    if (typeof input.targetId !== 'string') {
+      throw new Error('targetId must be a string');
+    }
+    if (input.targetId.length > MAX_ID_LENGTH) {
+      throw new Error(`targetId must be less than ${MAX_ID_LENGTH} characters`);
+    }
+    result.targetId = input.targetId.trim();
+  }
+
+  // Validate context
+  if (input.context !== undefined) {
+    if (typeof input.context !== 'string') {
+      throw new Error('context must be a string');
+    }
+    if (input.context.length > MAX_CONTEXT_LENGTH) {
+      throw new Error(`context must be less than ${MAX_CONTEXT_LENGTH} characters`);
+    }
+    result.context = input.context.trim();
+  }
+
+  // Validate required fields based on action
+  if ((input.action === 'analyze' || input.action === 'generate') && (!result.sourceId || !result.targetId)) {
+    throw new Error(`sourceId and targetId are required for action: ${input.action}`);
+  }
+
+  return result;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { action, sourceId, targetId, context } = await req.json();
+    // Parse and validate input
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    let validatedInput;
+    try {
+      validatedInput = validateInput(body);
+    } catch (validationError) {
+      return new Response(
+        JSON.stringify({ error: (validationError as Error).message }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { action, sourceId, targetId, context } = validatedInput;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
