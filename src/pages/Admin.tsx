@@ -6,7 +6,7 @@ import { LagrangeNav } from '@/components/LagrangeNav';
 import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users, UserPlus } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users, UserPlus, BookOpen } from 'lucide-react';
 import { NodeEditor } from '@/components/admin/NodeEditor';
 import { EdgeEditor } from '@/components/admin/EdgeEditor';
 import { QuestionEditor } from '@/components/admin/QuestionEditor';
@@ -16,6 +16,7 @@ import { AxesEditor, ThematicAxis } from '@/components/admin/AxesEditor';
 import { DialogueEditor } from '@/components/admin/DialogueEditor';
 import { RolesEditor } from '@/components/admin/RolesEditor';
 import { AccessRequestsEditor } from '@/components/admin/AccessRequestsEditor';
+import { PodcastTextCurator } from '@/components/admin/PodcastTextCurator';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -369,6 +370,10 @@ const Admin = () => {
                   </TabsTrigger>
                   {isAdmin && (
                     <>
+                      <TabsTrigger value="curator" className="font-mono text-sm gap-2">
+                        <BookOpen className="w-4 h-4" />
+                        Curador
+                      </TabsTrigger>
                       <TabsTrigger value="requests" className="font-mono text-sm gap-2">
                         <UserPlus className="w-4 h-4" />
                         Solicitudes
@@ -477,6 +482,19 @@ const Admin = () => {
 
                 {isAdmin && (
                   <>
+                    <TabsContent value="curator">
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="bg-card rounded-xl border border-border p-6"
+                      >
+                        <h2 className="font-serif text-xl mb-4">Curador de Textos</h2>
+                        <p className="text-sm text-muted-foreground mb-6">
+                          Procesa diálogos de usuarios Platón con IA para generar textos de ~500 palabras optimizados para TTS o exportación JSON.
+                        </p>
+                        <PodcastTextCurator />
+                      </motion.div>
+                    </TabsContent>
                     <TabsContent value="requests">
                       <motion.div
                         initial={{ opacity: 0 }}

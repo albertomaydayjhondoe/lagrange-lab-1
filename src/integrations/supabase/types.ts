@@ -122,33 +122,42 @@ export type Database = {
       saved_dialogues: {
         Row: {
           created_at: string
+          curated_text: string | null
           dialogue_content: Json
           eje: string | null
           id: string
+          selected_for_podcast: boolean | null
           summary: string | null
           title: string
           updated_at: string
           user_id: string
+          word_count: number | null
         }
         Insert: {
           created_at?: string
+          curated_text?: string | null
           dialogue_content?: Json
           eje?: string | null
           id?: string
+          selected_for_podcast?: boolean | null
           summary?: string | null
           title: string
           updated_at?: string
           user_id: string
+          word_count?: number | null
         }
         Update: {
           created_at?: string
+          curated_text?: string | null
           dialogue_content?: Json
           eje?: string | null
           id?: string
+          selected_for_podcast?: boolean | null
           summary?: string | null
           title?: string
           updated_at?: string
           user_id?: string
+          word_count?: number | null
         }
         Relationships: []
       }
