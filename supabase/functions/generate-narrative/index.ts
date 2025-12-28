@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,7 +26,7 @@ const SYSTEM_PROMPT = `Eres un ensayista crítico del Sistema Lagrange. Tu misi�
 4. Legitimidad: Construcción de autoridad
 5. Responsabilidad: Distribución asimétrica de consecuencias
 
-Genera textos que exploren estos temas con profundidad y matiz.`;
+Genera textos que exploren estos temas con profundidad y matiz. Basa tu narrativa exclusivamente en el contenido fuente proporcionado.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -33,28 +34,87 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, eje, length } = await req.json();
+    const { sourceType, dialogueId, promptId, eje, length } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    if (!prompt) {
-      throw new Error('Prompt is required');
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Supabase configuration missing');
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    let sourceContent = '';
+    let sourceContext = '';
+
+    // Fetch source content based on type
+    if (sourceType === 'dialogue' && dialogueId) {
+      const { data: dialogue, error } = await supabase
+        .from('saved_dialogues')
+        .select('title, dialogue_content, eje, summary')
+        .eq('id', dialogueId)
+        .single();
+
+      if (error || !dialogue) {
+        throw new Error('Diálogo no encontrado');
+      }
+
+      // Parse dialogue content
+      const content = dialogue.dialogue_content as { type: string; content: string }[];
+      const dialogueText = content
+        .map((entry) => {
+          if (entry.type === 'oracle') return `Oráculo: ${entry.content}`;
+          if (entry.type === 'user') return `Usuario: ${entry.content}`;
+          return entry.content;
+        })
+        .join('\n\n');
+
+      sourceContent = dialogueText;
+      sourceContext = `Diálogo: "${dialogue.title}"${dialogue.eje ? ` (Eje: ${dialogue.eje})` : ''}`;
+      
+      if (dialogue.summary) {
+        sourceContext += `\nResumen: ${dialogue.summary}`;
+      }
+
+    } else if (sourceType === 'prompt' && promptId) {
+      const { data: question, error } = await supabase
+        .from('socratic_questions')
+        .select('texto, eje, nivel, tension')
+        .eq('id', promptId)
+        .single();
+
+      if (error || !question) {
+        throw new Error('Pregunta no encontrada');
+      }
+
+      sourceContent = question.texto;
+      sourceContext = `Pregunta socrática del eje "${question.eje}" (Nivel: ${question.nivel}, Tensión: ${question.tension})`;
+
+    } else {
+      throw new Error('Debes seleccionar una fuente válida (diálogo o pregunta)');
     }
 
     const wordCount = length === 'short' ? 150 : length === 'long' ? 500 : 300;
     
     const userPrompt = `
-${eje ? `Eje temático principal: ${eje}` : ''}
+## Fuente
+${sourceContext}
 
-Tema o punto de partida: ${prompt}
+## Contenido fuente
+${sourceContent}
 
-Genera un texto narrativo de aproximadamente ${wordCount} palabras que explore este tema desde la perspectiva crítica del Sistema Lagrange.
+${eje ? `## Eje temático principal: ${eje}` : ''}
+
+## Instrucciones
+Genera un texto narrativo de aproximadamente ${wordCount} palabras que explore y expanda las ideas presentes en el contenido fuente. El texto debe mantener coherencia con los temas discutidos y profundizar en las tensiones identificadas, usando la perspectiva crítica del Sistema Lagrange.
 `;
 
-    console.log(`Generating narrative for: "${prompt.substring(0, 50)}..."`);
+    console.log(`Generating narrative from ${sourceType}: "${sourceContext.substring(0, 50)}..."`);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -95,7 +155,12 @@ Genera un texto narrativo de aproximadamente ${wordCount} palabras que explore e
     console.log('Narrative generated successfully');
 
     return new Response(
-      JSON.stringify({ narrative, eje, wordCount: narrative.split(/\s+/).length }),
+      JSON.stringify({ 
+        narrative, 
+        eje, 
+        sourceType,
+        wordCount: narrative.split(/\s+/).length 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: unknown) {
