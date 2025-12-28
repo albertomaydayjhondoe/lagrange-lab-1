@@ -5,13 +5,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare } from 'lucide-react';
 import { NodeEditor } from '@/components/admin/NodeEditor';
 import { EdgeEditor } from '@/components/admin/EdgeEditor';
 import { QuestionEditor } from '@/components/admin/QuestionEditor';
 import { AudioGenerator } from '@/components/admin/AudioGenerator';
 import { EpisodeEditor } from '@/components/admin/EpisodeEditor';
 import { AxesEditor, ThematicAxis } from '@/components/admin/AxesEditor';
+import { DialogueEditor } from '@/components/admin/DialogueEditor';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -359,6 +360,10 @@ const Admin = () => {
                     <Radio className="w-4 h-4" />
                     Episodios ({episodes.length})
                   </TabsTrigger>
+                  <TabsTrigger value="dialogues" className="font-mono text-sm gap-2">
+                    <MessagesSquare className="w-4 h-4" />
+                    Diálogos
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="axes">
@@ -438,6 +443,20 @@ const Admin = () => {
                       Gestiona los episodios del podcast. Los episodios publicados aparecen en /podcast.
                     </p>
                     <EpisodeEditor episodes={episodes} onRefresh={fetchData} isAdmin={isAdmin} />
+                  </motion.div>
+                </TabsContent>
+
+                <TabsContent value="dialogues">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="bg-card rounded-xl border border-border p-6"
+                  >
+                    <h2 className="font-serif text-xl mb-4">Diálogos Guardados</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Gestiona los diálogos socráticos guardados por los usuarios. Exporta a TXT o convierte a podcast MP3.
+                    </p>
+                    <DialogueEditor isAdmin={isAdmin} />
                   </motion.div>
                 </TabsContent>
               </Tabs>

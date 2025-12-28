@@ -86,6 +86,39 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_dialogues: {
+        Row: {
+          created_at: string
+          dialogue_content: Json
+          eje: string | null
+          id: string
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dialogue_content?: Json
+          eje?: string | null
+          id?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dialogue_content?: Json
+          eje?: string | null
+          id?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       socratic_questions: {
         Row: {
           corpus_ref: string | null

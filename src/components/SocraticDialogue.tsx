@@ -2,9 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Sparkles, RotateCcw, MessageCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Send, Sparkles, RotateCcw, MessageCircle, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { continueDialogue, DialogueMessage, AIQuestion } from '@/utils/aiService';
+import { supabase } from '@/integrations/supabase/client';
 
 const ejeLabels: Record<string, string> = {
   Miedo: 'Miedo',
@@ -34,6 +37,10 @@ export function SocraticDialogue() {
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveTitle, setSaveTitle] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,6 +48,18 @@ export function SocraticDialogue() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [dialogue]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const buildConversationHistory = (): DialogueMessage[] => {
     return dialogue.map(entry => ({
@@ -117,6 +136,63 @@ export function SocraticDialogue() {
     setUserInput('');
   };
 
+  const handleSaveDialogue = async () => {
+    if (!saveTitle.trim()) {
+      toast.error('Ingresa un título para el diálogo');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No autenticado');
+
+      // Determine main axis from dialogue
+      const axisCount: Record<string, number> = {};
+      dialogue.forEach(entry => {
+        if (entry.question?.eje) {
+          axisCount[entry.question.eje] = (axisCount[entry.question.eje] || 0) + 1;
+        }
+      });
+      const mainEje = Object.entries(axisCount).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
+      // Serialize dialogue for storage
+      const dialogueContent = dialogue.map(entry => ({
+        type: entry.type,
+        content: entry.content,
+        question: entry.question ? {
+          pregunta: entry.question.pregunta,
+          eje: entry.question.eje,
+          nivel: entry.question.nivel,
+          tension: entry.question.tension,
+          conexion: entry.question.conexion
+        } : undefined,
+        timestamp: entry.timestamp.toISOString()
+      }));
+
+      const { error } = await supabase
+        .from('saved_dialogues')
+        .insert({
+          user_id: user.id,
+          title: saveTitle.trim(),
+          eje: mainEje,
+          dialogue_content: dialogueContent,
+          summary: null
+        });
+
+      if (error) throw error;
+
+      toast.success('Diálogo guardado correctamente');
+      setShowSaveDialog(false);
+      setSaveTitle('');
+    } catch (error) {
+      console.error('Error saving dialogue:', error);
+      toast.error('Error al guardar el diálogo');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -168,15 +244,28 @@ export function SocraticDialogue() {
             ({Math.floor(dialogue.length / 2)} intercambios)
           </span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={resetDialogue}
-          className="gap-2 text-muted-foreground hover:text-foreground"
-        >
-          <RotateCcw className="w-4 h-4" />
-          Reiniciar
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAuthenticated && dialogue.length >= 2 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSaveDialog(true)}
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <Save className="w-4 h-4" />
+              Guardar
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetDialogue}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Reiniciar
+          </Button>
+        </div>
       </div>
 
       {/* Dialogue Area */}
@@ -268,6 +357,34 @@ export function SocraticDialogue() {
           Presiona Enter para enviar, Shift+Enter para nueva línea
         </p>
       </div>
+
+      {/* Save Dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Guardar Diálogo</DialogTitle>
+            <DialogDescription>
+              Guarda este diálogo para revisarlo más tarde o exportarlo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Título del diálogo..."
+              value={saveTitle}
+              onChange={(e) => setSaveTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveDialogue()}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveDialogue} disabled={isSaving || !saveTitle.trim()}>
+              {isSaving ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
