@@ -61,9 +61,15 @@ const Lab = () => {
                 <MessageSquare className="w-4 h-4" />
                 Diálogo
               </TabsTrigger>
-              <TabsTrigger value="generator" className="gap-2">
+              <TabsTrigger 
+                value="generator" 
+                className="gap-2"
+                disabled={!isAuthenticated}
+                title={!isAuthenticated ? "Inicia sesión para acceder al generador" : ""}
+              >
                 <PenTool className="w-4 h-4" />
                 Generador
+                {!isAuthenticated && <span className="text-xs ml-1">(login)</span>}
               </TabsTrigger>
             </TabsList>
 
@@ -77,12 +83,28 @@ const Lab = () => {
             </TabsContent>
 
             <TabsContent value="generator">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <NarrativeGenerator isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
-              </motion.div>
+              {isAuthenticated ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <NarrativeGenerator isAuthenticated={isAuthenticated} isAdmin={isAdmin} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center py-12"
+                >
+                  <PenTool className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-serif text-xl text-foreground mb-2">
+                    Generador de Textos
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Inicia sesión para generar textos narrativos con IA
+                  </p>
+                </motion.div>
+              )}
             </TabsContent>
           </Tabs>
 
