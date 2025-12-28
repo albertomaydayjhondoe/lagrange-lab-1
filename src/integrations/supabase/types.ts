@@ -119,6 +119,45 @@ export type Database = {
         }
         Relationships: []
       }
+      thematic_axes: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          metadata: Json | null
+          order_index: number
+          suggested_question_ids: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id: string
+          is_active?: boolean
+          label: string
+          metadata?: Json | null
+          order_index?: number
+          suggested_question_ids?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          metadata?: Json | null
+          order_index?: number
+          suggested_question_ids?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       topology_edges: {
         Row: {
           created_at: string

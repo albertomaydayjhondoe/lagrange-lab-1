@@ -3,7 +3,19 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export type AxisType = 'Miedo' | 'Control' | 'SaludMental' | 'Legitimidad' | 'Responsabilidad';
+// Tipo dinámico - los ejes ahora vienen de la DB
+export type AxisType = string;
+
+export interface ThematicAxis {
+  id: string;
+  label: string;
+  description: string | null;
+  color: string;
+  suggested_question_ids: string[] | null;
+  order_index: number;
+  is_active: boolean;
+  metadata: unknown;
+}
 
 export interface LagrangeNode {
   id: string;
@@ -50,9 +62,45 @@ export interface Episode {
 }
 
 // Cache para evitar múltiples peticiones
+let axesCache: ThematicAxis[] | null = null;
 let nodesCache: LagrangeNode[] | null = null;
 let edgesCache: LagrangeEdge[] | null = null;
 let questionsCache: SocraticQuestion[] | null = null;
+
+// ===== EJES TEMÁTICOS (DINÁMICOS) =====
+
+export async function fetchAxes(): Promise<ThematicAxis[]> {
+  if (axesCache) return axesCache;
+  
+  const { data, error } = await supabase
+    .from('thematic_axes')
+    .select('*')
+    .eq('is_active', true)
+    .order('order_index');
+  
+  if (error) {
+    console.error('Error fetching axes:', error);
+    return [];
+  }
+  
+  axesCache = data || [];
+  return axesCache;
+}
+
+export async function fetchAxisById(id: string): Promise<ThematicAxis | null> {
+  const axes = await fetchAxes();
+  return axes.find(a => a.id === id) || null;
+}
+
+export async function getAxisColor(axisId: string): Promise<string> {
+  const axis = await fetchAxisById(axisId);
+  return axis?.color || '#3b82f6';
+}
+
+export async function getSuggestedQuestionIds(axisId: string): Promise<string[]> {
+  const axis = await fetchAxisById(axisId);
+  return axis?.suggested_question_ids || [];
+}
 
 export async function fetchNodes(): Promise<LagrangeNode[]> {
   if (nodesCache) return nodesCache;
@@ -193,6 +241,7 @@ export async function fetchQuestionsForNode(nodeId: string): Promise<SocraticQue
 
 // Invalida el cache (útil después de ediciones)
 export function invalidateCache() {
+  axesCache = null;
   nodesCache = null;
   edgesCache = null;
   questionsCache = null;
