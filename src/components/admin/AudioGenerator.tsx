@@ -6,10 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Volume2, Download, Play, Pause, Loader2, Save } from 'lucide-react';
+import { Volume2, Download, Play, Pause, Loader2, Save, Cloud, Github } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { SocraticQuestion, groupQuestionsByAxis } from '@/utils/dataExport';
+import { uploadPodcastEpisode, blobToBase64 } from '@/utils/podcastService';
 
 interface AudioGeneratorProps {
   questions: SocraticQuestion[];
@@ -112,38 +113,33 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
     try {
       setSaving(true);
 
-      // Upload to storage
+      // Convert blob to base64
+      const audioBase64 = await blobToBase64(audioBlob);
       const fileName = `episode-${Date.now()}.mp3`;
-      const { error: uploadError } = await supabase.storage
-        .from('podcast-episodes')
-        .upload(fileName, audioBlob, {
-          contentType: 'audio/mpeg',
-          cacheControl: '3600',
-        });
 
-      if (uploadError) throw uploadError;
+      // Upload to both Supabase Storage and GitHub
+      const result = await uploadPodcastEpisode(audioBase64, fileName, {
+        title: episodeTitle,
+        description: episodeDescription,
+        eje: selectedQuestion.eje,
+        questionIds: [selectedQuestion.id],
+        published: publishNow,
+      });
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('podcast-episodes')
-        .getPublicUrl(fileName);
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
 
-      // Create episode record
-      const { error: insertError } = await supabase
-        .from('podcast_episodes')
-        .insert({
-          title: episodeTitle,
-          description: episodeDescription,
-          audio_url: urlData.publicUrl,
-          question_ids: [selectedQuestion.id],
-          eje: selectedQuestion.eje,
-          published: publishNow,
-          published_at: publishNow ? new Date().toISOString() : null,
-        });
+      // Show storage results
+      const supabaseStatus = result.storage?.supabase?.success ? '✓' : '✗';
+      const githubStatus = result.storage?.github?.configured === false
+        ? '(no configurado)'
+        : result.storage?.github?.success ? '✓' : '✗';
 
-      if (insertError) throw insertError;
-
-      toast.success('Episodio guardado correctamente');
+      toast.success(
+        `Episodio guardado | Cloud: ${supabaseStatus} | GitHub: ${githubStatus}`,
+        { duration: 5000 }
+      );
       
       // Reset form
       setEpisodeTitle('');
