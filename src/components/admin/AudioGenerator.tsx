@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Volume2, Download, Play, Pause, Loader2, Save, Check } from 'lucide-react';
+import { Volume2, Download, Play, Pause, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { SocraticQuestion, groupQuestionsByAxis } from '@/utils/dataExport';
@@ -50,54 +50,22 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
   };
 
   const generateSingleAudio = async (text: string): Promise<{ base64: string; blob: Blob }> => {
-    // Get fresh session for admin auth
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError || !session) {
-      // Try to refresh the session
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError || !refreshData.session) {
-        throw new Error('Sesión expirada. Por favor, inicia sesión de nuevo.');
-      }
+    const { data, error } = await supabase.functions.invoke('elevenlabs-tts', {
+      body: { text, voiceId: selectedVoice },
+    });
+
+    if (error) {
+      throw new Error(error.message || 'TTS generation failed');
     }
 
-    // Get the current session after potential refresh
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
-    
-    if (!currentSession?.access_token) {
-      throw new Error('Debes iniciar sesión como admin');
+    if (data.error) {
+      throw new Error(data.error);
     }
 
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentSession.access_token}`,
-        },
-        body: JSON.stringify({ text, voiceId: selectedVoice }),
-      }
-    );
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Sesión inválida. Por favor, cierra sesión e inicia de nuevo.');
-      }
-      const error = await response.json();
-      throw new Error(error.error || 'TTS generation failed');
-    }
-
-    const data = await response.json();
-    
-    // Convert base64 to blob for storage
-    const byteCharacters = atob(data.audioContent);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'audio/mpeg' });
+    // Convert base64 to blob using fetch (safer than manual conversion)
+    const audioDataUrl = `data:audio/mpeg;base64,${data.audioContent}`;
+    const response = await fetch(audioDataUrl);
+    const blob = await response.blob();
 
     return { base64: data.audioContent, blob };
   };
