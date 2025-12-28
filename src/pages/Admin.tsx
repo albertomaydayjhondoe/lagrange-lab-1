@@ -18,6 +18,7 @@ import { DialogueEditor } from '@/components/admin/DialogueEditor';
 import { RolesEditor } from '@/components/admin/RolesEditor';
 import { AccessRequestsEditor } from '@/components/admin/AccessRequestsEditor';
 import { PodcastTextCurator } from '@/components/admin/PodcastTextCurator';
+import { DifferentialImport } from '@/components/admin/DifferentialImport';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -333,8 +334,9 @@ const Admin = () => {
                       className="font-mono text-sm gap-2"
                     >
                       <Upload className="w-4 h-4" />
-                      Importar JSON
+                      Importar Total
                     </Button>
+                    <DifferentialImport onRefresh={fetchData} disabled={dataLoading} />
                     <Button
                       onClick={handleGlobalBackup}
                       disabled={dataLoading || backupLoading}
