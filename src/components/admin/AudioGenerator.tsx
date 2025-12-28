@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Volume2, Download, Play, Pause, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Volume2, Download, Play, Pause, Loader2, Save, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { SocraticQuestion, groupQuestionsByAxis } from '@/utils/dataExport';
 
 interface AudioGeneratorProps {
@@ -22,11 +27,19 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
   const [selectedAxis, setSelectedAxis] = useState<string>('all');
   const [selectedVoice, setSelectedVoice] = useState(VOICES[0].id);
   const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentText, setCurrentText] = useState('');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<SocraticQuestion | null>(null);
+
+  // Episode form
+  const [episodeTitle, setEpisodeTitle] = useState('');
+  const [episodeDescription, setEpisodeDescription] = useState('');
+  const [publishNow, setPublishNow] = useState(false);
 
   const groupedQuestions = groupQuestionsByAxis(questions);
   const axes = Object.keys(groupedQuestions);
@@ -36,7 +49,7 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
     return groupedQuestions[selectedAxis] || [];
   };
 
-  const generateSingleAudio = async (text: string): Promise<string> => {
+  const generateSingleAudio = async (text: string): Promise<{ base64: string; blob: Blob }> => {
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
       {
@@ -56,19 +69,35 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
     }
 
     const data = await response.json();
-    return data.audioContent;
+    
+    // Convert base64 to blob for storage
+    const byteCharacters = atob(data.audioContent);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'audio/mpeg' });
+
+    return { base64: data.audioContent, blob };
   };
 
   const handleGenerateSingle = async (question: SocraticQuestion) => {
     try {
       setGenerating(true);
       setCurrentText(question.texto);
+      setSelectedQuestion(question);
       setProgress(50);
 
-      const audioContent = await generateSingleAudio(question.texto);
-      const url = `data:audio/mpeg;base64,${audioContent}`;
+      const { base64, blob } = await generateSingleAudio(question.texto);
+      const url = `data:audio/mpeg;base64,${base64}`;
       setAudioUrl(url);
+      setAudioBlob(blob);
       setProgress(100);
+
+      // Pre-fill episode form
+      setEpisodeTitle(`Pregunta: ${question.texto.substring(0, 50)}...`);
+      setEpisodeDescription(`Eje: ${question.eje} | Nivel: ${question.nivel} | Tensión: ${question.tension}`);
 
       toast.success('Audio generado');
     } catch (error) {
@@ -78,6 +107,69 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
       setGenerating(false);
       setProgress(0);
       setCurrentText('');
+    }
+  };
+
+  const handleSaveAsEpisode = async () => {
+    if (!audioBlob || !selectedQuestion) {
+      toast.error('Genera un audio primero');
+      return;
+    }
+
+    if (!episodeTitle.trim()) {
+      toast.error('Añade un título para el episodio');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      // Upload to storage
+      const fileName = `episode-${Date.now()}.mp3`;
+      const { error: uploadError } = await supabase.storage
+        .from('podcast-episodes')
+        .upload(fileName, audioBlob, {
+          contentType: 'audio/mpeg',
+          cacheControl: '3600',
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('podcast-episodes')
+        .getPublicUrl(fileName);
+
+      // Create episode record
+      const { error: insertError } = await supabase
+        .from('podcast_episodes')
+        .insert({
+          title: episodeTitle,
+          description: episodeDescription,
+          audio_url: urlData.publicUrl,
+          question_ids: [selectedQuestion.id],
+          eje: selectedQuestion.eje,
+          published: publishNow,
+          published_at: publishNow ? new Date().toISOString() : null,
+        });
+
+      if (insertError) throw insertError;
+
+      toast.success('Episodio guardado correctamente');
+      
+      // Reset form
+      setEpisodeTitle('');
+      setEpisodeDescription('');
+      setAudioUrl(null);
+      setAudioBlob(null);
+      setSelectedQuestion(null);
+      setPublishNow(false);
+
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Error al guardar: ' + (error as Error).message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -164,25 +256,74 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
       )}
 
       {audioUrl && !generating && (
-        <div className="flex items-center gap-3 p-4 bg-primary/10 rounded-lg">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handlePlay}
-            className="gap-2"
-          >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            {isPlaying ? 'Pausar' : 'Reproducir'}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleDownload}
-            className="gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Descargar MP3
-          </Button>
+        <div className="space-y-4 p-4 bg-primary/10 rounded-lg border border-primary/20">
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handlePlay}
+              className="gap-2"
+            >
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {isPlaying ? 'Pausar' : 'Reproducir'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDownload}
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Descargar
+            </Button>
+          </div>
+
+          <div className="border-t border-border pt-4 space-y-4">
+            <h4 className="font-mono text-sm font-medium">Guardar como Episodio de Podcast</h4>
+            
+            <div className="space-y-2">
+              <Label htmlFor="title">Título del episodio</Label>
+              <Input
+                id="title"
+                value={episodeTitle}
+                onChange={(e) => setEpisodeTitle(e.target.value)}
+                placeholder="Título del episodio..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea
+                id="description"
+                value={episodeDescription}
+                onChange={(e) => setEpisodeDescription(e.target.value)}
+                placeholder="Descripción del episodio..."
+                rows={3}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                id="publish"
+                checked={publishNow}
+                onCheckedChange={setPublishNow}
+              />
+              <Label htmlFor="publish" className="text-sm">Publicar inmediatamente</Label>
+            </div>
+
+            <Button
+              onClick={handleSaveAsEpisode}
+              disabled={saving || !episodeTitle.trim()}
+              className="gap-2"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Guardar Episodio
+            </Button>
+          </div>
         </div>
       )}
 
