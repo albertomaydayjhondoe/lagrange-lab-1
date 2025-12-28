@@ -127,11 +127,6 @@ export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
 
     setGeneratingSummary(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('No autenticado');
-      }
-
       const { data, error } = await supabase.functions.invoke('ai-dialogue-summary', {
         body: { dialogueId: dialogue.id }
       });
@@ -200,11 +195,6 @@ export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
     setAudioProgress('Preparando diálogo...');
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('No autenticado');
-      }
-
       // Create script from dialogue
       let script = '';
       dialogue.dialogue_content.forEach((entry) => {
@@ -221,32 +211,20 @@ export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
 
       setAudioProgress('Generando audio con ElevenLabs...');
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            text: script,
-            voiceId: 'CwhRBWXzGAHq8TQ4Fs17' // Roger voice
-          }),
+      const { data, error } = await supabase.functions.invoke('elevenlabs-tts', {
+        body: {
+          text: script,
+          voiceId: 'CwhRBWXzGAHq8TQ4Fs17' // Roger voice
         }
-      );
+      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error en TTS');
-      }
-
-      const { audioContent } = await response.json();
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
       setAudioProgress('Subiendo a storage...');
 
-      // Convert base64 to blob
-      const audioBlob = await fetch(`data:audio/mpeg;base64,${audioContent}`).then(r => r.blob());
+      // Convert base64 to blob using fetch (safer)
+      const audioBlob = await fetch(`data:audio/mpeg;base64,${data.audioContent}`).then(r => r.blob());
       
       const fileName = `podcast-dialogue-${dialogue.id}-${Date.now()}.mp3`;
       

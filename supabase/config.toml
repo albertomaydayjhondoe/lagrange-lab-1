@@ -4,22 +4,22 @@ project_id = "rwfqswiwalygzfojyeqk"
 verify_jwt = false
 
 [functions.elevenlabs-tts]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-narrative]
 verify_jwt = false
 
 [functions.ai-nodes]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ai-edges]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ai-questions]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ai-episodes]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ai-dialogue-summary]
-verify_jwt = true
+verify_jwt = false
