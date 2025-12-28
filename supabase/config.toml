@@ -7,7 +7,7 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.generate-narrative]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ai-nodes]
 verify_jwt = true
