@@ -4,9 +4,27 @@ import { useNavigate } from 'react-router-dom';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, MessageSquare, User, LogOut, Calendar, BookOpen } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Loader2, MessageSquare, User, LogOut, Calendar, BookOpen, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
+
+const ADMIN_EMAIL = 'sampayo@gmail.com';
+
+interface DialogueEntry {
+  type: 'oracle' | 'user';
+  content: string;
+  question?: {
+    pregunta: string;
+    eje: string;
+    nivel: number;
+    tension: number;
+    conexion?: string;
+  };
+  timestamp: string;
+}
 
 interface SavedDialogue {
   id: string;
@@ -14,6 +32,7 @@ interface SavedDialogue {
   eje: string | null;
   summary: string | null;
   created_at: string;
+  dialogue_content: Json;
 }
 
 const ejeColors: Record<string, string> = {
@@ -28,7 +47,10 @@ const Profile = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ email: string } | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [dialogues, setDialogues] = useState<SavedDialogue[]>([]);
+  const [selectedDialogue, setSelectedDialogue] = useState<SavedDialogue | null>(null);
+  const [showDialogueModal, setShowDialogueModal] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -39,12 +61,14 @@ const Profile = () => {
         return;
       }
 
-      setUser({ email: session.user.email || '' });
+      const userEmail = session.user.email || '';
+      setUser({ email: userEmail });
+      setIsAdmin(userEmail === ADMIN_EMAIL);
       
-      // Fetch user's dialogues
+      // Fetch dialogues - admin sees all, users see their own
       const { data, error } = await supabase
         .from('saved_dialogues')
-        .select('id, title, eje, summary, created_at')
+        .select('id, title, eje, summary, created_at, dialogue_content')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -82,6 +106,18 @@ const Profile = () => {
     });
   };
 
+  const openDialogueView = (dialogue: SavedDialogue) => {
+    setSelectedDialogue(dialogue);
+    setShowDialogueModal(true);
+  };
+
+  const parseDialogueContent = (content: Json): DialogueEntry[] => {
+    if (Array.isArray(content)) {
+      return content as unknown as DialogueEntry[];
+    }
+    return [];
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -109,6 +145,11 @@ const Profile = () => {
                 <div>
                   <h1 className="font-serif text-3xl text-foreground">Mi Perfil</h1>
                   <p className="text-muted-foreground">{user?.email}</p>
+                  {isAdmin && (
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-mono">
+                      Administrador
+                    </span>
+                  )}
                 </div>
               </div>
               <Button variant="outline" onClick={handleLogout} className="gap-2">
@@ -127,10 +168,13 @@ const Profile = () => {
               <CardHeader>
                 <CardTitle className="font-serif flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-primary" />
-                  Mis Diálogos Guardados
+                  {isAdmin ? 'Todos los Diálogos (Anónimos)' : 'Mis Diálogos Guardados'}
                 </CardTitle>
                 <CardDescription>
-                  Diálogos socráticos que has guardado durante tus sesiones en la Academia
+                  {isAdmin 
+                    ? 'Vista administrativa de todos los diálogos del sistema (datos anónimos)'
+                    : 'Diálogos socráticos que has guardado durante tus sesiones en la Academia'
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -138,7 +182,7 @@ const Profile = () => {
                   <div className="text-center py-12">
                     <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                     <p className="text-muted-foreground mb-4">
-                      No tienes diálogos guardados aún
+                      No hay diálogos guardados
                     </p>
                     <Button variant="outline" onClick={() => navigate('/lab')}>
                       Ir a la Academia
@@ -166,6 +210,12 @@ const Profile = () => {
                                   {dialogue.eje}
                                 </span>
                               )}
+                              {isAdmin && (
+                                <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-muted text-muted-foreground flex items-center gap-1">
+                                  <EyeOff className="w-3 h-3" />
+                                  Anónimo
+                                </span>
+                              )}
                             </div>
                             {dialogue.summary && (
                               <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
@@ -177,6 +227,17 @@ const Profile = () => {
                               {formatDate(dialogue.created_at)}
                             </div>
                           </div>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDialogueView(dialogue)}
+                              className="gap-2"
+                            >
+                              <Eye className="w-4 h-4" />
+                              Ver
+                            </Button>
+                          )}
                         </div>
                       </motion.div>
                     ))}
@@ -196,12 +257,79 @@ const Profile = () => {
               Sobre tu cuenta
             </h3>
             <p className="text-muted-foreground text-sm">
-              Como usuario registrado, puedes guardar tus diálogos socráticos y generar textos 
-              narrativos basados en ellos. Tus diálogos son privados y solo tú puedes acceder a ellos.
+              {isAdmin 
+                ? 'Como administrador, puedes ver todos los diálogos del sistema de forma anónima, exportar contenido y gestionar el corpus.'
+                : 'Como usuario registrado, puedes guardar tus diálogos socráticos y generar textos narrativos basados en ellos. Tus diálogos son privados y solo tú puedes acceder a ellos.'
+              }
             </p>
           </motion.div>
         </div>
       </main>
+
+      {/* Dialogue View Modal - Admin Only */}
+      <Dialog open={showDialogueModal} onOpenChange={setShowDialogueModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="font-serif flex items-center gap-2">
+              {selectedDialogue?.title}
+              {selectedDialogue?.eje && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-mono border ${
+                  ejeColors[selectedDialogue.eje] || 'bg-primary/10 text-primary border-primary/30'
+                }`}>
+                  {selectedDialogue.eje}
+                </span>
+              )}
+            </DialogTitle>
+            <DialogDescription className="flex items-center gap-2">
+              <EyeOff className="w-3 h-3" />
+              Vista anónima - No se muestra información del usuario
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="h-[60vh] pr-4">
+            <div className="space-y-4">
+              {selectedDialogue && parseDialogueContent(selectedDialogue.dialogue_content).map((entry, index) => (
+                <div
+                  key={index}
+                  className={`flex ${entry.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {entry.type === 'oracle' && entry.question ? (
+                    <div className="max-w-[85%] space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-mono border ${
+                          ejeColors[entry.question.eje] || 'bg-primary/10 text-primary border-primary/30'
+                        }`}>
+                          {entry.question.eje}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          Nivel {entry.question.nivel}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          Tensión: {(entry.question.tension * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <blockquote className="bg-card/50 border border-border/50 rounded-lg p-4 font-serif text-base leading-relaxed">
+                        <span className="text-primary opacity-50">"</span>
+                        {entry.question.pregunta}
+                        <span className="text-primary opacity-50">"</span>
+                      </blockquote>
+                      {entry.question.conexion && (
+                        <p className="text-xs text-muted-foreground italic pl-2">
+                          {entry.question.conexion}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="max-w-[85%] bg-primary/10 border border-primary/20 rounded-lg p-4">
+                      <p className="text-foreground text-sm">{entry.content}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
