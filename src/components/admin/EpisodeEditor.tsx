@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,6 +34,7 @@ import {
 import { Edit2, Trash2, Plus, ExternalLink, Play, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAxes, ThematicAxis } from '@/utils/dataService';
 
 interface PodcastEpisode {
   id: string;
@@ -57,6 +58,7 @@ interface EpisodeEditorProps {
 export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorProps) {
   const [editingEpisode, setEditingEpisode] = useState<PodcastEpisode | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [axes, setAxes] = useState<ThematicAxis[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -64,6 +66,10 @@ export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorPro
     eje: '',
     published: false,
   });
+
+  useEffect(() => {
+    fetchAxes().then(setAxes);
+  }, []);
 
   const handleEdit = (episode: PodcastEpisode) => {
     setEditingEpisode(episode);
@@ -227,12 +233,17 @@ export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorPro
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="eje">Eje temático</Label>
-                  <Input
+                  <select
                     id="eje"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={formData.eje}
                     onChange={(e) => setFormData({ ...formData, eje: e.target.value })}
-                    placeholder="miedo, control, legitimidad..."
-                  />
+                  >
+                    <option value="">Sin eje</option>
+                    {axes.map(axis => (
+                      <option key={axis.id} value={axis.id}>{axis.label}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
