@@ -5,12 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette } from 'lucide-react';
 import { NodeEditor } from '@/components/admin/NodeEditor';
 import { EdgeEditor } from '@/components/admin/EdgeEditor';
 import { QuestionEditor } from '@/components/admin/QuestionEditor';
 import { AudioGenerator } from '@/components/admin/AudioGenerator';
 import { EpisodeEditor } from '@/components/admin/EpisodeEditor';
+import { AxesEditor, ThematicAxis } from '@/components/admin/AxesEditor';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -70,6 +71,7 @@ const Admin = () => {
   const [edges, setEdges] = useState<TopologyEdge[]>([]);
   const [questions, setQuestions] = useState<SocraticQuestion[]>([]);
   const [episodes, setEpisodes] = useState<PodcastEpisode[]>([]);
+  const [axes, setAxes] = useState<ThematicAxis[]>([]);
   const navigate = useNavigate();
 
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -77,17 +79,19 @@ const Admin = () => {
   const fetchData = useCallback(async () => {
     setDataLoading(true);
     
-    const [nodesRes, edgesRes, questionsRes, episodesRes] = await Promise.all([
+    const [nodesRes, edgesRes, questionsRes, episodesRes, axesRes] = await Promise.all([
       supabase.from('topology_nodes').select('*').order('id'),
       supabase.from('topology_edges').select('*').order('id'),
       supabase.from('socratic_questions').select('*').order('id'),
-      supabase.from('podcast_episodes').select('*').order('created_at', { ascending: false })
+      supabase.from('podcast_episodes').select('*').order('created_at', { ascending: false }),
+      supabase.from('thematic_axes').select('*').order('order_index')
     ]);
 
     if (nodesRes.data) setNodes(nodesRes.data);
     if (edgesRes.data) setEdges(edgesRes.data);
     if (questionsRes.data) setQuestions(questionsRes.data);
     if (episodesRes.data) setEpisodes(episodesRes.data);
+    if (axesRes.data) setAxes(axesRes.data as ThematicAxis[]);
     
     setDataLoading(false);
   }, []);
@@ -329,8 +333,12 @@ const Admin = () => {
             </div>
           ) : (
             <>
-              <Tabs defaultValue="nodes" className="space-y-6">
+            <Tabs defaultValue="axes" className="space-y-6">
                 <TabsList className="bg-card border border-border flex-wrap h-auto">
+                  <TabsTrigger value="axes" className="font-mono text-sm gap-2">
+                    <Palette className="w-4 h-4" />
+                    Ejes ({axes.length})
+                  </TabsTrigger>
                   <TabsTrigger value="nodes" className="font-mono text-sm gap-2">
                     <Database className="w-4 h-4" />
                     Nodos ({nodes.length})
@@ -352,6 +360,20 @@ const Admin = () => {
                     Episodios ({episodes.length})
                   </TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="axes">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="bg-card rounded-xl border border-border p-6"
+                  >
+                    <h2 className="font-serif text-xl mb-4">Ejes Temáticos</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Configura los ejes temáticos del sistema. Los ejes definen las categorías de nodos y preguntas.
+                    </p>
+                    <AxesEditor axes={axes} onRefresh={fetchData} isAdmin={isAdmin} />
+                  </motion.div>
+                </TabsContent>
 
                 <TabsContent value="nodes">
                   <motion.div
@@ -424,8 +446,12 @@ const Admin = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="mt-8 grid md:grid-cols-4 gap-4"
+                className="mt-8 grid md:grid-cols-5 gap-4"
               >
+                <div className="p-4 rounded-lg bg-card border border-border">
+                  <span className="text-3xl font-mono text-lagrange-tension">{axes.length}</span>
+                  <p className="text-sm text-muted-foreground">Ejes temáticos</p>
+                </div>
                 <div className="p-4 rounded-lg bg-card border border-border">
                   <span className="text-3xl font-mono text-primary">{nodes.length}</span>
                   <p className="text-sm text-muted-foreground">Nodos activos</p>

@@ -1,7 +1,7 @@
 // Motor Lógico - El Espejo Crítico
 // Algoritmo que calcula pesos de tensión y genera la matriz narrativa
 
-import { LagrangeNode, LagrangeEdge, fetchNodes, fetchEdges } from './dataService';
+import { LagrangeNode, LagrangeEdge, fetchNodes, fetchEdges, fetchAxes, getSuggestedQuestionIds } from './dataService';
 
 export interface TensionState {
   nodeId: string;
@@ -60,39 +60,32 @@ export function calculateTensionState(
 export async function analyzeNarrativeContext(): Promise<NarrativeContext> {
   const nodes = await fetchNodes();
   const edges = await fetchEdges();
+  const axes = await fetchAxes();
   
   let maxInteractions = 0;
-  let dominantEje = 'miedo';
+  let dominantEje = axes[0]?.id || 'miedo';
   
   nodes.forEach(node => {
     const count = getInteractionCount(node.id);
     if (count > maxInteractions) {
       maxInteractions = count;
-      dominantEje = node.id;
+      dominantEje = node.axis || dominantEje;
     }
   });
 
-  const dominantNode = nodes.find(n => n.id === dominantEje);
+  const dominantNode = nodes.find(n => n.axis === dominantEje);
   const tensionState = dominantNode 
     ? calculateTensionState(dominantNode, edges)
     : { vibrationIntensity: 0.5 };
 
+  // Obtener preguntas sugeridas desde el eje (dinámico)
+  const suggestedQuestions = await getSuggestedQuestionIds(dominantEje);
+
   return {
     dominantEje,
     tensionLevel: tensionState.vibrationIntensity,
-    suggestedQuestions: getSuggestedQuestionIds(dominantEje)
+    suggestedQuestions
   };
-}
-
-function getSuggestedQuestionIds(eje: string): string[] {
-  const questionMap: Record<string, string[]> = {
-    miedo: ['Q01', 'Q02', 'Q15'],
-    control: ['Q03', 'Q04', 'Q05'],
-    salud_mental: ['Q06', 'Q07', 'Q08'],
-    legitimidad: ['Q09', 'Q10', 'Q11'],
-    responsabilidad: ['Q12', 'Q13', 'Q14']
-  };
-  return questionMap[eje] || questionMap.miedo;
 }
 
 // Genera la matriz completa de tensiones para visualización
