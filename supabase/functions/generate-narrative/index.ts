@@ -6,6 +6,93 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation
+const VALID_SOURCE_TYPES = ['dialogue', 'prompt'];
+const VALID_LENGTHS = ['short', 'medium', 'long'];
+const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_ID_LENGTH = 100;
+
+function validateInput(body: unknown): {
+  sourceType: string;
+  dialogueId?: string;
+  promptId?: string;
+  eje?: string;
+  length?: string;
+} {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Request body must be an object');
+  }
+
+  const input = body as Record<string, unknown>;
+
+  // Validate sourceType (required)
+  if (!input.sourceType || typeof input.sourceType !== 'string') {
+    throw new Error('sourceType is required and must be a string');
+  }
+  if (!VALID_SOURCE_TYPES.includes(input.sourceType)) {
+    throw new Error(`sourceType must be one of: ${VALID_SOURCE_TYPES.join(', ')}`);
+  }
+
+  const result: ReturnType<typeof validateInput> = {
+    sourceType: input.sourceType
+  };
+
+  // Validate dialogueId
+  if (input.dialogueId !== undefined) {
+    if (typeof input.dialogueId !== 'string') {
+      throw new Error('dialogueId must be a string');
+    }
+    if (!UUID_REGEX.test(input.dialogueId)) {
+      throw new Error('dialogueId must be a valid UUID');
+    }
+    result.dialogueId = input.dialogueId;
+  }
+
+  // Validate promptId
+  if (input.promptId !== undefined) {
+    if (typeof input.promptId !== 'string') {
+      throw new Error('promptId must be a string');
+    }
+    if (input.promptId.length > MAX_ID_LENGTH) {
+      throw new Error(`promptId must be less than ${MAX_ID_LENGTH} characters`);
+    }
+    result.promptId = input.promptId.trim();
+  }
+
+  // Validate eje
+  if (input.eje !== undefined) {
+    if (typeof input.eje !== 'string') {
+      throw new Error('eje must be a string');
+    }
+    if (!VALID_EJES.includes(input.eje)) {
+      throw new Error(`eje must be one of: ${VALID_EJES.join(', ')}`);
+    }
+    result.eje = input.eje;
+  }
+
+  // Validate length
+  if (input.length !== undefined) {
+    if (typeof input.length !== 'string') {
+      throw new Error('length must be a string');
+    }
+    if (!VALID_LENGTHS.includes(input.length)) {
+      throw new Error(`length must be one of: ${VALID_LENGTHS.join(', ')}`);
+    }
+    result.length = input.length;
+  }
+
+  // Ensure required IDs are present based on sourceType
+  if (result.sourceType === 'dialogue' && !result.dialogueId) {
+    throw new Error('dialogueId is required when sourceType is "dialogue"');
+  }
+  if (result.sourceType === 'prompt' && !result.promptId) {
+    throw new Error('promptId is required when sourceType is "prompt"');
+  }
+
+  return result;
+}
+
 const SYSTEM_PROMPT = `Eres un ensayista crítico del Sistema Lagrange. Tu misión es generar textos narrativos que exploren las tensiones entre poder, miedo, control y legitimidad.
 
 ## Estilo
@@ -34,7 +121,29 @@ serve(async (req) => {
   }
 
   try {
-    const { sourceType, dialogueId, promptId, eje, length } = await req.json();
+    // Parse and validate input
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    let validatedInput;
+    try {
+      validatedInput = validateInput(body);
+    } catch (validationError) {
+      return new Response(
+        JSON.stringify({ error: (validationError as Error).message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { sourceType, dialogueId, promptId, eje, length } = validatedInput;
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
