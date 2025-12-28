@@ -32,10 +32,19 @@ interface DialogueEntry {
   timestamp: Date;
 }
 
+interface SocraticDialogueProps {
+  initialContent?: {
+    question: string;
+    generatedText: string;
+    eje: string;
+  } | null;
+  onContentUsed?: () => void;
+}
+
 const MAX_FREE_EXCHANGES = 3; // Usuarios no autenticados: máximo 3 intercambios
 const MAX_TEXT_LENGTH_FREE = 150; // Truncar respuestas para usuarios no autenticados
 
-export function SocraticDialogue() {
+export function SocraticDialogue({ initialContent, onContentUsed }: SocraticDialogueProps) {
   const [dialogue, setDialogue] = useState<DialogueEntry[]>([]);
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +68,28 @@ export function SocraticDialogue() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [dialogue]);
+
+  // Handle transferred content from Pregunta tab
+  useEffect(() => {
+    if (initialContent && !isStarted) {
+      setDialogue([
+        {
+          type: 'oracle',
+          content: initialContent.question,
+          question: {
+            pregunta: initialContent.question,
+            eje: initialContent.eje,
+            nivel: 1,
+            tension: 0.5,
+            conexion: 'Contenido transferido desde Pregunta'
+          },
+          timestamp: new Date()
+        }
+      ]);
+      setIsStarted(true);
+      onContentUsed?.();
+    }
+  }, [initialContent, isStarted, onContentUsed]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
