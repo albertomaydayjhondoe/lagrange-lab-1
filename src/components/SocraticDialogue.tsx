@@ -32,6 +32,9 @@ interface DialogueEntry {
   timestamp: Date;
 }
 
+const MAX_FREE_EXCHANGES = 3; // Usuarios no autenticados: máximo 3 intercambios
+const MAX_TEXT_LENGTH_FREE = 150; // Truncar respuestas para usuarios no autenticados
+
 export function SocraticDialogue() {
   const [dialogue, setDialogue] = useState<DialogueEntry[]>([]);
   const [userInput, setUserInput] = useState('');
@@ -42,6 +45,14 @@ export function SocraticDialogue() {
   const [saveTitle, setSaveTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const exchangeCount = Math.floor(dialogue.length / 2);
+  const hasReachedLimit = !isAuthenticated && exchangeCount >= MAX_FREE_EXCHANGES;
+  
+  const truncateText = (text: string): string => {
+    if (isAuthenticated || text.length <= MAX_TEXT_LENGTH_FREE) return text;
+    return text.substring(0, MAX_TEXT_LENGTH_FREE) + '...';
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -305,10 +316,10 @@ export function SocraticDialogue() {
                   </div>
                   <blockquote className="bg-card/50 border border-border/50 rounded-lg p-4 font-serif text-lg leading-relaxed">
                     <span className="text-primary opacity-50">"</span>
-                    {entry.question.pregunta}
+                    {truncateText(entry.question.pregunta)}
                     <span className="text-primary opacity-50">"</span>
                   </blockquote>
-                  {entry.question.conexion && (
+                  {isAuthenticated && entry.question.conexion && (
                     <p className="text-xs text-muted-foreground italic pl-2">
                       {entry.question.conexion}
                     </p>
@@ -341,26 +352,47 @@ export function SocraticDialogue() {
 
       {/* Input Area */}
       <div className="border-t border-border/50 p-4">
-        <div className="flex gap-2">
-          <Textarea
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Escribe tu respuesta o reflexión..."
-            className="flex-1 min-h-[60px] max-h-[120px] resize-none bg-background/50"
-            disabled={isLoading}
-          />
-          <Button
-            onClick={sendResponse}
-            disabled={!userInput.trim() || isLoading}
-            className="self-end"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Presiona Enter para enviar, Shift+Enter para nueva línea
-        </p>
+        {hasReachedLimit ? (
+          <div className="text-center py-4 space-y-3">
+            <p className="text-muted-foreground font-serif">
+              Has alcanzado el límite de {MAX_FREE_EXCHANGES} intercambios gratuitos.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Inicia sesión para continuar el diálogo sin límites y guardar tus conversaciones.
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.href = '/auth'}
+              className="gap-2"
+            >
+              Iniciar Sesión
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="flex gap-2">
+              <Textarea
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Escribe tu respuesta o reflexión..."
+                className="flex-1 min-h-[60px] max-h-[120px] resize-none bg-background/50"
+                disabled={isLoading}
+              />
+              <Button
+                onClick={sendResponse}
+                disabled={!userInput.trim() || isLoading}
+                className="self-end"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Presiona Enter para enviar, Shift+Enter para nueva línea
+              {!isAuthenticated && ` • ${MAX_FREE_EXCHANGES - exchangeCount} intercambios restantes`}
+            </p>
+          </>
+        )}
       </div>
 
       {/* Save Dialog */}
