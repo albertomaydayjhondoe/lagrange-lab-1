@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Plus, Trash2, Save, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, Save, Edit2, X, Sparkles, Loader2, Brain, Lightbulb } from 'lucide-react';
 import { fetchAxes, ThematicAxis } from '@/utils/dataService';
+import { aiAnalyzeNode, aiSuggestNode, aiDescribeNode } from '@/utils/aiStructuralService';
 
 interface TopologyNode {
   id: string;
@@ -33,6 +34,8 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
   const [editData, setEditData] = useState<Partial<TopologyNode>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [axes, setAxes] = useState<ThematicAxis[]>([]);
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<any>(null);
   const [newNode, setNewNode] = useState<Partial<TopologyNode>>({
     id: '',
     label: '',
@@ -143,10 +146,78 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
     }
   };
 
+  const handleAiAnalyze = async (nodeId: string) => {
+    setAiLoading(nodeId);
+    setAiResult(null);
+    try {
+      const result = await aiAnalyzeNode(nodeId);
+      setAiResult({ type: 'analyze', nodeId, data: result });
+      toast.success('Análisis completado');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error en análisis IA');
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
+  const handleAiDescribe = async (nodeId: string) => {
+    setAiLoading(nodeId);
+    try {
+      const result = await aiDescribeNode(nodeId);
+      // Apply description to edit data
+      const node = nodes.find(n => n.id === nodeId);
+      if (node) {
+        setEditingId(nodeId);
+        setEditData({ ...node, description: result.description_short });
+      }
+      toast.success('Descripción generada');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error generando descripción');
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
+  const handleAiSuggest = async () => {
+    setAiLoading('suggest');
+    try {
+      const result = await aiSuggestNode();
+      const selectedAxis = axes.find(a => a.id === result.axis);
+      setNewNode({
+        id: result.id,
+        label: result.label,
+        description: result.description,
+        x: 400,
+        y: 300,
+        weight: 0.7,
+        color: selectedAxis?.color || '#3b82f6',
+        axis: result.axis,
+        type: result.type,
+        corpus_refs: [],
+        question_count: 0
+      });
+      setIsCreating(true);
+      toast.success('Nodo sugerido por IA');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error en sugerencia IA');
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {isAdmin && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2 flex-wrap">
+          <Button
+            onClick={handleAiSuggest}
+            variant="outline"
+            className="gap-2"
+            disabled={aiLoading === 'suggest'}
+          >
+            {aiLoading === 'suggest' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
+            IA Sugerir Nodo
+          </Button>
           <Button
             onClick={() => setIsCreating(!isCreating)}
             variant={isCreating ? "outline" : "default"}
@@ -156,6 +227,41 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
             {isCreating ? 'Cancelar' : 'Nuevo Nodo'}
           </Button>
         </div>
+      )}
+
+      {aiResult && aiResult.type === 'analyze' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-primary/10 border border-primary/30 rounded-lg p-4 space-y-3"
+        >
+          <div className="flex justify-between items-start">
+            <h4 className="font-semibold text-primary flex items-center gap-2">
+              <Brain className="w-4 h-4" />
+              Análisis IA: {aiResult.nodeId}
+            </h4>
+            <Button size="sm" variant="ghost" onClick={() => setAiResult(null)}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <p className="text-sm">{aiResult.data.analisis}</p>
+          {aiResult.data.tensiones?.length > 0 && (
+            <div>
+              <span className="text-xs font-semibold text-muted-foreground">Tensiones detectadas:</span>
+              <ul className="text-sm list-disc list-inside">
+                {aiResult.data.tensiones.map((t: string, i: number) => <li key={i}>{t}</li>)}
+              </ul>
+            </div>
+          )}
+          {aiResult.data.preguntas?.length > 0 && (
+            <div>
+              <span className="text-xs font-semibold text-muted-foreground">Preguntas sugeridas:</span>
+              <ul className="text-sm list-disc list-inside italic">
+                {aiResult.data.preguntas.map((p: string, i: number) => <li key={i}>{p}</li>)}
+              </ul>
+            </div>
+          )}
+        </motion.div>
       )}
 
       {isCreating && (
@@ -337,6 +443,24 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
                 </div>
                 {isAdmin && (
                   <div className="flex gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleAiAnalyze(node.id)}
+                      disabled={aiLoading === node.id}
+                      title="Analizar con IA"
+                    >
+                      {aiLoading === node.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-primary" />}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleAiDescribe(node.id)}
+                      disabled={aiLoading === node.id}
+                      title="Generar descripción IA"
+                    >
+                      <Brain className="w-4 h-4 text-muted-foreground" />
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"
