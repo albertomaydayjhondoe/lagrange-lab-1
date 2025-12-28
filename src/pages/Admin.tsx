@@ -1,14 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload } from 'lucide-react';
 import { NodeEditor } from '@/components/admin/NodeEditor';
 import { EdgeEditor } from '@/components/admin/EdgeEditor';
 import { QuestionEditor } from '@/components/admin/QuestionEditor';
+import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 
 const ADMIN_EMAIL = 'sampayo@gmail.com';
@@ -102,6 +103,92 @@ const Admin = () => {
     navigate('/auth');
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      topology_nodes: nodes.map(({ id, label, description, x, y, weight, color, axis, type, corpus_refs, question_count }) => ({
+        id, label, description, x, y, weight, color, axis, type, corpus_refs, question_count
+      })),
+      topology_edges: edges.map(({ id, source, target, tension, label, type }) => ({
+        id, source, target, tension, label, type
+      })),
+      socratic_questions: questions.map(({ id, eje, nivel, tension, texto, corpus_ref }) => ({
+        id, eje, nivel, tension, texto, corpus_ref
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lagrange-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Datos exportados correctamente');
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      if (!data.topology_nodes || !data.topology_edges || !data.socratic_questions) {
+        throw new Error('Formato de archivo inválido');
+      }
+
+      const confirmImport = window.confirm(
+        `¿Importar ${data.topology_nodes.length} nodos, ${data.topology_edges.length} tensiones y ${data.socratic_questions.length} preguntas?\n\nEsto reemplazará los datos existentes.`
+      );
+
+      if (!confirmImport) {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
+      // Delete existing data
+      await Promise.all([
+        supabase.from('socratic_questions').delete().neq('id', ''),
+        supabase.from('topology_edges').delete().neq('id', ''),
+      ]);
+      await supabase.from('topology_nodes').delete().neq('id', '');
+
+      // Insert new data
+      const { error: nodesError } = await supabase
+        .from('topology_nodes')
+        .insert(data.topology_nodes);
+      
+      if (nodesError) throw nodesError;
+
+      const { error: edgesError } = await supabase
+        .from('topology_edges')
+        .insert(data.topology_edges);
+      
+      if (edgesError) throw edgesError;
+
+      const { error: questionsError } = await supabase
+        .from('socratic_questions')
+        .insert(data.socratic_questions);
+      
+      if (questionsError) throw questionsError;
+
+      toast.success('Datos importados correctamente');
+      fetchData();
+    } catch (error) {
+      console.error('Import error:', error);
+      toast.error('Error al importar: ' + (error as Error).message);
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -167,7 +254,7 @@ const Admin = () => {
                   {!isAdmin && ' (solo lectura)'}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   variant="outline"
                   onClick={fetchData}
@@ -177,6 +264,35 @@ const Admin = () => {
                   <RefreshCw className={`w-4 h-4 ${dataLoading ? 'animate-spin' : ''}`} />
                   Refrescar
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleExport}
+                  disabled={dataLoading}
+                  className="font-mono text-sm gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Exportar JSON
+                </Button>
+                {isAdmin && (
+                  <>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImport}
+                      accept=".json"
+                      className="hidden"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={dataLoading}
+                      className="font-mono text-sm gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Importar JSON
+                    </Button>
+                  </>
+                )}
                 <Button
                   variant="outline"
                   onClick={handleLogout}
