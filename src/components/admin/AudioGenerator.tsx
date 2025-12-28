@@ -50,14 +50,20 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
   };
 
   const generateSingleAudio = async (text: string): Promise<{ base64: string; blob: Blob }> => {
+    // Get current session for admin auth
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      throw new Error('Debes iniciar sesión como admin');
+    }
+
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ text, voiceId: selectedVoice }),
       }
