@@ -38,25 +38,55 @@ serve(async (req) => {
   }
 
   try {
-    const { context, eje, nivel } = await req.json();
+    const { context, eje, nivel, conversationHistory } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    let userPrompt = "Genera una pregunta socrática profunda";
-    
-    if (context) {
-      userPrompt += ` basada en este contexto del usuario: "${context}"`;
-    }
-    
-    if (eje) {
-      userPrompt += `. Enfócate en el eje de tensión: ${eje}`;
-    }
-    
-    if (nivel) {
-      userPrompt += `. Nivel de profundidad: ${nivel} (1=introductorio, 2=intermedio, 3=profundo)`;
+    // Build messages array
+    const messages: { role: string; content: string }[] = [
+      { role: "system", content: LAGRANGE_SYSTEM_PROMPT }
+    ];
+
+    // If we have conversation history, add it
+    if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      for (const msg of conversationHistory) {
+        if (msg.role === 'oracle') {
+          messages.push({ 
+            role: "assistant", 
+            content: `{"pregunta": "${msg.content}", "eje": "Reflexión", "nivel": 2, "tension": 0.7, "conexion": "Continuación del diálogo"}` 
+          });
+        } else {
+          messages.push({ 
+            role: "user", 
+            content: `El usuario responde: "${msg.content}". Genera una nueva pregunta socrática que profundice en su respuesta, desafíe sus asunciones y exponga posibles contradicciones.` 
+          });
+        }
+      }
+      // Final instruction for continuing the dialogue
+      messages.push({
+        role: "user",
+        content: "Basándote en el intercambio anterior, genera la siguiente pregunta socrática que continúe el diálogo de manera natural, aumentando gradualmente la tensión y profundidad."
+      });
+    } else {
+      // Original single question logic
+      let userPrompt = "Genera una pregunta socrática profunda para iniciar un diálogo";
+      
+      if (context) {
+        userPrompt += ` basada en este contexto del usuario: "${context}"`;
+      }
+      
+      if (eje) {
+        userPrompt += `. Enfócate en el eje de tensión: ${eje}`;
+      }
+      
+      if (nivel) {
+        userPrompt += `. Nivel de profundidad: ${nivel} (1=introductorio, 2=intermedio, 3=profundo)`;
+      }
+      
+      messages.push({ role: "user", content: userPrompt });
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -67,11 +97,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: LAGRANGE_SYSTEM_PROMPT },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.8,
+        messages,
+        temperature: 0.85,
       }),
     });
 

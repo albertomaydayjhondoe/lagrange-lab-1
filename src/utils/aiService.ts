@@ -19,6 +19,12 @@ export interface OracleRequest {
   context?: string;
   eje?: string;
   nivel?: number;
+  conversationHistory?: DialogueMessage[];
+}
+
+export interface DialogueMessage {
+  role: 'oracle' | 'user';
+  content: string;
 }
 
 /**
@@ -53,6 +59,17 @@ export const generateContextualQuestion = async (
   return generateSocraticQuestion({
     context: userContext,
     eje: preferredAxis
+  });
+};
+
+/**
+ * Continúa un diálogo socrático basado en el historial de conversación
+ */
+export const continueDialogue = async (
+  conversationHistory: DialogueMessage[]
+): Promise<AIQuestion> => {
+  return generateSocraticQuestion({
+    conversationHistory
   });
 };
 
