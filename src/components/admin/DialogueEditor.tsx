@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Download, FileText, Volume2, Trash2, Loader2, Play, RefreshCw, Search } from 'lucide-react';
+import { Download, FileText, Volume2, Trash2, Loader2, RefreshCw, Search, Sparkles } from 'lucide-react';
 
 interface DialogueEntry {
   type: 'oracle' | 'user';
@@ -60,6 +60,7 @@ export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
   const [filterEje, setFilterEje] = useState<string>('all');
   const [generatingAudio, setGeneratingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState('');
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   useEffect(() => {
     fetchDialogues();
@@ -116,6 +117,39 @@ export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
     } catch (error) {
       console.error('Error deleting dialogue:', error);
       toast.error('Error al eliminar diálogo');
+    }
+  };
+
+  const generateSummary = async (dialogue: SavedDialogue) => {
+    if (dialogue.summary) {
+      if (!confirm('Este diálogo ya tiene un resumen. ¿Regenerar?')) return;
+    }
+
+    setGeneratingSummary(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No autenticado');
+      }
+
+      const { data, error } = await supabase.functions.invoke('ai-dialogue-summary', {
+        body: { dialogueId: dialogue.id }
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      // Update local state
+      const updatedDialogue = { ...dialogue, summary: data.summary };
+      setDialogues(prev => prev.map(d => d.id === dialogue.id ? updatedDialogue : d));
+      setSelectedDialogue(updatedDialogue);
+
+      toast.success('Resumen generado con IA');
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      toast.error('Error al generar resumen: ' + (error as Error).message);
+    } finally {
+      setGeneratingSummary(false);
     }
   };
 
@@ -435,10 +469,46 @@ export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
                   ))}
                 </ScrollArea>
 
-                {selectedDialogue.summary && (
+                {selectedDialogue.summary ? (
                   <div className="p-4 rounded-lg bg-muted/50 border">
-                    <h4 className="font-medium text-sm mb-2">Resumen</h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-sm">Resumen (IA)</h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => generateSummary(selectedDialogue)}
+                        disabled={generatingSummary}
+                        className="gap-1 text-xs h-7"
+                      >
+                        {generatingSummary ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-3 h-3" />
+                        )}
+                        Regenerar
+                      </Button>
+                    </div>
                     <p className="text-sm text-muted-foreground">{selectedDialogue.summary}</p>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-lg bg-muted/50 border">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">Sin resumen</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => generateSummary(selectedDialogue)}
+                        disabled={generatingSummary}
+                        className="gap-2"
+                      >
+                        {generatingSummary ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-4 h-4" />
+                        )}
+                        Generar resumen IA
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
