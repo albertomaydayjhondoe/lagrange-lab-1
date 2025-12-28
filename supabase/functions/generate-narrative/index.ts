@@ -7,16 +7,18 @@ const corsHeaders = {
 };
 
 // Input validation
-const VALID_SOURCE_TYPES = ['dialogue', 'prompt'];
+const VALID_SOURCE_TYPES = ['dialogue', 'prompt', 'custom'];
 const VALID_LENGTHS = ['short', 'medium', 'long'];
 const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_ID_LENGTH = 100;
+const MAX_CUSTOM_TEXT_LENGTH = 5000;
 
 function validateInput(body: unknown): {
   sourceType: string;
   dialogueId?: string;
   promptId?: string;
+  customText?: string;
   eje?: string;
   length?: string;
 } {
@@ -82,12 +84,26 @@ function validateInput(body: unknown): {
     result.length = input.length;
   }
 
+  // Validate customText
+  if (input.customText !== undefined) {
+    if (typeof input.customText !== 'string') {
+      throw new Error('customText must be a string');
+    }
+    if (input.customText.length > MAX_CUSTOM_TEXT_LENGTH) {
+      throw new Error(`customText must be less than ${MAX_CUSTOM_TEXT_LENGTH} characters`);
+    }
+    result.customText = input.customText.trim();
+  }
+
   // Ensure required IDs are present based on sourceType
   if (result.sourceType === 'dialogue' && !result.dialogueId) {
     throw new Error('dialogueId is required when sourceType is "dialogue"');
   }
   if (result.sourceType === 'prompt' && !result.promptId) {
     throw new Error('promptId is required when sourceType is "prompt"');
+  }
+  if (result.sourceType === 'custom' && !result.customText) {
+    throw new Error('customText is required when sourceType is "custom"');
   }
 
   return result;
@@ -142,7 +158,7 @@ serve(async (req) => {
       );
     }
 
-    const { sourceType, dialogueId, promptId, eje, length } = validatedInput;
+    const { sourceType, dialogueId, promptId, customText, eje, length } = validatedInput;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -204,8 +220,12 @@ serve(async (req) => {
       sourceContent = question.texto;
       sourceContext = `Pregunta socrática del eje "${question.eje}" (Nivel: ${question.nivel}, Tensión: ${question.tension})`;
 
+    } else if (sourceType === 'custom' && customText) {
+      sourceContent = customText;
+      sourceContext = `Reflexión personalizada${eje ? ` sobre ${eje}` : ''}`;
+
     } else {
-      throw new Error('Debes seleccionar una fuente válida (diálogo o pregunta)');
+      throw new Error('Debes seleccionar una fuente válida (diálogo, pregunta o texto personalizado)');
     }
 
     const wordCount = length === 'short' ? 150 : length === 'long' ? 500 : 300;

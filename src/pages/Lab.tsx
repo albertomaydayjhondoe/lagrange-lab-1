@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { FogOverlay } from '@/components/FogOverlay';
-import { LabPromptEditor } from '@/components/LabPromptEditor';
 import { SocraticDialogue } from '@/components/SocraticDialogue';
 import { NarrativeGenerator } from '@/components/NarrativeGenerator';
+import { QuestionPromptEditor } from '@/components/QuestionPromptEditor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, PenTool } from 'lucide-react';
+import { MessageSquare, PenTool, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const ADMIN_EMAIL = 'sampayo@gmail.com';
 
@@ -16,6 +17,11 @@ const Lab = () => {
   const [activeTab, setActiveTab] = useState('dialogue');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [transferredContent, setTransferredContent] = useState<{
+    question: string;
+    generatedText: string;
+    eje: string;
+  } | null>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -31,6 +37,12 @@ const Lab = () => {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  const handleTransferToDialogue = useCallback((content: { question: string; generatedText: string; eje: string }) => {
+    setTransferredContent(content);
+    setActiveTab('dialogue');
+    toast.success('Contenido trasladado a Diálogo');
   }, []);
 
   return (
@@ -59,10 +71,20 @@ const Lab = () => {
           </motion.div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="dialogue" className="gap-2">
                 <MessageSquare className="w-4 h-4" />
-                Diálogo
+                <span className="hidden sm:inline">Diálogo</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="question" 
+                className="gap-2"
+                disabled={!isAuthenticated}
+                title={!isAuthenticated ? "Inicia sesión para formular preguntas" : ""}
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">Pregunta</span>
+                {!isAuthenticated && <span className="text-xs">(login)</span>}
               </TabsTrigger>
               <TabsTrigger 
                 value="generator" 
@@ -71,8 +93,8 @@ const Lab = () => {
                 title={!isAuthenticated ? "Inicia sesión para acceder al generador" : ""}
               >
                 <PenTool className="w-4 h-4" />
-                Generador
-                {!isAuthenticated && <span className="text-xs ml-1">(login)</span>}
+                <span className="hidden sm:inline">Generador</span>
+                {!isAuthenticated && <span className="text-xs">(login)</span>}
               </TabsTrigger>
             </TabsList>
 
@@ -81,8 +103,39 @@ const Lab = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <SocraticDialogue />
+                <SocraticDialogue 
+                  initialContent={transferredContent}
+                  onContentUsed={() => setTransferredContent(null)}
+                />
               </motion.div>
+            </TabsContent>
+
+            <TabsContent value="question">
+              {isAuthenticated ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <QuestionPromptEditor 
+                    isAuthenticated={isAuthenticated}
+                    onTransferToDialogue={handleTransferToDialogue}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center py-12"
+                >
+                  <HelpCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-serif text-xl text-foreground mb-2">
+                    Formular Pregunta
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Inicia sesión para formular tus propias preguntas
+                  </p>
+                </motion.div>
+              )}
             </TabsContent>
 
             <TabsContent value="generator">
