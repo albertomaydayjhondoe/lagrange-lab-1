@@ -15,7 +15,7 @@ interface NarrativeGeneratorProps {
 
 export function NarrativeGenerator({ isAuthenticated }: NarrativeGeneratorProps) {
   const [prompt, setPrompt] = useState('');
-  const [selectedEje, setSelectedEje] = useState<string>('');
+  const [selectedEje, setSelectedEje] = useState<string>('any');
   const [length, setLength] = useState<'short' | 'medium' | 'long'>('medium');
   const [generating, setGenerating] = useState(false);
   const [narrative, setNarrative] = useState('');
@@ -42,7 +42,7 @@ export function NarrativeGenerator({ isAuthenticated }: NarrativeGeneratorProps)
       setNarrative('');
 
       const { data, error } = await supabase.functions.invoke('generate-narrative', {
-        body: { prompt, eje: selectedEje, length }
+        body: { prompt, eje: selectedEje === 'any' ? undefined : selectedEje, length }
       });
 
       if (error) throw error;
@@ -114,7 +114,7 @@ export function NarrativeGenerator({ isAuthenticated }: NarrativeGeneratorProps)
                 <SelectValue placeholder="Cualquiera" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Cualquiera</SelectItem>
+                <SelectItem value="any">Cualquiera</SelectItem>
                 {axes.map(axis => (
                   <SelectItem key={axis.id} value={axis.id}>
                     {axis.label}
