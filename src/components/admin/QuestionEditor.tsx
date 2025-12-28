@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+
 import { toast } from 'sonner';
 import { Plus, Trash2, Save, Edit2, X } from 'lucide-react';
 import { fetchAxes, ThematicAxis } from '@/utils/dataService';
@@ -214,12 +214,15 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
               onChange={(e) => setNewQuestion({ ...newQuestion, corpus_ref: e.target.value })}
             />
           </div>
-          <Textarea
-            placeholder="Texto de la pregunta socrática..."
+          <Input
+            placeholder="Texto de la pregunta socrática (máx. 150 caracteres)..."
             value={newQuestion.texto}
-            onChange={(e) => setNewQuestion({ ...newQuestion, texto: e.target.value })}
-            rows={2}
+            onChange={(e) => setNewQuestion({ ...newQuestion, texto: e.target.value.slice(0, 150) })}
+            maxLength={150}
           />
+          <p className="text-xs text-muted-foreground text-right">
+            {(newQuestion.texto?.length || 0)}/150
+          </p>
           <Button onClick={createQuestion} className="gap-2">
             <Save className="w-4 h-4" />
             Crear
@@ -269,12 +272,17 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
                     placeholder="Corpus ref"
                   />
                 </div>
-                <Textarea
-                  value={editData.texto || ''}
-                  onChange={(e) => setEditData({ ...editData, texto: e.target.value })}
-                  placeholder="Texto"
-                  rows={2}
-                />
+                <div className="space-y-1">
+                  <Input
+                    value={editData.texto || ''}
+                    onChange={(e) => setEditData({ ...editData, texto: e.target.value.slice(0, 150) })}
+                    placeholder="Texto de la pregunta (máx. 150 caracteres)"
+                    maxLength={150}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {(editData.texto?.length || 0)}/150
+                  </p>
+                </div>
                 <div className="flex gap-2">
                   <Button onClick={saveEdit} size="sm" className="gap-1">
                     <Save className="w-3 h-3" />
