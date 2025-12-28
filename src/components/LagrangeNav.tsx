@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { User, LogIn } from 'lucide-react';
+import { User, LogIn, Menu, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const ADMIN_EMAIL = 'sampayo@gmail.com';
 
@@ -17,8 +19,10 @@ const navItems = [
 export function LagrangeNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -38,70 +42,113 @@ export function LagrangeNav() {
     ? [...navItems, { path: '/admin', label: 'Poder', description: 'El control' }]
     : navItems;
 
+  const handleNavClick = (path: string) => {
+    navigate(path);
+    setMobileMenuOpen(false);
+  };
+
+  const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
+    <>
+      {allNavItems.map((item) => (
+        <Link
+          key={item.path}
+          to={item.path}
+          onClick={() => mobile && setMobileMenuOpen(false)}
+          className={cn(
+            "relative rounded-lg font-serif transition-all duration-300",
+            mobile 
+              ? "block px-4 py-3 text-lg hover:bg-secondary/50"
+              : "px-4 py-2 text-sm hover:bg-secondary/50",
+            location.pathname === item.path
+              ? "text-primary bg-secondary/30"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <span className="relative z-10">{item.label}</span>
+          {!mobile && location.pathname === item.path && (
+            <div className="absolute inset-0 rounded-lg border border-primary/30 animate-glow-pulse" />
+          )}
+        </Link>
+      ))}
+    </>
+  );
+
+  const AuthButton = ({ mobile = false }: { mobile?: boolean }) => (
+    isAuthenticated ? (
+      <Button
+        variant="ghost"
+        size={mobile ? "default" : "sm"}
+        onClick={() => handleNavClick('/profile')}
+        className={cn(
+          "gap-2",
+          mobile && "w-full justify-start text-lg",
+          location.pathname === '/profile' 
+            ? "text-primary bg-secondary/30" 
+            : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        <User className="w-4 h-4" />
+        Perfil
+      </Button>
+    ) : (
+      <Button
+        variant="ghost"
+        size={mobile ? "default" : "sm"}
+        onClick={() => handleNavClick('/auth')}
+        className={cn(
+          "gap-2 text-muted-foreground hover:text-foreground",
+          mobile && "w-full justify-start text-lg"
+        )}
+      >
+        <LogIn className="w-4 h-4" />
+        Entrar
+      </Button>
+    )
+  );
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="container mx-auto px-6">
+      <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-16">
           <Link 
             to="/" 
-            className="flex items-center gap-3 group"
+            className="flex items-center gap-2 md:gap-3 group"
           >
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
               <span className="text-primary font-serif text-lg">λ</span>
             </div>
-            <span className="font-serif text-xl tracking-wide text-foreground">
+            <span className="font-serif text-lg md:text-xl tracking-wide text-foreground">
               Lagrange
             </span>
           </Link>
 
-          <div className="flex items-center gap-1">
-            {allNavItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "relative px-4 py-2 rounded-lg font-serif text-sm transition-all duration-300",
-                  "hover:bg-secondary/50",
-                  location.pathname === item.path
-                    ? "text-primary bg-secondary/30"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <span className="relative z-10">{item.label}</span>
-                {location.pathname === item.path && (
-                  <div className="absolute inset-0 rounded-lg border border-primary/30 animate-glow-pulse" />
-                )}
-              </Link>
-            ))}
+          {/* Desktop Navigation */}
+          {!isMobile && (
+            <div className="flex items-center gap-1">
+              <NavLinks />
+              <div className="ml-2">
+                <AuthButton />
+              </div>
+            </div>
+          )}
 
-            {/* Auth button */}
-            {isAuthenticated ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/profile')}
-                className={cn(
-                  "ml-2 gap-2",
-                  location.pathname === '/profile' 
-                    ? "text-primary bg-secondary/30" 
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <User className="w-4 h-4" />
-                Perfil
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/auth')}
-                className="ml-2 gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <LogIn className="w-4 h-4" />
-                Entrar
-              </Button>
-            )}
-          </div>
+          {/* Mobile Navigation */}
+          {isMobile && (
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px] pt-12">
+                <div className="flex flex-col gap-2">
+                  <NavLinks mobile />
+                  <div className="border-t border-border my-4" />
+                  <AuthButton mobile />
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
     </nav>
