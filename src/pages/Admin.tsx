@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { LagrangeNav } from '@/components/LagrangeNav';
+import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users } from 'lucide-react';
 import { NodeEditor } from '@/components/admin/NodeEditor';
 import { EdgeEditor } from '@/components/admin/EdgeEditor';
 import { QuestionEditor } from '@/components/admin/QuestionEditor';
@@ -13,6 +14,7 @@ import { AudioGenerator } from '@/components/admin/AudioGenerator';
 import { EpisodeEditor } from '@/components/admin/EpisodeEditor';
 import { AxesEditor, ThematicAxis } from '@/components/admin/AxesEditor';
 import { DialogueEditor } from '@/components/admin/DialogueEditor';
+import { RolesEditor } from '@/components/admin/RolesEditor';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -254,7 +256,7 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <LagrangeNav />
       
       <main className="pt-24 pb-12 px-6">
@@ -364,6 +366,12 @@ const Admin = () => {
                     <MessagesSquare className="w-4 h-4" />
                     Diálogos
                   </TabsTrigger>
+                  {isAdmin && (
+                    <TabsTrigger value="roles" className="font-mono text-sm gap-2">
+                      <Users className="w-4 h-4" />
+                      Roles
+                    </TabsTrigger>
+                  )}
                 </TabsList>
 
                 <TabsContent value="axes">
@@ -459,6 +467,22 @@ const Admin = () => {
                     <DialogueEditor isAdmin={isAdmin} />
                   </motion.div>
                 </TabsContent>
+
+                {isAdmin && (
+                  <TabsContent value="roles">
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="bg-card rounded-xl border border-border p-6"
+                    >
+                      <h2 className="font-serif text-xl mb-4">Gestión de Roles</h2>
+                      <p className="text-sm text-muted-foreground mb-6">
+                        Asigna roles Platón a usuarios para darles acceso completo sin neblina.
+                      </p>
+                      <RolesEditor isAdmin={isAdmin} />
+                    </motion.div>
+                  </TabsContent>
+                )}
               </Tabs>
 
               <motion.div
@@ -492,6 +516,8 @@ const Admin = () => {
           )}
         </div>
       </main>
+      
+      <LagrangeFooter />
     </div>
   );
 };

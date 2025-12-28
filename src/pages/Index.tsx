@@ -1,13 +1,16 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { LagrangeNav } from '@/components/LagrangeNav';
+import { LagrangeFooter } from '@/components/LagrangeFooter';
+import { FogOverlay } from '@/components/FogOverlay';
 import { SocraticOracle } from '@/components/SocraticOracle';
 import { ArrowRight, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
+      <FogOverlay />
       <LagrangeNav />
       
       {/* Hero Section - La Caverna */}
@@ -190,6 +193,8 @@ const Index = () => {
           </p>
         </div>
       </footer>
+      
+      <LagrangeFooter />
     </div>
   );
 };

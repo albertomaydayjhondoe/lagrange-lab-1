@@ -1,10 +1,13 @@
 import { motion } from 'framer-motion';
 import { LagrangeNav } from '@/components/LagrangeNav';
+import { LagrangeFooter } from '@/components/LagrangeFooter';
+import { FogOverlay } from '@/components/FogOverlay';
 import { LagrangeMap } from '@/components/LagrangeMap';
 
 const Map = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
+      <FogOverlay />
       <LagrangeNav />
       
       <main className="pt-24 pb-12 px-6">
@@ -62,6 +65,8 @@ const Map = () => {
           </motion.div>
         </div>
       </main>
+      
+      <LagrangeFooter />
     </div>
   );
 };
