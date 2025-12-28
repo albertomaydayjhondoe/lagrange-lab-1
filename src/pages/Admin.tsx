@@ -5,11 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2 } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio } from 'lucide-react';
 import { NodeEditor } from '@/components/admin/NodeEditor';
 import { EdgeEditor } from '@/components/admin/EdgeEditor';
 import { QuestionEditor } from '@/components/admin/QuestionEditor';
 import { AudioGenerator } from '@/components/admin/AudioGenerator';
+import { EpisodeEditor } from '@/components/admin/EpisodeEditor';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -47,6 +48,19 @@ interface SocraticQuestion {
   corpus_ref: string | null;
 }
 
+interface PodcastEpisode {
+  id: string;
+  title: string;
+  description: string | null;
+  audio_url: string;
+  duration_seconds: number | null;
+  question_ids: string[] | null;
+  eje: string | null;
+  published: boolean | null;
+  published_at: string | null;
+  created_at: string;
+}
+
 const Admin = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -55,6 +69,7 @@ const Admin = () => {
   const [nodes, setNodes] = useState<TopologyNode[]>([]);
   const [edges, setEdges] = useState<TopologyEdge[]>([]);
   const [questions, setQuestions] = useState<SocraticQuestion[]>([]);
+  const [episodes, setEpisodes] = useState<PodcastEpisode[]>([]);
   const navigate = useNavigate();
 
   const isAdmin = user?.email === ADMIN_EMAIL;
@@ -62,15 +77,17 @@ const Admin = () => {
   const fetchData = useCallback(async () => {
     setDataLoading(true);
     
-    const [nodesRes, edgesRes, questionsRes] = await Promise.all([
+    const [nodesRes, edgesRes, questionsRes, episodesRes] = await Promise.all([
       supabase.from('topology_nodes').select('*').order('id'),
       supabase.from('topology_edges').select('*').order('id'),
-      supabase.from('socratic_questions').select('*').order('id')
+      supabase.from('socratic_questions').select('*').order('id'),
+      supabase.from('podcast_episodes').select('*').order('created_at', { ascending: false })
     ]);
 
     if (nodesRes.data) setNodes(nodesRes.data);
     if (edgesRes.data) setEdges(edgesRes.data);
     if (questionsRes.data) setQuestions(questionsRes.data);
+    if (episodesRes.data) setEpisodes(episodesRes.data);
     
     setDataLoading(false);
   }, []);
@@ -330,6 +347,10 @@ const Admin = () => {
                     <Volume2 className="w-4 h-4" />
                     Audio TTS
                   </TabsTrigger>
+                  <TabsTrigger value="episodes" className="font-mono text-sm gap-2">
+                    <Radio className="w-4 h-4" />
+                    Episodios ({episodes.length})
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="nodes">
@@ -383,13 +404,27 @@ const Admin = () => {
                     <AudioGenerator questions={questions} />
                   </motion.div>
                 </TabsContent>
+
+                <TabsContent value="episodes">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="bg-card rounded-xl border border-border p-6"
+                  >
+                    <h2 className="font-serif text-xl mb-4">Episodios de Podcast</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Gestiona los episodios del podcast. Los episodios publicados aparecen en /podcast.
+                    </p>
+                    <EpisodeEditor episodes={episodes} onRefresh={fetchData} isAdmin={isAdmin} />
+                  </motion.div>
+                </TabsContent>
               </Tabs>
 
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="mt-8 grid md:grid-cols-3 gap-4"
+                className="mt-8 grid md:grid-cols-4 gap-4"
               >
                 <div className="p-4 rounded-lg bg-card border border-border">
                   <span className="text-3xl font-mono text-primary">{nodes.length}</span>
@@ -402,6 +437,10 @@ const Admin = () => {
                 <div className="p-4 rounded-lg bg-card border border-border">
                   <span className="text-3xl font-mono text-lagrange-calm">{questions.length}</span>
                   <p className="text-sm text-muted-foreground">Preguntas socráticas</p>
+                </div>
+                <div className="p-4 rounded-lg bg-card border border-border">
+                  <span className="text-3xl font-mono text-lagrange-tension">{episodes.filter(e => e.published).length}</span>
+                  <p className="text-sm text-muted-foreground">Episodios publicados</p>
                 </div>
               </motion.div>
             </>

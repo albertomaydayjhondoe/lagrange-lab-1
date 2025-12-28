@@ -4,7 +4,7 @@ import { LagrangeNav } from '@/components/LagrangeNav';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AudioPlayer } from '@/components/AudioPlayer';
-import { fetchEpisodes, Episode, getNodeById } from '@/utils/dataService';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Play, 
   Pause, 
@@ -17,8 +17,20 @@ import {
   Radio
 } from 'lucide-react';
 
+interface PodcastEpisode {
+  id: string;
+  title: string;
+  description: string | null;
+  audio_url: string;
+  duration_seconds: number | null;
+  eje: string | null;
+  published: boolean | null;
+  published_at: string | null;
+  created_at: string;
+}
+
 interface EpisodeCardProps {
-  episode: Episode;
+  episode: PodcastEpisode;
   isExpanded: boolean;
   isActive: boolean;
   onToggleExpand: () => void;
@@ -26,12 +38,20 @@ interface EpisodeCardProps {
 }
 
 function EpisodeCard({ episode, isExpanded, isActive, onToggleExpand, onSetActive }: EpisodeCardProps) {
-  const connectedNodes = episode.nodes?.map(nodeId => getNodeById(nodeId)).filter(Boolean) || [];
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return null;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
-  const statusColors = {
-    pendiente: 'bg-muted text-muted-foreground',
-    activo: 'bg-primary/20 text-primary',
-    completo: 'bg-lagrange-calm/20 text-lagrange-calm',
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return null;
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   return (
@@ -47,23 +67,32 @@ function EpisodeCard({ episode, isExpanded, isActive, onToggleExpand, onSetActiv
       <div className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <Badge className={statusColors[episode.status]}>
-                {episode.status}
-              </Badge>
-              {episode.duration && (
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {episode.eje && (
+                <Badge variant="outline" className="font-mono text-xs">
+                  {episode.eje}
+                </Badge>
+              )}
+              {episode.duration_seconds && (
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  {episode.duration}
+                  {formatDuration(episode.duration_seconds)}
+                </span>
+              )}
+              {episode.published_at && (
+                <span className="text-xs text-muted-foreground">
+                  {formatDate(episode.published_at)}
                 </span>
               )}
             </div>
             <h3 className="font-serif text-xl text-foreground mb-2">
               {episode.title}
             </h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              {episode.description}
-            </p>
+            {episode.description && (
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {episode.description}
+              </p>
+            )}
           </div>
 
           {/* Play button */}
@@ -71,8 +100,7 @@ function EpisodeCard({ episode, isExpanded, isActive, onToggleExpand, onSetActiv
             variant="outline"
             size="icon"
             onClick={onSetActive}
-            disabled={!episode.audioFile}
-            className={`h-14 w-14 rounded-full ${isActive ? 'bg-primary text-primary-foreground' : ''}`}
+            className={`h-14 w-14 rounded-full shrink-0 ${isActive ? 'bg-primary text-primary-foreground' : ''}`}
           >
             {isActive ? (
               <Pause className="w-6 h-6" />
@@ -92,79 +120,41 @@ function EpisodeCard({ episode, isExpanded, isActive, onToggleExpand, onSetActiv
               className="mt-4 overflow-hidden"
             >
               <AudioPlayer
-                src={episode.audioFile}
+                src={episode.audio_url}
                 title={episode.title}
                 isActive={isActive}
               />
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Connected nodes */}
-        {connectedNodes.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {connectedNodes.map(node => node && (
-              <span
-                key={node.id}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-xs font-mono"
-              >
-                <Network className="w-3 h-3" />
-                {node.label}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Expand button */}
-        {episode.transcript && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleExpand}
-            className="mt-4 w-full justify-center gap-2 font-mono text-xs"
-          >
-            <FileText className="w-4 h-4" />
-            {isExpanded ? 'Ocultar transcripción' : 'Ver transcripción'}
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </Button>
-        )}
       </div>
-
-      {/* Transcript */}
-      <AnimatePresence>
-        {isExpanded && episode.transcript && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="overflow-hidden"
-          >
-            <div className="px-6 pb-6 pt-2 border-t border-border">
-              <div className="bg-secondary/50 rounded-lg p-4 max-h-80 overflow-y-auto">
-                <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-serif leading-relaxed">
-                  {episode.transcript}
-                </pre>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
 
 const Podcast = () => {
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [episodes, setEpisodes] = useState<PodcastEpisode[]>([]);
   const [expandedEpisode, setExpandedEpisode] = useState<string | null>(null);
   const [activeEpisode, setActiveEpisode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchEpisodes().then(data => {
-      setEpisodes(data);
+    const fetchEpisodes = async () => {
+      const { data, error } = await supabase
+        .from('podcast_episodes')
+        .select('*')
+        .eq('published', true)
+        .order('published_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching episodes:', error);
+      } else {
+        setEpisodes(data || []);
+      }
       setLoading(false);
-    });
+    };
+
+    fetchEpisodes();
   }, []);
 
   const handleToggleExpand = (episodeId: string) => {
@@ -174,9 +164,6 @@ const Podcast = () => {
   const handleSetActive = (episodeId: string) => {
     setActiveEpisode(prev => prev === episodeId ? null : episodeId);
   };
-
-  const activeCount = episodes.filter(e => e.status === 'activo').length;
-  const completeCount = episodes.filter(e => e.status === 'completo').length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -207,7 +194,7 @@ const Podcast = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="grid grid-cols-3 gap-4 mb-8"
+            className="grid grid-cols-2 gap-4 mb-8"
           >
             <div className="p-4 rounded-xl bg-card border border-border text-center">
               <Radio className="w-5 h-5 mx-auto mb-2 text-primary" />
@@ -216,13 +203,10 @@ const Podcast = () => {
             </div>
             <div className="p-4 rounded-xl bg-card border border-border text-center">
               <Play className="w-5 h-5 mx-auto mb-2 text-lagrange-node" />
-              <span className="text-2xl font-mono text-foreground">{activeCount}</span>
-              <p className="text-xs text-muted-foreground mt-1">Activos</p>
-            </div>
-            <div className="p-4 rounded-xl bg-card border border-border text-center">
-              <FileText className="w-5 h-5 mx-auto mb-2 text-lagrange-calm" />
-              <span className="text-2xl font-mono text-foreground">{completeCount}</span>
-              <p className="text-xs text-muted-foreground mt-1">Completos</p>
+              <span className="text-2xl font-mono text-foreground">
+                {episodes.filter(e => e.eje).map(e => e.eje).filter((v, i, a) => a.indexOf(v) === i).length}
+              </span>
+              <p className="text-xs text-muted-foreground mt-1">Ejes temáticos</p>
             </div>
           </motion.div>
 
