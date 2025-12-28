@@ -44,6 +44,135 @@ export type Database = {
         }
         Relationships: []
       }
+      socratic_questions: {
+        Row: {
+          corpus_ref: string | null
+          created_at: string
+          eje: string
+          id: string
+          nivel: number
+          tension: number
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          corpus_ref?: string | null
+          created_at?: string
+          eje: string
+          id: string
+          nivel?: number
+          tension?: number
+          texto: string
+          updated_at?: string
+        }
+        Update: {
+          corpus_ref?: string | null
+          created_at?: string
+          eje?: string
+          id?: string
+          nivel?: number
+          tension?: number
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      topology_edges: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          source: string
+          target: string
+          tension: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          label?: string | null
+          source: string
+          target: string
+          tension?: number
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          source?: string
+          target?: string
+          tension?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topology_edges_source_fkey"
+            columns: ["source"]
+            isOneToOne: false
+            referencedRelation: "topology_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topology_edges_target_fkey"
+            columns: ["target"]
+            isOneToOne: false
+            referencedRelation: "topology_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topology_nodes: {
+        Row: {
+          axis: string
+          color: string
+          corpus_refs: string[] | null
+          created_at: string
+          description: string | null
+          id: string
+          label: string
+          question_count: number | null
+          type: string
+          updated_at: string
+          weight: number
+          x: number
+          y: number
+        }
+        Insert: {
+          axis: string
+          color?: string
+          corpus_refs?: string[] | null
+          created_at?: string
+          description?: string | null
+          id: string
+          label: string
+          question_count?: number | null
+          type?: string
+          updated_at?: string
+          weight?: number
+          x?: number
+          y?: number
+        }
+        Update: {
+          axis?: string
+          color?: string
+          corpus_refs?: string[] | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          label?: string
+          question_count?: number | null
+          type?: string
+          updated_at?: string
+          weight?: number
+          x?: number
+          y?: number
+        }
+        Relationships: []
+      }
       user_interactions: {
         Row: {
           created_at: string
@@ -79,7 +208,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin_user: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
