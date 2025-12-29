@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
 import { toast } from 'sonner';
-import { Plus, Trash2, Save, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, Save, Edit2, X, FileJson, Upload, Loader2 } from 'lucide-react';
 import { fetchAxes, ThematicAxis } from '@/utils/dataService';
 
 interface SocraticQuestion {
@@ -29,6 +28,9 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
   const [isCreating, setIsCreating] = useState(false);
   const [filterEje, setFilterEje] = useState<string>('');
   const [axes, setAxes] = useState<ThematicAxis[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const [pendingImport, setPendingImport] = useState<SocraticQuestion[] | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [newQuestion, setNewQuestion] = useState<Partial<SocraticQuestion>>({
     id: '',
     eje: '',
@@ -46,6 +48,69 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
       }
     });
   }, []);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      
+      let questionsToImport: SocraticQuestion[] = [];
+      
+      if (Array.isArray(data)) {
+        questionsToImport = data;
+      } else if (data.socratic_questions && Array.isArray(data.socratic_questions)) {
+        questionsToImport = data.socratic_questions;
+      } else if (data.questions && Array.isArray(data.questions)) {
+        questionsToImport = data.questions;
+      } else {
+        throw new Error('Formato inválido: se esperaba un array o un objeto con "socratic_questions" o "questions"');
+      }
+
+      const validQuestions = questionsToImport.filter(q => 
+        q.id && q.texto && q.eje
+      );
+
+      if (validQuestions.length === 0) {
+        throw new Error('No se encontraron preguntas válidas (requieren id, texto y eje)');
+      }
+
+      setPendingImport(validQuestions);
+      toast.info(`${validQuestions.length} preguntas listas para importar`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al leer el archivo JSON');
+      setPendingImport(null);
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const confirmImport = async () => {
+    if (!pendingImport || pendingImport.length === 0) return;
+
+    setImportLoading(true);
+    try {
+      const { error } = await supabase
+        .from('socratic_questions')
+        .upsert(pendingImport, { onConflict: 'id' });
+
+      if (error) throw error;
+
+      toast.success(`${pendingImport.length} preguntas importadas con éxito`);
+      setPendingImport(null);
+      onRefresh();
+    } catch (error) {
+      toast.error('Error al importar: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const cancelImport = () => {
+    setPendingImport(null);
+  };
 
   const filteredQuestions = filterEje 
     ? questions.filter(q => q.eje === filterEje)
@@ -160,16 +225,77 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
           ))}
         </div>
         {isAdmin && (
-          <Button
-            onClick={() => setIsCreating(!isCreating)}
-            variant={isCreating ? "outline" : "default"}
-            className="gap-2"
-          >
-            {isCreating ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            {isCreating ? 'Cancelar' : 'Nueva Pregunta'}
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="gap-2"
+              size="sm"
+              disabled={importLoading}
+            >
+              <FileJson className="w-4 h-4" />
+              Importar JSON
+            </Button>
+            <Button
+              onClick={() => setIsCreating(!isCreating)}
+              variant={isCreating ? "outline" : "default"}
+              className="gap-2"
+              size="sm"
+            >
+              {isCreating ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {isCreating ? 'Cancelar' : 'Nueva Pregunta'}
+            </Button>
+          </div>
         )}
       </div>
+
+      {/* Pending Import Preview */}
+      {pendingImport && pendingImport.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 space-y-3"
+        >
+          <div className="flex justify-between items-start">
+            <h4 className="font-semibold text-amber-600 flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              {pendingImport.length} preguntas pendientes de importar
+            </h4>
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                onClick={confirmImport} 
+                disabled={importLoading}
+                className="gap-1"
+              >
+                {importLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                Confirmar
+              </Button>
+              <Button size="sm" variant="ghost" onClick={cancelImport}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto space-y-1">
+            {pendingImport.map((q, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm p-2 bg-background/50 rounded">
+                <span className="font-mono text-xs text-muted-foreground">{q.id}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                  {q.eje}
+                </span>
+                <span className="truncate flex-1">{q.texto}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {isCreating && (
         <motion.div
