@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Plus, Trash2, Save, Edit2, X, Sparkles, Loader2, Brain, Lightbulb } from 'lucide-react';
+import { Plus, Trash2, Save, Edit2, X, Sparkles, Loader2, Brain, Lightbulb, Upload, FileJson } from 'lucide-react';
 import { fetchAxes, ThematicAxis } from '@/utils/dataService';
 import { aiAnalyzeNode, aiSuggestNode, aiDescribeNode } from '@/utils/aiStructuralService';
 
@@ -36,6 +36,9 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
   const [axes, setAxes] = useState<ThematicAxis[]>([]);
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<any>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [pendingImport, setPendingImport] = useState<TopologyNode[] | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [newNode, setNewNode] = useState<Partial<TopologyNode>>({
     id: '',
     label: '',
@@ -58,6 +61,71 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
       }
     });
   }, []);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      
+      // Handle both array format and object with topology_nodes key
+      let nodesToImport: TopologyNode[] = [];
+      
+      if (Array.isArray(data)) {
+        nodesToImport = data;
+      } else if (data.topology_nodes && Array.isArray(data.topology_nodes)) {
+        nodesToImport = data.topology_nodes;
+      } else if (data.nodes && Array.isArray(data.nodes)) {
+        nodesToImport = data.nodes;
+      } else {
+        throw new Error('Formato inválido: se esperaba un array de nodos o un objeto con "topology_nodes" o "nodes"');
+      }
+
+      // Validate nodes have required fields
+      const validNodes = nodesToImport.filter(node => 
+        node.id && node.label && node.axis
+      );
+
+      if (validNodes.length === 0) {
+        throw new Error('No se encontraron nodos válidos (requieren id, label y axis)');
+      }
+
+      setPendingImport(validNodes);
+      toast.info(`${validNodes.length} nodos listos para importar`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al leer el archivo JSON');
+      setPendingImport(null);
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const confirmImport = async () => {
+    if (!pendingImport || pendingImport.length === 0) return;
+
+    setImportLoading(true);
+    try {
+      const { error } = await supabase
+        .from('topology_nodes')
+        .upsert(pendingImport, { onConflict: 'id' });
+
+      if (error) throw error;
+
+      toast.success(`${pendingImport.length} nodos importados con éxito`);
+      setPendingImport(null);
+      onRefresh();
+    } catch (error) {
+      toast.error('Error al importar: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const cancelImport = () => {
+    setPendingImport(null);
+  };
 
   const startEdit = (node: TopologyNode) => {
     setEditingId(node.id);
@@ -209,6 +277,22 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
     <div className="space-y-4">
       {isAdmin && (
         <div className="flex justify-end gap-2 flex-wrap">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="gap-2"
+            disabled={importLoading}
+          >
+            <FileJson className="w-4 h-4" />
+            Importar JSON
+          </Button>
           <Button
             onClick={handleAiSuggest}
             variant="outline"
@@ -227,6 +311,51 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
             {isCreating ? 'Cancelar' : 'Nuevo Nodo'}
           </Button>
         </div>
+      )}
+
+      {/* Pending Import Preview */}
+      {pendingImport && pendingImport.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 space-y-3"
+        >
+          <div className="flex justify-between items-start">
+            <h4 className="font-semibold text-amber-600 flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              {pendingImport.length} nodos pendientes de importar
+            </h4>
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                onClick={confirmImport} 
+                disabled={importLoading}
+                className="gap-1"
+              >
+                {importLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                Confirmar
+              </Button>
+              <Button size="sm" variant="ghost" onClick={cancelImport}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto space-y-1">
+            {pendingImport.map((node, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm p-2 bg-background/50 rounded">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: node.color || '#3b82f6' }}
+                />
+                <span className="font-mono text-xs text-muted-foreground">{node.id}</span>
+                <span>{node.label}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                  {node.axis}
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       )}
 
       {aiResult && aiResult.type === 'analyze' && (
