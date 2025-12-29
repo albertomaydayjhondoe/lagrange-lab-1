@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Plus, Trash2, Save, Edit2, X, Sparkles, Loader2, Lightbulb } from 'lucide-react';
+import { Plus, Trash2, Save, Edit2, X, Sparkles, Loader2, Lightbulb, FileJson, Upload } from 'lucide-react';
 import { aiGenerateEdge, aiSuggestMissingEdges } from '@/utils/aiStructuralService';
 
 interface TopologyEdge {
@@ -29,6 +29,9 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
   const [isCreating, setIsCreating] = useState(false);
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const [pendingImport, setPendingImport] = useState<TopologyEdge[] | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [newEdge, setNewEdge] = useState<Partial<TopologyEdge>>({
     id: '',
     source: '',
@@ -37,6 +40,69 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
     label: '',
     type: 'causal'
   });
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      
+      let edgesToImport: TopologyEdge[] = [];
+      
+      if (Array.isArray(data)) {
+        edgesToImport = data;
+      } else if (data.topology_edges && Array.isArray(data.topology_edges)) {
+        edgesToImport = data.topology_edges;
+      } else if (data.edges && Array.isArray(data.edges)) {
+        edgesToImport = data.edges;
+      } else {
+        throw new Error('Formato inválido: se esperaba un array o un objeto con "topology_edges" o "edges"');
+      }
+
+      const validEdges = edgesToImport.filter(edge => 
+        edge.id && edge.source && edge.target
+      );
+
+      if (validEdges.length === 0) {
+        throw new Error('No se encontraron tensiones válidas (requieren id, source y target)');
+      }
+
+      setPendingImport(validEdges);
+      toast.info(`${validEdges.length} tensiones listas para importar`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al leer el archivo JSON');
+      setPendingImport(null);
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const confirmImport = async () => {
+    if (!pendingImport || pendingImport.length === 0) return;
+
+    setImportLoading(true);
+    try {
+      const { error } = await supabase
+        .from('topology_edges')
+        .upsert(pendingImport, { onConflict: 'id' });
+
+      if (error) throw error;
+
+      toast.success(`${pendingImport.length} tensiones importadas con éxito`);
+      setPendingImport(null);
+      onRefresh();
+    } catch (error) {
+      toast.error('Error al importar: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const cancelImport = () => {
+    setPendingImport(null);
+  };
 
   const startEdit = (edge: TopologyEdge) => {
     setEditingId(edge.id);
@@ -171,6 +237,22 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
     <div className="space-y-4">
       {isAdmin && (
         <div className="flex justify-end gap-2 flex-wrap">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="gap-2"
+            disabled={importLoading}
+          >
+            <FileJson className="w-4 h-4" />
+            Importar JSON
+          </Button>
           <Button
             onClick={handleAiSuggestMissing}
             variant="outline"
@@ -189,6 +271,47 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
             {isCreating ? 'Cancelar' : 'Nueva Tensión'}
           </Button>
         </div>
+      )}
+
+      {/* Pending Import Preview */}
+      {pendingImport && pendingImport.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 space-y-3"
+        >
+          <div className="flex justify-between items-start">
+            <h4 className="font-semibold text-amber-600 flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              {pendingImport.length} tensiones pendientes de importar
+            </h4>
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                onClick={confirmImport} 
+                disabled={importLoading}
+                className="gap-1"
+              >
+                {importLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                Confirmar
+              </Button>
+              <Button size="sm" variant="ghost" onClick={cancelImport}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto space-y-1">
+            {pendingImport.map((edge, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm p-2 bg-background/50 rounded">
+                <span className="font-mono text-xs text-muted-foreground">{edge.id}</span>
+                <span>{getNodeLabel(edge.source)} → {getNodeLabel(edge.target)}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                  {edge.type}
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       )}
 
       {aiSuggestions.length > 0 && (
