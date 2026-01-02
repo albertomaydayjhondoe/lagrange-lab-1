@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,27 @@ const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsab
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_HISTORY_LENGTH = 50;
 const MAX_MESSAGE_LENGTH = 3000;
+
+async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Authentication required' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { user: null, error: 'Invalid or expired token' };
+  }
+
+  return { user };
+}
 
 function validateInput(body: unknown): { 
   context?: string; 
@@ -118,6 +140,15 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const { user, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Parse and validate input
     let body: unknown;
     try {
@@ -190,7 +221,7 @@ serve(async (req) => {
       messages.push({ role: "user", content: userPrompt });
     }
 
-    console.log(`Socratic Oracle - Eje: ${eje || 'N/A'}, Nivel: ${nivel || 'N/A'}, History: ${conversationHistory?.length || 0}`);
+    console.log(`Socratic Oracle - User: ${user.id}, Eje: ${eje || 'N/A'}, Nivel: ${nivel || 'N/A'}, History: ${conversationHistory?.length || 0}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

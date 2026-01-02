@@ -13,6 +13,31 @@ const MAX_ID_LENGTH = 100;
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_QUESTION_IDS = 20;
 
+async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { user: null, isAdmin: false, error: 'Authentication required' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { user: null, isAdmin: false, error: 'Invalid or expired token' };
+  }
+
+  // Check if user is admin
+  const { data: isAdminData } = await supabaseClient.rpc('is_admin_user');
+  const isAdmin = isAdminData === true;
+
+  return { user, isAdmin };
+}
+
 function validateInput(body: unknown): {
   action: string;
   eje?: string;
@@ -88,6 +113,22 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication - admin only for AI episode operations
+    const { user, isAdmin, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!isAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Parse and validate input
     let body: unknown;
     try {
@@ -221,7 +262,7 @@ Responde en JSON: { "titulo_serie": string, "descripcion_serie": string, "episod
         throw new Error(`Acción no reconocida: ${action}`);
     }
 
-    console.log(`AI Episodes - Action: ${action}, Eje: ${eje || "N/A"}`);
+    console.log(`AI Episodes - Admin: ${user.id}, Action: ${action}, Eje: ${eje || "N/A"}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

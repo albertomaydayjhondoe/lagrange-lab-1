@@ -14,6 +14,27 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const MAX_ID_LENGTH = 100;
 const MAX_CUSTOM_TEXT_LENGTH = 5000;
 
+async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Authentication required' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { user: null, error: 'Invalid or expired token' };
+  }
+
+  return { user };
+}
+
 function validateInput(body: unknown): {
   sourceType: string;
   dialogueId?: string;
@@ -137,6 +158,15 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const { user, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse and validate input
     let body: unknown;
     try {
@@ -181,12 +211,20 @@ serve(async (req) => {
     if (sourceType === 'dialogue' && dialogueId) {
       const { data: dialogue, error } = await supabase
         .from('saved_dialogues')
-        .select('title, dialogue_content, eje, summary')
+        .select('title, dialogue_content, eje, summary, user_id')
         .eq('id', dialogueId)
         .single();
 
       if (error || !dialogue) {
         throw new Error('Diálogo no encontrado');
+      }
+
+      // Verify user owns this dialogue
+      if (dialogue.user_id !== user.id) {
+        return new Response(
+          JSON.stringify({ error: 'Access denied' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       // Parse dialogue content
@@ -243,7 +281,7 @@ ${eje ? `## Eje temático principal: ${eje}` : ''}
 Genera un texto narrativo de aproximadamente ${wordCount} palabras que explore y expanda las ideas presentes en el contenido fuente. El texto debe mantener coherencia con los temas discutidos y profundizar en las tensiones identificadas, usando la perspectiva crítica del Sistema Lagrange.
 `;
 
-    console.log(`Generating narrative from ${sourceType}: "${sourceContext.substring(0, 50)}..."`);
+    console.log(`Generating narrative for user ${user.id} from ${sourceType}: "${sourceContext.substring(0, 50)}..."`);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
