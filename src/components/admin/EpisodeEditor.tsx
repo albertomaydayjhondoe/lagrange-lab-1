@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Edit2, Trash2, Plus, ExternalLink, Play, Eye, EyeOff } from 'lucide-react';
+import { Edit2, Trash2, Plus, Play, Eye, EyeOff, Upload, Loader2, Music } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAxes, ThematicAxis } from '@/utils/dataService';
@@ -59,6 +59,9 @@ export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorPro
   const [editingEpisode, setEditingEpisode] = useState<PodcastEpisode | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [axes, setAxes] = useState<ThematicAxis[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -185,6 +188,70 @@ export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorPro
     });
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.includes('audio')) {
+      toast.error('Por favor selecciona un archivo de audio (MP3, WAV, etc.)');
+      return;
+    }
+
+    // Validate file size (max 50MB)
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error('El archivo es demasiado grande. Máximo 50MB.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadProgress('Subiendo archivo...');
+
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `episode-${Date.now()}.${fileExt}`;
+
+      // Upload directly to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('podcast-episodes')
+        .upload(fileName, file, {
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (error) {
+        console.error('Upload error:', error);
+        throw new Error(error.message);
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('podcast-episodes')
+        .getPublicUrl(fileName);
+
+      setFormData(prev => ({
+        ...prev,
+        audio_url: urlData.publicUrl,
+        title: prev.title || file.name.replace(/\.[^/.]+$/, ''), // Use filename as default title
+      }));
+
+      toast.success('Archivo subido correctamente');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Error al subir: ' + (error as Error).message);
+    } finally {
+      setUploading(false);
+      setUploadProgress('');
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
       {isAdmin && (
@@ -223,13 +290,64 @@ export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorPro
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="audio_url">URL de Audio *</Label>
-                  <Input
-                    id="audio_url"
-                    value={formData.audio_url}
-                    onChange={(e) => setFormData({ ...formData, audio_url: e.target.value })}
-                    placeholder="https://..."
-                  />
+                  <Label>Audio *</Label>
+                  
+                  {/* File Upload */}
+                  <div className="flex gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="audio-upload"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="gap-2 flex-1"
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          {uploadProgress}
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          Subir MP3
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Show uploaded file or manual URL */}
+                  {formData.audio_url ? (
+                    <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-md">
+                      <Music className="w-4 h-4 text-primary" />
+                      <span className="text-sm truncate flex-1">{formData.audio_url.split('/').pop()}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFormData({ ...formData, audio_url: '' })}
+                      >
+                        Cambiar
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground text-center">o pega una URL</div>
+                      <Input
+                        id="audio_url"
+                        value={formData.audio_url}
+                        onChange={(e) => setFormData({ ...formData, audio_url: e.target.value })}
+                        placeholder="https://..."
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="eje">Eje temático</Label>
