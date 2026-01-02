@@ -1,22 +1,17 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { FogOverlay } from '@/components/FogOverlay';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AudioPlayer } from '@/components/AudioPlayer';
+import { RadioPlayer } from '@/components/RadioPlayer';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Play, 
-  Pause, 
   Clock, 
-  FileText, 
-  ChevronDown, 
-  ChevronUp,
-  Network,
   Mic,
-  Radio
+  Radio,
+  Disc3,
+  Headphones
 } from 'lucide-react';
 
 interface PodcastEpisode {
@@ -33,13 +28,10 @@ interface PodcastEpisode {
 
 interface EpisodeCardProps {
   episode: PodcastEpisode;
-  isExpanded: boolean;
-  isActive: boolean;
-  onToggleExpand: () => void;
-  onSetActive: () => void;
+  isCurrentlyPlaying: boolean;
 }
 
-function EpisodeCard({ episode, isExpanded, isActive, onToggleExpand, onSetActive }: EpisodeCardProps) {
+function EpisodeCard({ episode, isCurrentlyPlaying }: EpisodeCardProps) {
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return null;
     const mins = Math.floor(seconds / 60);
@@ -62,14 +54,19 @@ function EpisodeCard({ episode, isExpanded, isActive, onToggleExpand, onSetActiv
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={`bg-card rounded-xl border overflow-hidden transition-colors ${
-        isActive ? 'border-primary' : 'border-border'
+        isCurrentlyPlaying ? 'border-primary ring-1 ring-primary/20' : 'border-border'
       }`}
     >
-      {/* Header */}
       <div className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {isCurrentlyPlaying && (
+                <Badge className="bg-primary text-primary-foreground font-mono text-xs flex items-center gap-1">
+                  <Disc3 className="w-3 h-3 animate-spin" style={{ animationDuration: '2s' }} />
+                  Sonando
+                </Badge>
+              )}
               {episode.eje && (
                 <Badge variant="outline" className="font-mono text-xs">
                   {episode.eje}
@@ -97,38 +94,17 @@ function EpisodeCard({ episode, isExpanded, isActive, onToggleExpand, onSetActiv
             )}
           </div>
 
-          {/* Play button */}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onSetActive}
-            className={`h-14 w-14 rounded-full shrink-0 ${isActive ? 'bg-primary text-primary-foreground' : ''}`}
-          >
-            {isActive ? (
-              <Pause className="w-6 h-6" />
-            ) : (
-              <Play className="w-6 h-6 ml-1" />
-            )}
-          </Button>
-        </div>
-
-        {/* Audio Player */}
-        <AnimatePresence>
-          {isActive && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-4 overflow-hidden"
-            >
-              <AudioPlayer
-                src={episode.audio_url}
-                title={episode.title}
-                isActive={isActive}
-              />
-            </motion.div>
+          {/* Playing indicator */}
+          {isCurrentlyPlaying && (
+            <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-0.5">
+                <span className="w-1 h-4 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                <span className="w-1 h-6 bg-primary rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                <span className="w-1 h-3 bg-primary rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
           )}
-        </AnimatePresence>
+        </div>
       </div>
     </motion.div>
   );
@@ -136,8 +112,7 @@ function EpisodeCard({ episode, isExpanded, isActive, onToggleExpand, onSetActiv
 
 const Podcast = () => {
   const [episodes, setEpisodes] = useState<PodcastEpisode[]>([]);
-  const [expandedEpisode, setExpandedEpisode] = useState<string | null>(null);
-  const [activeEpisode, setActiveEpisode] = useState<string | null>(null);
+  const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -159,20 +134,28 @@ const Podcast = () => {
     fetchEpisodes();
   }, []);
 
-  const handleToggleExpand = (episodeId: string) => {
-    setExpandedEpisode(prev => prev === episodeId ? null : episodeId);
-  };
-
-  const handleSetActive = (episodeId: string) => {
-    setActiveEpisode(prev => prev === episodeId ? null : episodeId);
-  };
+  // Prepare episodes for radio player
+  const radioEpisodes = episodes.map(ep => ({
+    id: ep.id,
+    title: ep.title,
+    audio_url: ep.audio_url,
+    duration_seconds: ep.duration_seconds,
+  }));
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <FogOverlay />
       <LagrangeNav />
       
-      <main className="pt-20 md:pt-24 pb-8 md:pb-12 px-4 md:px-6">
+      {/* Radio Player - fixed at top */}
+      {episodes.length > 0 && (
+        <RadioPlayer 
+          episodes={radioEpisodes}
+          onEpisodeChange={(id) => setCurrentPlayingId(id)}
+        />
+      )}
+      
+      <main className={`pb-8 md:pb-12 px-4 md:px-6 ${episodes.length > 0 ? 'pt-32 md:pt-36' : 'pt-20 md:pt-24'}`}>
         <div className="container mx-auto max-w-4xl">
           {/* Hero */}
           <motion.div
@@ -181,14 +164,14 @@ const Podcast = () => {
             className="text-center mb-8 md:mb-12"
           >
             <div className="w-16 h-16 md:w-20 md:h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4 md:mb-6 glow-gold">
-              <Mic className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+              <Headphones className="w-6 h-6 md:w-8 md:h-8 text-primary" />
             </div>
             <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl text-foreground mb-3 md:mb-4">
-              El Podcast
+              Radio Lagrange
             </h1>
             <p className="text-muted-foreground font-serif max-w-2xl mx-auto text-sm md:text-base">
-              Conversaciones que desestabilizan certezas. Cada episodio es un nodo 
-              que se conecta con la topología del miedo y el control.
+              Emisión continua. Conversaciones que desestabilizan certezas. 
+              Cada episodio es un nodo que se conecta con la topología del miedo y el control.
             </p>
           </motion.div>
 
@@ -205,7 +188,7 @@ const Podcast = () => {
               <p className="text-xs text-muted-foreground mt-1">Episodios</p>
             </div>
             <div className="p-3 md:p-4 rounded-xl bg-card border border-border text-center">
-              <Play className="w-4 h-4 md:w-5 md:h-5 mx-auto mb-1 md:mb-2 text-lagrange-node" />
+              <Disc3 className="w-4 h-4 md:w-5 md:h-5 mx-auto mb-1 md:mb-2 text-lagrange-node" />
               <span className="text-xl md:text-2xl font-mono text-foreground">
                 {episodes.filter(e => e.eje).map(e => e.eje).filter((v, i, a) => a.indexOf(v) === i).length}
               </span>
@@ -236,10 +219,7 @@ const Podcast = () => {
                 >
                   <EpisodeCard
                     episode={episode}
-                    isExpanded={expandedEpisode === episode.id}
-                    isActive={activeEpisode === episode.id}
-                    onToggleExpand={() => handleToggleExpand(episode.id)}
-                    onSetActive={() => handleSetActive(episode.id)}
+                    isCurrentlyPlaying={currentPlayingId === episode.id}
                   />
                 </motion.div>
               ))
@@ -254,7 +234,7 @@ const Podcast = () => {
             className="mt-12 text-center"
           >
             <p className="text-sm text-muted-foreground font-mono">
-              Cada episodio alimenta el mapa topológico. La fricción es intencional.
+              Emisión 24/7. Cada episodio alimenta el mapa topológico. La fricción es intencional.
             </p>
           </motion.div>
         </div>
