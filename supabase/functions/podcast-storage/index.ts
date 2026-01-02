@@ -21,6 +21,31 @@ interface StorageRequest {
   episodeId?: string;
 }
 
+async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { user: null, isAdmin: false, error: 'Authentication required' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { user: null, isAdmin: false, error: 'Invalid or expired token' };
+  }
+
+  // Check if user is admin
+  const { data: isAdminData } = await supabaseClient.rpc('is_admin_user');
+  const isAdmin = isAdminData === true;
+
+  return { user, isAdmin };
+}
+
 async function uploadToGitHub(
   audioBase64: string,
   fileName: string,
@@ -197,6 +222,15 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const { user, isAdmin, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body: StorageRequest = await req.json();
     const { action } = body;
 
@@ -210,6 +244,14 @@ serve(async (req) => {
     const hasGitHub = githubToken && githubRepoOwner && githubRepoName;
 
     if (action === 'upload') {
+      // Admin only for upload
+      if (!isAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { audioBase64, fileName, episodeData } = body;
 
       if (!audioBase64 || !fileName || !episodeData) {
@@ -219,7 +261,7 @@ serve(async (req) => {
         );
       }
 
-      console.log(`Uploading episode: ${fileName}`);
+      console.log(`Admin ${user.id} uploading episode: ${fileName}`);
 
       // Upload to Supabase Storage (primary)
       const supabaseResult = await uploadToSupabaseStorage(supabase, audioBase64, fileName);
@@ -306,6 +348,7 @@ serve(async (req) => {
     }
 
     if (action === 'list') {
+      // All authenticated users can list
       const { data: episodes, error } = await supabase
         .from('podcast_episodes')
         .select('*')
@@ -325,6 +368,14 @@ serve(async (req) => {
     }
 
     if (action === 'delete') {
+      // Admin only for delete
+      if (!isAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Admin access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { episodeId, fileName } = body;
 
       if (!episodeId) {
@@ -333,6 +384,8 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      console.log(`Admin ${user.id} deleting episode: ${episodeId}`);
 
       // Delete from database
       const { error: deleteError } = await supabase

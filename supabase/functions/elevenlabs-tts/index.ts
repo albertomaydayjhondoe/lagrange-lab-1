@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,27 @@ const corsHeaders = {
 // Input validation
 const MAX_TEXT_LENGTH = 10000; // ElevenLabs limit is around 5000 chars, being conservative
 const VOICE_ID_REGEX = /^[a-zA-Z0-9]{20,30}$/; // ElevenLabs voice IDs are alphanumeric
+
+async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Authentication required' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { user: null, error: 'Invalid or expired token' };
+  }
+
+  return { user };
+}
 
 function validateInput(body: unknown): { text: string; voiceId?: string } {
   if (!body || typeof body !== 'object') {
@@ -53,6 +75,15 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const { user, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse and validate input
     let body: unknown;
     try {
@@ -84,7 +115,7 @@ serve(async (req) => {
     // Use Roger voice by default (calm, philosophical tone)
     const voice = voiceId || 'CwhRBWXzGAHq8TQ4Fs17';
 
-    console.log(`Generating TTS for text: "${text.substring(0, 50)}..." (${text.length} chars) with voice: ${voice}`);
+    console.log(`Generating TTS for user ${user.id}: "${text.substring(0, 50)}..." (${text.length} chars) with voice: ${voice}`);
 
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voice}`,

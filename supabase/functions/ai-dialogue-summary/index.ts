@@ -9,6 +9,27 @@ const corsHeaders = {
 // Input validation
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Authentication required' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { user: null, error: 'Invalid or expired token' };
+  }
+
+  return { user };
+}
+
 function validateInput(body: unknown): { dialogueId: string } {
   if (!body || typeof body !== 'object') {
     throw new Error('Request body must be an object');
@@ -46,6 +67,15 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const { user, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse and validate input
     let body: unknown;
     try {
@@ -82,12 +112,20 @@ serve(async (req) => {
     // Fetch the dialogue
     const { data: dialogue, error: fetchError } = await supabase
       .from('saved_dialogues')
-      .select('*')
+      .select('*, user_id')
       .eq('id', dialogueId)
       .single();
 
     if (fetchError || !dialogue) {
       throw new Error('Diálogo no encontrado');
+    }
+
+    // Verify user owns this dialogue
+    if (dialogue.user_id !== user.id) {
+      return new Response(
+        JSON.stringify({ error: 'Access denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const dialogueContent = dialogue.dialogue_content as DialogueEntry[];
@@ -115,7 +153,7 @@ El resumen debe:
 
 Responde SOLO con el resumen, sin introducciones ni explicaciones adicionales.`;
 
-    console.log('Generating summary for dialogue:', dialogueId);
+    console.log(`Generating summary for user ${user.id}, dialogue:`, dialogueId);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

@@ -1,31 +1,31 @@
 project_id = "rwfqswiwalygzfojyeqk"
 
 [functions.socratic-oracle]
-verify_jwt = false
+verify_jwt = true
 
 [functions.elevenlabs-tts]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-narrative]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-nodes]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-edges]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-questions]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-episodes]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-dialogue-summary]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-curate-text]
-verify_jwt = false
+verify_jwt = true
 
 [functions.podcast-storage]
 verify_jwt = true

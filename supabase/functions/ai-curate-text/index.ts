@@ -1,9 +1,63 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const MAX_DIALOGUE_ENTRIES = 100;
+const MAX_WORD_COUNT = 2000;
+
+async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Authentication required' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { user: null, error: 'Invalid or expired token' };
+  }
+
+  return { user };
+}
+
+function validateInput(body: unknown): { dialogueContent: any[]; targetWordCount: number } {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Request body must be an object');
+  }
+
+  const input = body as Record<string, unknown>;
+
+  // Validate dialogueContent (required)
+  if (!input.dialogueContent || !Array.isArray(input.dialogueContent)) {
+    throw new Error('dialogueContent is required and must be an array');
+  }
+  
+  if (input.dialogueContent.length > MAX_DIALOGUE_ENTRIES) {
+    throw new Error(`dialogueContent must have at most ${MAX_DIALOGUE_ENTRIES} entries`);
+  }
+
+  // Validate targetWordCount (optional)
+  let targetWordCount = 500;
+  if (input.targetWordCount !== undefined) {
+    const count = Number(input.targetWordCount);
+    if (isNaN(count) || !Number.isInteger(count) || count < 50 || count > MAX_WORD_COUNT) {
+      throw new Error(`targetWordCount must be an integer between 50 and ${MAX_WORD_COUNT}`);
+    }
+    targetWordCount = count;
+  }
+
+  return { dialogueContent: input.dialogueContent, targetWordCount };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,14 +65,37 @@ serve(async (req) => {
   }
 
   try {
-    const { dialogueContent, targetWordCount = 500 } = await req.json();
-
-    if (!dialogueContent || !Array.isArray(dialogueContent)) {
+    // Verify authentication
+    const { user, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
       return new Response(
-        JSON.stringify({ error: 'dialogueContent is required and must be an array' }),
+        JSON.stringify({ error: authError || 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse and validate input
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    let validatedInput;
+    try {
+      validatedInput = validateInput(body);
+    } catch (validationError) {
+      return new Response(
+        JSON.stringify({ error: (validationError as Error).message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { dialogueContent, targetWordCount } = validatedInput;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -50,7 +127,7 @@ INSTRUCCIONES:
 FORMATO DE SALIDA:
 Devuelve SOLO el texto curado, sin explicaciones adicionales.`;
 
-    console.log('Processing dialogue with AI, target word count:', targetWordCount);
+    console.log(`Processing dialogue for user ${user.id} with AI, target word count:`, targetWordCount);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
