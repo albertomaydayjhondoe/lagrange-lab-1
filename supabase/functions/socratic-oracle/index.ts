@@ -1,10 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { 
-  getArchitectPrompt, 
+  buildAcademySystemPrompt,
+  getAcademyEjes,
+  verifyAcademyMembership,
   validarPregunta, 
   getRefuerzoPrompt,
   formatCorpusContext,
+  checkRateLimit,
   CorpusFragment
 } from "./_shared/architectPrompt.ts";
 
@@ -13,12 +16,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Input validation schemas
-const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
+// Constants
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_HISTORY_LENGTH = 50;
 const MAX_MESSAGE_LENGTH = 3000;
-const MAX_INTENTS = 2; // Máximo intentos para generar pregunta válida
+const MAX_INTENTS = 2;
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minuto
+const RATE_LIMIT_MAX = 10; // 10 requests por minuto
 
 async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
@@ -38,10 +42,11 @@ async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> 
     return { user: null, error: 'Invalid or expired token' };
   }
 
-  return { user };
+  return { user, supabaseClient };
 }
 
 function validateInput(body: unknown): { 
+  academyId: string;
   context?: string; 
   eje?: string; 
   nivel?: number; 
@@ -49,11 +54,25 @@ function validateInput(body: unknown): {
   includeCorpus?: boolean;
 } {
   if (!body || typeof body !== 'object') {
-    return {};
+    throw new Error('Request body is required');
   }
 
   const input = body as Record<string, unknown>;
-  const result: ReturnType<typeof validateInput> = {};
+  
+  // Validate academyId (required)
+  if (!input.academyId || typeof input.academyId !== 'string') {
+    throw new Error('academyId is required and must be a string');
+  }
+  
+  // Validate UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(input.academyId)) {
+    throw new Error('academyId must be a valid UUID');
+  }
+  
+  const result: { academyId: string; context?: string; eje?: string; nivel?: number; conversationHistory?: { role: string; content: string }[]; includeCorpus?: boolean } = {
+    academyId: input.academyId
+  };
 
   // Validate context
   if (input.context !== undefined) {
@@ -66,13 +85,10 @@ function validateInput(body: unknown): {
     result.context = input.context.trim();
   }
 
-  // Validate eje
+  // Validate eje (string, validated later against academy axes)
   if (input.eje !== undefined) {
     if (typeof input.eje !== 'string') {
       throw new Error('eje must be a string');
-    }
-    if (!VALID_EJES.includes(input.eje)) {
-      throw new Error(`eje must be one of: ${VALID_EJES.join(', ')}`);
     }
     result.eje = input.eje;
   }
@@ -121,9 +137,10 @@ function validateInput(body: unknown): {
   return result;
 }
 
-// Fetch corpus fragments for context
+// Fetch corpus fragments for context (filtered by academy)
 async function fetchCorpusFragments(
   supabase: any, 
+  academyId: string,
   eje: string | undefined,
   limit: number = 2
 ): Promise<CorpusFragment[]> {
@@ -131,20 +148,12 @@ async function fetchCorpusFragments(
     let query = supabase
       .from('corpus_fragments')
       .select('*')
+      .eq('academy_id', academyId)  // Filter by academy
       .order('tension', { ascending: false })
       .limit(limit * 2); // Fetch extra to filter by eje
     
     if (eje) {
-      // Map eje to standard names
-      const ejeMap: Record<string, string[]> = {
-        'Miedo': ['Miedo', 'miedo'],
-        'Control': ['Control', 'control'],
-        'SaludMental': ['Salud Mental', 'SaludMental', 'salud mental'],
-        'Legitimidad': ['Legitimidad', 'legitimidad'],
-        'Responsabilidad': ['Responsabilidad', 'responsabilidad'],
-      };
-      const axisFilters = ejeMap[eje] || [eje.toLowerCase()];
-      query = query.overlaps('axis', axisFilters);
+      query = query.overlaps('axis', [eje]);
     }
 
     const { data, error } = await query;
@@ -236,14 +245,22 @@ async function generateAndValidateQuestion(
   };
 }
 
-// Build system prompt for socratic oracle
-function buildSystemPrompt(corpusContext?: string): string {
-  const base = getArchitectPrompt();
+// Build system prompt for socratic oracle with academy-specific axes
+function buildSystemPrompt(
+  academyEjes: string[], 
+  personaPrompt: string | null, 
+  corpusContext?: string
+): string {
+  const ejeList = academyEjes.length > 0 
+    ? academyEjes.join(', ') 
+    : 'Miedo, Control, SaludMental, Legitimidad, Responsabilidad';
   
-  return `${base}
-
+  const specificInstructions = `
 ## INSTRUCCIÓN ESPECÍFICA: Generador de Preguntas Socráticas
 Tu misión es generar preguntas que provoquen "fricción cognitiva" - incomodidad productiva que desafía asunciones y expone contradicciones.
+
+## Ejes de esta academia:
+${ejeList}
 
 ${corpusContext || ''}
 
@@ -251,11 +268,13 @@ ${corpusContext || ''}
 Responde SOLO con un JSON válido con esta estructura:
 {
   "pregunta": "La pregunta generada",
-  "eje": "Uno de: Miedo, Control, SaludMental, Legitimidad, Responsabilidad",
+  "eje": "Uno de los ejes de esta academia",
   "nivel": 1-3 (1=introductorio, 2=intermedio, 3=profundo),
   "tension": 0.0-1.0 (intensidad de la fricción, mínimo 0.6),
   "conexion": "Breve explicación de por qué esta pregunta conecta con el contexto"
 }`;
+
+  return buildAcademySystemPrompt(personaPrompt || undefined, specificInstructions);
 }
 
 serve(async (req) => {
@@ -265,7 +284,7 @@ serve(async (req) => {
 
   try {
     // Verify authentication
-    const { user, error: authError } = await verifyAuth(req);
+    const { user, supabaseClient, error: authError } = await verifyAuth(req);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: authError || 'Authentication required' }),
@@ -294,29 +313,69 @@ serve(async (req) => {
       );
     }
 
-    const { context, eje, nivel, conversationHistory, includeCorpus = true } = validatedInput;
+    const { academyId, context, eje, nivel, conversationHistory, includeCorpus = true } = validatedInput;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    // Rate limiting por (user_id, academy_id)
+    const rateLimitKey = `oracle:${user.id}:${academyId}`;
+    const rateLimit = checkRateLimit(rateLimitKey, {
+      windowMs: RATE_LIMIT_WINDOW_MS,
+      maxRequests: RATE_LIMIT_MAX
+    });
     
-    // Fetch corpus fragments for context
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Demasiadas peticiones. Espera un momento.",
+          retryAfter: rateLimit.resetAt - Date.now()
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verificar membresía de la academia
+    const isMember = await verifyAcademyMembership(supabaseClient, academyId, user.id);
+    if (!isMember) {
+      return new Response(
+        JSON.stringify({ error: 'No eres miembro de esta academia' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Obtener info de la academia (oracle_persona_prompt)
+    const { data: academy } = await supabaseClient
+      .from('academies')
+      .select('oracle_persona_prompt')
+      .eq('id', academyId)
+      .single();
+
+    // Obtener ejes de la academia
+    const academyEjes = await getAcademyEjes(supabaseClient, academyId);
+
+    // Validar eje contra los ejes de la academia
+    if (eje && academyEjes.length > 0 && !academyEjes.includes(eje)) {
+      return new Response(
+        JSON.stringify({ error: `El eje "${eje}" no existe en esta academia` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Fetch corpus fragments for context (filtered by academy)
     let corpusContext = '';
-    if (includeCorpus && SUPABASE_URL && SUPABASE_ANON_KEY) {
-      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      const fragments = await fetchCorpusFragments(supabase, eje);
+    if (includeCorpus) {
+      const fragments = await fetchCorpusFragments(supabaseClient, academyId, eje);
       if (fragments.length > 0) {
         corpusContext = formatCorpusContext(fragments);
         console.log(`Socratic Oracle - Using ${fragments.length} corpus fragments`);
       }
     }
 
-    // Build system prompt
-    const systemPrompt = buildSystemPrompt(corpusContext);
+    // Build system prompt with academy-specific config
+    const systemPrompt = buildSystemPrompt(academyEjes, academy?.oracle_persona_prompt || null, corpusContext);
 
     // Build user prompt
     let userPrompt: string;
