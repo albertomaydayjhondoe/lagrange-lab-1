@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { getArchitectPrompt, validarPregunta, getRefuerzoPrompt } from "./_shared/architectPrompt.ts";
+import { 
+  getArchitectPrompt, 
+  validarPregunta, 
+  getRefuerzoPrompt,
+  buildAcademySystemPrompt,
+  verifyAcademyMembership,
+  checkRateLimit
+} from "./_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,14 +16,13 @@ const corsHeaders = {
 
 // Rate limiting for echoes
 const ECHO_COOLDOWN_MS = 30000; // 30 seconds between echoes
-const MAX_INTENTS = 2;
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX = 5; // 5 echoes per minute
 
-const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
-
-async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
+async function verifyAuth(req: Request): Promise<{ user: any; supabaseClient: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
-    return { user: null, error: 'Authentication required' };
+    return { user: null, supabaseClient: null, error: 'Authentication required' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -28,10 +34,10 @@ async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> 
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();
   if (error || !user) {
-    return { user: null, error: 'Invalid or expired token' };
+    return { user: null, supabaseClient, error: 'Invalid or expired token' };
   }
 
-  return { user };
+  return { user, supabaseClient };
 }
 
 serve(async (req) => {
@@ -40,7 +46,7 @@ serve(async (req) => {
   }
 
   try {
-    const { user, error: authError } = await verifyAuth(req);
+    const { user, supabaseClient, error: authError } = await verifyAuth(req);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: authError || 'Authentication required' }),
@@ -60,6 +66,41 @@ serve(async (req) => {
 
     const input = body as Record<string, unknown>;
     
+    // Validate academyId (required)
+    const academyId = input.academyId as string;
+    if (!academyId) {
+      return new Response(
+        JSON.stringify({ error: 'academyId is required' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Rate limiting por (user_id, academy_id)
+    const rateLimitKey = `echo:${user.id}:${academyId}`;
+    const rateLimit = checkRateLimit(rateLimitKey, {
+      windowMs: RATE_LIMIT_WINDOW_MS,
+      maxRequests: RATE_LIMIT_MAX
+    });
+    
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Demasiados ecos. Espera un momento.",
+          retryAfter: rateLimit.resetAt - Date.now()
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verificar membresía
+    const isMember = await verifyAcademyMembership(supabaseClient, academyId, user.id);
+    if (!isMember) {
+      return new Response(
+        JSON.stringify({ error: 'No eres miembro de esta academia' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const lastQuestion = input.lastQuestion as string | undefined;
     const silenceDuration = input.silenceDuration as number | undefined;
     const eje = input.eje as string | undefined;
@@ -71,23 +112,16 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      throw new Error("Supabase config missing");
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // Fetch context: selected node and recent questions
+    // Fetch context: selected node and recent questions (filtered by academy)
     let nodeContext = '';
     let questionsContext = '';
     
     if (selectedNodeId) {
-      const { data: node } = await supabase
+      const { data: node } = await supabaseClient
         .from("topology_nodes")
         .select("label, description, axis")
         .eq("id", selectedNodeId)
+        .eq("academy_id", academyId)
         .single();
       
       if (node) {
@@ -108,11 +142,17 @@ serve(async (req) => {
     // Calculate echo type based on silence duration
     const echoType = silenceDuration && silenceDuration > 60000 ? 'deep_probe' : 'gentle_nudge';
     
-    // Build system prompt using shared architect prompt
-    const basePrompt = getArchitectPrompt();
-    const SYSTEM_PROMPT = `${basePrompt}
+    // Get oracle_persona_prompt from academy
+    const { data: academy } = await supabaseClient
+      .from('academies')
+      .select('oracle_persona_prompt')
+      .eq('id', academyId)
+      .single();
 
-## INSTRUCCIÓN ESPECÍFICA: Generador de Ecos Socráticos
+    // Build system prompt using shared architect prompt
+    const SYSTEM_PROMPT = buildAcademySystemPrompt(
+      academy?.oracle_persona_prompt || undefined,
+      `## INSTRUCCIÓN ESPECÍFICA: Generador de Ecos Socráticos
 Tu misión es generar "ecos" - preguntas cortas e incisivas que responden al silencio del usuario.
 
 ## ¿Qué es un eco?
@@ -146,7 +186,8 @@ Responde SOLO con JSON válido:
   "type": "gentle_nudge | deep_probe",
   "direction": "Breve explicación de por qué esta pregunta eco",
   "tension_shift": "Cómo se mueve la tensión con este eco (aumenta | mantiene | suaviza)"
-}`;
+}`
+    );
 
     let userPrompt = `El usuario ha permanecido en silencio`;
     

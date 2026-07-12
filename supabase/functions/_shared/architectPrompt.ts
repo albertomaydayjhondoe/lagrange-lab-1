@@ -212,3 +212,149 @@ Antes de entregar, responde:
 4. ¿El tension_score es >= 0.6? ( )
 
 Si alguna respuesta es NO, regenera.`;
+
+// ============================================================================
+// BUILDER DE SYSTEM PROMPT PARA ACADEMIAS
+// ============================================================================
+
+/**
+ * Construye el system prompt completo combinando:
+ * - Prompt base del Architect ( Primer Mandamiento, reglas, etc.)
+ * - Prompt personalizado de la academia (oracle_persona_prompt)
+ * 
+ * @param personaPrompt - Prompt específico de la academia (opcional)
+ * @param specificInstructions - Instrucciones específicas para la tarea actual
+ * @returns System prompt completo
+ */
+export function buildAcademySystemPrompt(
+  personaPrompt?: string,
+  specificInstructions?: string
+): string {
+  const base = getArchitectPrompt();
+  
+  let result = base;
+  
+  // Si la academia tiene un prompt de persona, lo injertamos
+  if (personaPrompt && personaPrompt.trim()) {
+    result += `\n\n---\n\n## PERSONA DEL ORÁCULO\n${personaPrompt.trim()}`;
+  }
+  
+  // Añadir instrucciones específicas de la tarea
+  if (specificInstructions) {
+    result += `\n\n---\n\n${specificInstructions}`;
+  }
+  
+  return result;
+}
+
+/**
+ * Obtiene los ejes válidos de una academia
+ * @param supabase - Cliente de Supabase
+ * @param academyId - ID de la academia
+ * @returns Array de IDs de ejes válidos
+ */
+export async function getAcademyEjes(
+  supabase: any,
+  academyId: string
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('thematic_axes')
+    .select('id')
+    .eq('academy_id', academyId)
+    .eq('is_active', true);
+  
+  if (error || !data) {
+    return []; // Fallback vacío
+  }
+  
+  return data.map((row: any) => row.id);
+}
+
+/**
+ * Verifica que el usuario es miembro de la academia
+ * @param supabase - Cliente de Supabase
+ * @param academyId - ID de la academia
+ * @param userId - ID del usuario
+ * @returns true si es miembro
+ */
+export async function verifyAcademyMembership(
+  supabase: any,
+  academyId: string,
+  userId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('academy_members')
+    .select('id')
+    .eq('academy_id', academyId)
+    .eq('user_id', userId)
+    .single();
+  
+  return !!data && !error;
+}
+
+/**
+ * Obtiene el rol del usuario en la academia
+ * @param supabase - Cliente de Supabase
+ * @param academyId - ID de la academia
+ * @param userId - ID del usuario
+ * @returns Rol o null
+ */
+export async function getAcademyRole(
+  supabase: any,
+  academyId: string,
+  userId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('academy_members')
+    .select('role')
+    .eq('academy_id', academyId)
+    .eq('user_id', userId)
+    .single();
+  
+  if (error || !data) {
+    return null;
+  }
+  
+  return data.role;
+}
+
+/**
+ * Rate limiter simple en memoria (por función)
+ * En producción usar Redis o tabla en DB
+ */
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+export interface RateLimitConfig {
+  windowMs: number;  // Ventana en ms
+  maxRequests: number;  // Máximo requests por ventana
+}
+
+/**
+ * Verifica rate limiting para un usuario/academia
+ * @param key - Clave única (ej: "oracle:user123:academy456")
+ * @param config - Configuración de rate limit
+ * @returns true si está dentro del límite
+ */
+export function checkRateLimit(
+  key: string,
+  config: RateLimitConfig
+): { allowed: boolean; remaining: number; resetAt: number } {
+  const now = Date.now();
+  const entry = rateLimitStore.get(key);
+  
+  if (!entry || entry.resetAt < now) {
+    // Nueva ventana
+    rateLimitStore.set(key, {
+      count: 1,
+      resetAt: now + config.windowMs
+    });
+    return { allowed: true, remaining: config.maxRequests - 1, resetAt: now + config.windowMs };
+  }
+  
+  if (entry.count >= config.maxRequests) {
+    return { allowed: false, remaining: 0, resetAt: entry.resetAt };
+  }
+  
+  entry.count++;
+  return { allowed: true, remaining: config.maxRequests - entry.count, resetAt: entry.resetAt };
+}

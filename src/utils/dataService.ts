@@ -61,20 +61,40 @@ export interface Episode {
   created_at: string;
 }
 
-// Cache para evitar múltiples peticiones
-let axesCache: ThematicAxis[] | null = null;
-let nodesCache: LagrangeNode[] | null = null;
-let edgesCache: LagrangeEdge[] | null = null;
-let questionsCache: SocraticQuestion[] | null = null;
+// Cache para evitar múltiples peticiones (por academy)
+const cacheByAcademy: Record<string, {
+  axes: ThematicAxis[] | null;
+  nodes: LagrangeNode[] | null;
+  edges: LagrangeEdge[] | null;
+  questions: SocraticQuestion[] | null;
+}> = {};
+
+// ID de la academia genesis (legacy)
+const GENESIS_ACADEMY_ID = '00000000-0000-0000-0000-000000000001';
+
+// Obtiene el academyId actual (de localStorage o genesis)
+export function getCurrentAcademyId(): string {
+  return localStorage.getItem('currentAcademyId') || GENESIS_ACADEMY_ID;
+}
+
+// Invalida el cache para una academia
+export function invalidateAcademyCache(academyId?: string) {
+  const id = academyId || getCurrentAcademyId();
+  cacheByAcademy[id] = { axes: null, nodes: null, edges: null, questions: null };
+}
 
 // ===== EJES TEMÁTICOS (DINÁMICOS) =====
 
-export async function fetchAxes(): Promise<ThematicAxis[]> {
-  if (axesCache) return axesCache;
+export async function fetchAxes(academyId?: string): Promise<ThematicAxis[]> {
+  const id = academyId || getCurrentAcademyId();
+  const cache = cacheByAcademy[id] || (cacheByAcademy[id] = { axes: null, nodes: null, edges: null, questions: null });
+  
+  if (cache.axes) return cache.axes;
   
   const { data, error } = await supabase
     .from('thematic_axes')
     .select('*')
+    .eq('academy_id', id)
     .eq('is_active', true)
     .order('order_index');
   
@@ -83,8 +103,8 @@ export async function fetchAxes(): Promise<ThematicAxis[]> {
     return [];
   }
   
-  axesCache = data || [];
-  return axesCache;
+  cache.axes = data || [];
+  return cache.axes;
 }
 
 export async function fetchAxisById(id: string): Promise<ThematicAxis | null> {
@@ -102,12 +122,16 @@ export async function getSuggestedQuestionIds(axisId: string): Promise<string[]>
   return axis?.suggested_question_ids || [];
 }
 
-export async function fetchNodes(): Promise<LagrangeNode[]> {
-  if (nodesCache) return nodesCache;
+export async function fetchNodes(academyId?: string): Promise<LagrangeNode[]> {
+  const id = academyId || getCurrentAcademyId();
+  const cache = cacheByAcademy[id] || (cacheByAcademy[id] = { axes: null, nodes: null, edges: null, questions: null });
+  
+  if (cache.nodes) return cache.nodes;
   
   const { data, error } = await supabase
     .from('topology_nodes')
     .select('*')
+    .eq('academy_id', id)
     .order('id');
   
   if (error) {
@@ -115,16 +139,20 @@ export async function fetchNodes(): Promise<LagrangeNode[]> {
     return [];
   }
   
-  nodesCache = data || [];
-  return nodesCache;
+  cache.nodes = data || [];
+  return cache.nodes;
 }
 
-export async function fetchEdges(): Promise<LagrangeEdge[]> {
-  if (edgesCache) return edgesCache;
+export async function fetchEdges(academyId?: string): Promise<LagrangeEdge[]> {
+  const id = academyId || getCurrentAcademyId();
+  const cache = cacheByAcademy[id] || (cacheByAcademy[id] = { axes: null, nodes: null, edges: null, questions: null });
+  
+  if (cache.edges) return cache.edges;
   
   const { data, error } = await supabase
     .from('topology_edges')
     .select('*')
+    .eq('academy_id', id)
     .order('id');
   
   if (error) {
@@ -132,16 +160,20 @@ export async function fetchEdges(): Promise<LagrangeEdge[]> {
     return [];
   }
   
-  edgesCache = data || [];
-  return edgesCache;
+  cache.edges = data || [];
+  return cache.edges;
 }
 
-export async function fetchQuestions(): Promise<SocraticQuestion[]> {
-  if (questionsCache) return questionsCache;
+export async function fetchQuestions(academyId?: string): Promise<SocraticQuestion[]> {
+  const id = academyId || getCurrentAcademyId();
+  const cache = cacheByAcademy[id] || (cacheByAcademy[id] = { axes: null, nodes: null, edges: null, questions: null });
+  
+  if (cache.questions) return cache.questions;
   
   const { data, error } = await supabase
     .from('socratic_questions')
     .select('*')
+    .eq('academy_id', id)
     .order('id');
   
   if (error) {
@@ -149,14 +181,17 @@ export async function fetchQuestions(): Promise<SocraticQuestion[]> {
     return [];
   }
   
-  questionsCache = data || [];
-  return questionsCache;
+  cache.questions = data || [];
+  return cache.questions;
 }
 
-export async function fetchEpisodes(): Promise<Episode[]> {
+export async function fetchEpisodes(academyId?: string): Promise<Episode[]> {
+  const id = academyId || getCurrentAcademyId();
+  
   const { data, error } = await supabase
     .from('podcast_episodes')
     .select('*')
+    .eq('academy_id', id)
     .eq('published', true)
     .order('published_at', { ascending: false });
   
@@ -168,10 +203,13 @@ export async function fetchEpisodes(): Promise<Episode[]> {
   return data || [];
 }
 
-export async function fetchQuestionsByEje(eje: string): Promise<SocraticQuestion[]> {
+export async function fetchQuestionsByEje(eje: string, academyId?: string): Promise<SocraticQuestion[]> {
+  const id = academyId || getCurrentAcademyId();
+  
   const { data, error } = await supabase
     .from('socratic_questions')
     .select('*')
+    .eq('academy_id', id)
     .eq('eje', eje)
     .order('nivel');
   
