@@ -63,9 +63,7 @@ CREATE TABLE IF NOT EXISTS public.saved_dialogues (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  -- academy_id will be added by the multi-tenant migration to avoid
-  -- referencing `public.academies` before it's created.
-  academy_id UUID,
+  academy_id UUID REFERENCES public.academies(id) ON DELETE CASCADE,
   content JSONB,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );

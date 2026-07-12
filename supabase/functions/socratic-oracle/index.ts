@@ -1,28 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { 
-  buildAcademySystemPrompt,
-  getAcademyEjes,
-  verifyAcademyMembership,
-  validarPregunta, 
-  getRefuerzoPrompt,
-  formatCorpusContext,
-  checkRateLimit,
-  CorpusFragment
-} from "./_shared/architectPrompt.ts";
+import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
+import { resolveAcademyId } from "../_shared/academyContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Constants
+// Input validation schemas
+const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_HISTORY_LENGTH = 50;
 const MAX_MESSAGE_LENGTH = 3000;
-const MAX_INTENTS = 2;
-const RATE_LIMIT_WINDOW_MS = 60000; // 1 minuto
-const RATE_LIMIT_MAX = 10; // 10 requests por minuto
 
 async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
@@ -42,37 +32,22 @@ async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> 
     return { user: null, error: 'Invalid or expired token' };
   }
 
-  return { user, supabaseClient };
+  return { user };
 }
 
 function validateInput(body: unknown): { 
-  academyId: string;
   context?: string; 
   eje?: string; 
   nivel?: number; 
   conversationHistory?: { role: string; content: string }[];
-  includeCorpus?: boolean;
+  academyId?: string;
 } {
   if (!body || typeof body !== 'object') {
-    throw new Error('Request body is required');
+    return {};
   }
 
   const input = body as Record<string, unknown>;
-  
-  // Validate academyId (required)
-  if (!input.academyId || typeof input.academyId !== 'string') {
-    throw new Error('academyId is required and must be a string');
-  }
-  
-  // Validate UUID format
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(input.academyId)) {
-    throw new Error('academyId must be a valid UUID');
-  }
-  
-  const result: { academyId: string; context?: string; eje?: string; nivel?: number; conversationHistory?: { role: string; content: string }[]; includeCorpus?: boolean } = {
-    academyId: input.academyId
-  };
+  const result: ReturnType<typeof validateInput> = {};
 
   // Validate context
   if (input.context !== undefined) {
@@ -85,10 +60,13 @@ function validateInput(body: unknown): {
     result.context = input.context.trim();
   }
 
-  // Validate eje (string, validated later against academy axes)
+  // Validate eje
   if (input.eje !== undefined) {
     if (typeof input.eje !== 'string') {
       throw new Error('eje must be a string');
+    }
+    if (!VALID_EJES.includes(input.eje)) {
+      throw new Error(`eje must be one of: ${VALID_EJES.join(', ')}`);
     }
     result.eje = input.eje;
   }
@@ -100,6 +78,17 @@ function validateInput(body: unknown): {
       throw new Error('nivel must be an integer between 1 and 3');
     }
     result.nivel = nivel;
+  }
+
+  // Validate academyId
+  if (input.academyId !== undefined) {
+    if (typeof input.academyId !== 'string') {
+      throw new Error('academyId must be a string');
+    }
+    if (!input.academyId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      throw new Error('academyId must be a valid UUID');
+    }
+    result.academyId = input.academyId;
   }
 
   // Validate conversationHistory
@@ -129,153 +118,10 @@ function validateInput(body: unknown): {
     });
   }
 
-  // Validate includeCorpus
-  if (input.includeCorpus !== undefined) {
-    result.includeCorpus = Boolean(input.includeCorpus);
-  }
-
   return result;
 }
 
-// Fetch corpus fragments for context (filtered by academy)
-async function fetchCorpusFragments(
-  supabase: any, 
-  academyId: string,
-  eje: string | undefined,
-  limit: number = 2
-): Promise<CorpusFragment[]> {
-  try {
-    let query = supabase
-      .from('corpus_fragments')
-      .select('*')
-      .eq('academy_id', academyId)  // Filter by academy
-      .order('tension', { ascending: false })
-      .limit(limit * 2); // Fetch extra to filter by eje
-    
-    if (eje) {
-      query = query.overlaps('axis', [eje]);
-    }
-
-    const { data, error } = await query;
-    
-    if (error || !data || data.length === 0) {
-      return [];
-    }
-
-    // Return up to limit fragments
-    return data.slice(0, limit);
-  } catch (error) {
-    console.error('Error fetching corpus fragments:', error);
-    return [];
-  }
-}
-
-// Generate question with validation and retry
-async function generateAndValidateQuestion(
-  LOVABLE_API_KEY: string,
-  systemPrompt: string,
-  userPrompt: string,
-  intento: number = 1
-): Promise<any> {
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.85,
-    }),
-  });
-
-  if (!response.ok) {
-    if (response.status === 429) {
-      throw new Error("Límite de peticiones excedido. Intenta de nuevo más tarde.");
-    }
-    if (response.status === 402) {
-      throw new Error("Créditos agotados. Añade más créditos a tu workspace.");
-    }
-    throw new Error("Error en AI gateway");
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-
-  if (!content) {
-    throw new Error("No se recibió respuesta del modelo");
-  }
-
-  // Parse JSON response
-  let parsedQuestion;
-  try {
-    const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || 
-                      content.match(/```\n?([\s\S]*?)\n?```/) ||
-                      [null, content];
-    parsedQuestion = JSON.parse(jsonMatch[1] || content);
-  } catch (parseError) {
-    console.error("Error parsing AI response:", content);
-    // Fallback: create structured response from raw text
-    parsedQuestion = {
-      pregunta: content.replace(/[{}"]/g, '').trim(),
-      eje: "Miedo",
-      nivel: 2,
-      tension: 0.85,
-      conexion: "Pregunta generada dinámicamente"
-    };
-  }
-
-  // VALIDATE against Primer Mandamiento
-  const validation = validarPregunta(parsedQuestion.tension, parsedQuestion.pregunta);
-  
-  if (!validation.valido && intento < MAX_INTENTS) {
-    console.log(`Intento ${intento}: Pregunta rechazada - ${validation.razon}. Regenerando...`);
-    const reinforcedPrompt = userPrompt + getRefuerzoPrompt(validation.razon);
-    return generateAndValidateQuestion(LOVABLE_API_KEY, systemPrompt, reinforcedPrompt, intento + 1);
-  }
-
-  return {
-    ...parsedQuestion,
-    _validation: validation,
-    _intentos: intento
-  };
-}
-
-// Build system prompt for socratic oracle with academy-specific axes
-function buildSystemPrompt(
-  academyEjes: string[], 
-  personaPrompt: string | null, 
-  corpusContext?: string
-): string {
-  const ejeList = academyEjes.length > 0 
-    ? academyEjes.join(', ') 
-    : 'Miedo, Control, SaludMental, Legitimidad, Responsabilidad';
-  
-  const specificInstructions = `
-## INSTRUCCIÓN ESPECÍFICA: Generador de Preguntas Socráticas
-Tu misión es generar preguntas que provoquen "fricción cognitiva" - incomodidad productiva que desafía asunciones y expone contradicciones.
-
-## Ejes de esta academia:
-${ejeList}
-
-${corpusContext || ''}
-
-## Formato de respuesta:
-Responde SOLO con un JSON válido con esta estructura:
-{
-  "pregunta": "La pregunta generada",
-  "eje": "Uno de los ejes de esta academia",
-  "nivel": 1-3 (1=introductorio, 2=intermedio, 3=profundo),
-  "tension": 0.0-1.0 (intensidad de la fricción, mínimo 0.6),
-  "conexion": "Breve explicación de por qué esta pregunta conecta con el contexto"
-}`;
-
-  return buildAcademySystemPrompt(personaPrompt || undefined, specificInstructions);
-}
+const LAGRANGE_SYSTEM_PROMPT = `${getArchitectPrompt(`Eres el Oráculo Socrático del Sistema Lagrange. Tu misión es generar preguntas que provoquen "fricción cognitiva" - incomodidad productiva que desafía asunciones y expone contradicciones.\n\n## Los 5 Ejes de Tensión:\n1. **Miedo**: El miedo como herramienta de control y su neutralización\n2. **Control**: Mecanismos de dominación social, institucional y autoimpuesto\n3. **SaludMental**: La patologización del malestar legítimo\n4. **Legitimidad**: Fabricación de legitimidad y control de la narrativa\n5. **Responsabilidad**: Distribución asimétrica de consecuencias\n\n## Reglas para generar preguntas:\n- Las preguntas deben ser incómodas pero productivas\n- Nunca ofrezcas respuestas, solo preguntas\n- El tono es filosófico, no terapéutico\n- Evita moralizar; cuestiona estructuras, no personas\n- La tensión debe ser alta pero no agresiva\n- Conecta con el contexto del usuario cuando lo haya\n\n## Formato de respuesta:\nResponde SOLO con un JSON válido con esta estructura:\n{\n  \"pregunta\": \"La pregunta generada\",\n  \"eje\": \"Uno de: Miedo, Control, SaludMental, Legitimidad, Responsabilidad\",\n  \"nivel\": 1-3 (1=introductorio, 2=intermedio, 3=profundo),\n  \"tension\": 0.0-1.0 (intensidad de la fricción),\n  \"conexion\": \"Breve explicación de por qué esta pregunta conecta con el contexto\"\n}`)}`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -284,7 +130,7 @@ serve(async (req) => {
 
   try {
     // Verify authentication
-    const { user, supabaseClient, error: authError } = await verifyAuth(req);
+    const { user, error: authError } = await verifyAuth(req);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: authError || 'Authentication required' }),
@@ -313,99 +159,66 @@ serve(async (req) => {
       );
     }
 
-    const { academyId, context, eje, nivel, conversationHistory, includeCorpus = true } = validatedInput;
+    const { context, eje, nivel, conversationHistory, academyId } = validatedInput;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Supabase configuration missing");
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const resolvedAcademyId = await resolveAcademyId(supabase, academyId);
+
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Rate limiting por (user_id, academy_id)
-    const rateLimitKey = `oracle:${user.id}:${academyId}`;
-    const rateLimit = checkRateLimit(rateLimitKey, {
-      windowMs: RATE_LIMIT_WINDOW_MS,
-      maxRequests: RATE_LIMIT_MAX
-    });
-    
-    if (!rateLimit.allowed) {
-      return new Response(
-        JSON.stringify({ 
-          error: "Demasiadas peticiones. Espera un momento.",
-          retryAfter: rateLimit.resetAt - Date.now()
-        }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (resolvedAcademyId) {
+      const { data: academyRows } = await supabase
+        .from('thematic_axes')
+        .select('label, description')
+        .eq('academy_id', resolvedAcademyId)
+        .eq('is_active', true)
+        .order('order_index');
 
-    // Verificar membresía de la academia
-    const isMember = await verifyAcademyMembership(supabaseClient, academyId, user.id);
-    if (!isMember) {
-      return new Response(
-        JSON.stringify({ error: 'No eres miembro de esta academia' }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Obtener info de la academia (oracle_persona_prompt)
-    const { data: academy } = await supabaseClient
-      .from('academies')
-      .select('oracle_persona_prompt')
-      .eq('id', academyId)
-      .single();
-
-    // Obtener ejes de la academia
-    const academyEjes = await getAcademyEjes(supabaseClient, academyId);
-
-    // Validar eje contra los ejes de la academia
-    if (eje && academyEjes.length > 0 && !academyEjes.includes(eje)) {
-      return new Response(
-        JSON.stringify({ error: `El eje "${eje}" no existe en esta academia` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Fetch corpus fragments for context (filtered by academy)
-    let corpusContext = '';
-    if (includeCorpus) {
-      const fragments = await fetchCorpusFragments(supabaseClient, academyId, eje);
-      if (fragments.length > 0) {
-        corpusContext = formatCorpusContext(fragments);
-        console.log(`Socratic Oracle - Using ${fragments.length} corpus fragments`);
-      }
-    }
-
-    // Build system prompt with academy-specific config
-    const systemPrompt = buildSystemPrompt(academyEjes, academy?.oracle_persona_prompt || null, corpusContext);
-
-    // Build user prompt
-    let userPrompt: string;
-    
-    if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
-      // Dialogue continuation mode
-      const historyText = conversationHistory.map(msg => {
-        if (msg.role === 'oracle') {
-          return `ORÁCULO: "${msg.content}"`;
-        } else {
-          return `USUARIO: "${msg.content}"`;
+      if (academyRows && academyRows.length > 0) {
+        const academyAxes = academyRows.map((row: any) => `- ${row.label}: ${row.description || 'Sin descripción'}`).join('\n');
+        if (context) {
+          context += `\n\nEjes disponibles para esta academia:\n${academyAxes}`;
         }
-      }).join('\n');
-
-      userPrompt = `## Diálogo en curso:
-${historyText}
-
-## Instrucciones:
-Basándote en el intercambio anterior, genera la siguiente pregunta socrática que:
-- Continúe el diálogo de manera natural
-- Aumente gradualmente la tensión y profundidad
-- Cuestione las asunciones del usuario
-- Exponga contradicciones en su razonamiento`;
-
-      if (eje) {
-        userPrompt += `\n- Enfócate en el eje: ${eje}`;
       }
+    }
+
+    // Build messages array
+    const messages: { role: string; content: string }[] = [
+      { role: "system", content: LAGRANGE_SYSTEM_PROMPT }
+    ];
+
+    // If we have conversation history, add it
+    if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      for (const msg of conversationHistory) {
+        if (msg.role === 'oracle') {
+          messages.push({ 
+            role: "assistant", 
+            content: `{"pregunta": "${msg.content}", "eje": "Reflexión", "nivel": 2, "tension": 0.7, "conexion": "Continuación del diálogo"}` 
+          });
+        } else {
+          messages.push({ 
+            role: "user", 
+            content: `El usuario responde: "${msg.content}". Genera una nueva pregunta socrática que profundice en su respuesta, desafíe sus asunciones y exponga posibles contradicciones.` 
+          });
+        }
+      }
+      // Final instruction for continuing the dialogue
+      messages.push({
+        role: "user",
+        content: "Basándote en el intercambio anterior, genera la siguiente pregunta socrática que continúe el diálogo de manera natural, aumentando gradualmente la tensión y profundidad."
+      });
     } else {
-      // New question mode
-      userPrompt = "Genera una pregunta socrática profunda para iniciar un diálogo";
+      // Original single question logic
+      let userPrompt = "Genera una pregunta socrática profunda para iniciar un diálogo";
       
       if (context) {
         userPrompt += ` basada en este contexto del usuario: "${context}"`;
@@ -418,19 +231,71 @@ Basándote en el intercambio anterior, genera la siguiente pregunta socrática q
       if (nivel) {
         userPrompt += `. Nivel de profundidad: ${nivel} (1=introductorio, 2=intermedio, 3=profundo)`;
       }
+      
+      messages.push({ role: "user", content: userPrompt });
     }
 
-    console.log(`Socratic Oracle - User: ${user.id}, Eje: ${eje || 'N/A'}, Nivel: ${nivel || 'N/A'}, History: ${conversationHistory?.length || 0}, Corpus: ${includeCorpus}`);
+    console.log(`Socratic Oracle - User: ${user.id}, Eje: ${eje || 'N/A'}, Nivel: ${nivel || 'N/A'}, History: ${conversationHistory?.length || 0}`);
 
-    // Generate and validate question
-    const result = await generateAndValidateQuestion(LOVABLE_API_KEY, systemPrompt, userPrompt);
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages,
+        temperature: 0.85,
+      }),
+    });
 
-    console.log(`Socratic Oracle - Generated in ${result._intentos} attempt(s), Valid: ${result._validation.valido}`);
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Límite de peticiones excedido. Intenta de nuevo más tarde." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Créditos agotados. Añade más créditos a tu workspace." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      throw new Error("Error en AI gateway");
+    }
 
-    // Remove internal validation fields before returning
-    const { _validation, _intentos, ...cleanResult } = result;
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
 
-    return new Response(JSON.stringify(cleanResult), {
+    if (!content) {
+      throw new Error("No se recibió respuesta del modelo");
+    }
+
+    // Parse JSON response from AI
+    let parsedQuestion;
+    try {
+      // Extract JSON from potential markdown code blocks
+      const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || 
+                        content.match(/```\n?([\s\S]*?)\n?```/) ||
+                        [null, content];
+      parsedQuestion = JSON.parse(jsonMatch[1] || content);
+    } catch (parseError) {
+      console.error("Error parsing AI response:", content);
+      // Fallback: create structured response from raw text
+      parsedQuestion = {
+        pregunta: content.replace(/[{}"]/g, '').trim(),
+        eje: eje || "Miedo",
+        nivel: nivel || 2,
+        tension: 0.85,
+        conexion: "Pregunta generada dinámicamente"
+      };
+    }
+
+    return new Response(JSON.stringify(parsedQuestion), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

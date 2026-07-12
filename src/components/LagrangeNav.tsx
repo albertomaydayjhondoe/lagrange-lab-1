@@ -16,6 +16,8 @@ const navItems = [
   { path: '/lab', label: 'Academia', description: 'El laboratorio' },
 ];
 
+const defaultAcademySlug = 'genesis';
+
 export function LagrangeNav() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -23,8 +25,18 @@ export function LagrangeNav() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [academyName, setAcademyName] = useState('Genesis');
 
   useEffect(() => {
+    const loadAcademy = async () => {
+      const { data } = await supabase.from('academies').select('name').eq('slug', defaultAcademySlug).maybeSingle();
+      if (data?.name) {
+        setAcademyName(data.name);
+      }
+    };
+
+    loadAcademy();
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
       setIsAdmin(session?.user?.email === ADMIN_EMAIL);
@@ -119,6 +131,9 @@ export function LagrangeNav() {
             </div>
             <span className="font-serif text-lg md:text-xl tracking-wide text-foreground">
               Lagrange
+            </span>
+            <span className="hidden md:inline-flex rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-primary">
+              {academyName}
             </span>
           </Link>
 

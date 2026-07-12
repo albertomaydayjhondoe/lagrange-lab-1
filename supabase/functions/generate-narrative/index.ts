@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { getArchitectPrompt, formatCorpusContext, CorpusFragment } from "./_shared/architectPrompt.ts";
+import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
+import { resolveAcademyId } from "../_shared/academyContext.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,6 +44,7 @@ function validateInput(body: unknown): {
   customText?: string;
   eje?: string;
   length?: string;
+  academyId?: string;
 } {
   if (!body || typeof body !== 'object') {
     throw new Error('Request body must be an object');
@@ -106,6 +108,17 @@ function validateInput(body: unknown): {
     result.length = input.length;
   }
 
+  // Validate academyId
+  if (input.academyId !== undefined) {
+    if (typeof input.academyId !== 'string') {
+      throw new Error('academyId must be a string');
+    }
+    if (!UUID_REGEX.test(input.academyId)) {
+      throw new Error('academyId must be a valid UUID');
+    }
+    result.academyId = input.academyId;
+  }
+
   // Validate customText
   if (input.customText !== undefined) {
     if (typeof input.customText !== 'string') {
@@ -131,64 +144,7 @@ function validateInput(body: unknown): {
   return result;
 }
 
-// Build system prompt using shared architect prompt
-const SYSTEM_PROMPT = `${getArchitectPrompt()}
-
-## INSTRUCCIÓN ESPECÍFICA: Ensayista Crítico
-Eres un ensayista crítico del Sistema Lagrange. Tu misión es generar textos narrativos que exploren las tensiones entre poder, miedo, control y legitimidad.
-
-## Estilo
-- Escribe en un tono filosófico pero accesible
-- Usa metáforas y ejemplos concretos
-- Mantén una postura crítica pero no panfletaria
-- Los textos deben provocar reflexión, no adoctrinamiento
-- Genera incomodidad, no alivio
-
-## Estructura
-- Párrafos cortos y contundentes
-- Preguntas retóricas ocasionales
-- Citas o referencias cuando sean relevantes
-- NO ofrezcas soluciones, expone problemas
-
-Genera textos que exploren estos temas con profundidad y matiz. Basa tu narrativa exclusivamente en el contenido fuente proporcionado.`;
-
-// Fetch corpus fragments for context
-async function fetchCorpusFragments(
-  supabase: any, 
-  eje: string | undefined,
-  limit: number = 2
-): Promise<CorpusFragment[]> {
-  try {
-    let query = supabase
-      .from('corpus_fragments')
-      .select('*')
-      .order('tension', { ascending: false })
-      .limit(limit * 2);
-    
-    if (eje) {
-      const ejeMap: Record<string, string[]> = {
-        'Miedo': ['Miedo', 'miedo'],
-        'Control': ['Control', 'control'],
-        'SaludMental': ['Salud Mental', 'SaludMental', 'salud mental'],
-        'Legitimidad': ['Legitimidad', 'legitimidad'],
-        'Responsabilidad': ['Responsabilidad', 'responsabilidad'],
-      };
-      const axisFilters = ejeMap[eje] || [eje.toLowerCase()];
-      query = query.overlaps('axis', axisFilters);
-    }
-
-    const { data, error } = await query;
-    
-    if (error || !data || data.length === 0) {
-      return [];
-    }
-
-    return data.slice(0, limit);
-  } catch (error) {
-    console.error('Error fetching corpus fragments:', error);
-    return [];
-  }
-}
+const SYSTEM_PROMPT = `${getArchitectPrompt(`Eres un ensayista crítico del Sistema Lagrange. Tu misión es generar textos narrativos que exploren las tensiones entre poder, miedo, control y legitimidad.\n\n## Estilo\n- Escribe en un tono filosófico pero accesible\n- Usa metáforas y ejemplos concretos\n- Mantén una postura crítica pero no panfletaria\n- Los textos deben provocar reflexión, no adoctrinamiento\n\n## Estructura\n- Párrafos cortos y contundentes\n- Preguntas retóricas ocasionales\n- Citas o referencias cuando sean relevantes\n\n## Ejes temáticos disponibles:\n1. Miedo: El miedo como herramienta de control\n2. Control: Mecanismos de dominación institucional\n3. Salud Mental: Patologización del malestar legítimo\n4. Legitimidad: Construcción de autoridad\n5. Responsabilidad: Distribución asimétrica de consecuencias\n\nGenera textos que exploren estos temas con profundidad y matiz. Basa tu narrativa exclusivamente en el contenido fuente proporcionado.`)}`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -226,7 +182,7 @@ serve(async (req) => {
       );
     }
 
-    const { sourceType, dialogueId, promptId, customText, eje, length } = validatedInput;
+    const { sourceType, dialogueId, promptId, customText, eje, length, academyId } = validatedInput;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -241,6 +197,7 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const resolvedAcademyId = await resolveAcademyId(supabase, academyId);
 
     let sourceContent = '';
     let sourceContext = '';
@@ -251,6 +208,7 @@ serve(async (req) => {
         .from('saved_dialogues')
         .select('title, dialogue_content, eje, summary, user_id')
         .eq('id', dialogueId)
+        .eq('academy_id', resolvedAcademyId)
         .single();
 
       if (error || !dialogue) {
@@ -287,6 +245,7 @@ serve(async (req) => {
         .from('socratic_questions')
         .select('texto, eje, nivel, tension')
         .eq('id', promptId)
+        .eq('academy_id', resolvedAcademyId)
         .single();
 
       if (error || !question) {
@@ -306,12 +265,21 @@ serve(async (req) => {
 
     const wordCount = length === 'short' ? 150 : length === 'long' ? 500 : 300;
 
-    // Fetch corpus fragments for additional context
-    const corpusFragments = await fetchCorpusFragments(supabase, eje, 2);
-    const corpusContext = formatCorpusContext(corpusFragments);
-    
-    if (corpusFragments.length > 0) {
-      console.log(`Using ${corpusFragments.length} corpus fragments for narrative generation`);
+    let corpusContext = '';
+    try {
+      const { data: corpusRows } = await supabase
+        .from('corpus_fragments')
+        .select('content, axis, tension')
+        .eq('axis', eje || 'Miedo')
+        .eq('academy_id', resolvedAcademyId)
+        .order('tension', { ascending: false })
+        .limit(4);
+
+      if (corpusRows && corpusRows.length > 0) {
+        corpusContext = `\n## Contexto de corpus relevante\n${corpusRows.map((row: any) => `- [${row.axis}] ${row.content}`).join('\n')}\n`;
+      }
+    } catch (corpusError) {
+      console.warn('No se pudo cargar corpus para generate-narrative', corpusError);
     }
     
     const userPrompt = `
@@ -321,9 +289,7 @@ ${sourceContext}
 ## Contenido fuente
 ${sourceContent}
 
-${corpusContext}
-
-${eje ? `## Eje temático principal: ${eje}` : ''}
+${eje ? `## Eje temático principal: ${eje}` : ''}${corpusContext}
 
 ## Instrucciones
 Genera un texto narrativo de aproximadamente ${wordCount} palabras que explore y expanda las ideas presentes en el contenido fuente. El texto debe mantener coherencia con los temas discutidos y profundizar en las tensiones identificadas, usando la perspectiva crítica del Sistema Lagrange.

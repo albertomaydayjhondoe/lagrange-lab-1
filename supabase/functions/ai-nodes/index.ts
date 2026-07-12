@@ -1,49 +1,54 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { 
-  buildAcademySystemPrompt,
-  verifyAcademyMembership,
-  getAcademyRole,
-  checkRateLimit
-} from "./_shared/architectPrompt.ts";
+import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Input validation
 const VALID_ACTIONS = ['analyze', 'suggest', 'describe'];
 const MAX_ID_LENGTH = 100;
 const MAX_CONTEXT_LENGTH = 2000;
 
-async function verifyAuth(req: Request) {
+async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
-    return { user: null, supabaseClient: null, error: 'Authentication required' };
+    return { user: null, isAdmin: false, error: 'Authentication required' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-
+  
   const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } }
   });
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();
   if (error || !user) {
-    return { user: null, supabaseClient, error: 'Invalid or expired token' };
+    return { user: null, isAdmin: false, error: 'Invalid or expired token' };
   }
 
-  return { user, supabaseClient };
+  // Check if user is admin
+  const { data: isAdminData } = await supabaseClient.rpc('is_admin_user');
+  const isAdmin = isAdminData === true;
+
+  return { user, isAdmin };
 }
 
-function validateInput(body: unknown) {
+function validateInput(body: unknown): {
+  action: string;
+  nodeId?: string;
+  context?: string;
+} {
   if (!body || typeof body !== 'object') {
     throw new Error('Request body must be an object');
   }
 
   const input = body as Record<string, unknown>;
 
+  // Validate action (required)
   if (!input.action || typeof input.action !== 'string') {
     throw new Error('action is required and must be a string');
   }
@@ -51,15 +56,11 @@ function validateInput(body: unknown) {
     throw new Error(`action must be one of: ${VALID_ACTIONS.join(', ')}`);
   }
 
-  if (!input.academyId || typeof input.academyId !== 'string') {
-    throw new Error('academyId is required');
-  }
-
-  const result: { academyId: string; action: string; nodeId?: string; context?: string } = {
-    academyId: input.academyId,
+  const result: ReturnType<typeof validateInput> = {
     action: input.action
   };
 
+  // Validate nodeId
   if (input.nodeId !== undefined) {
     if (typeof input.nodeId !== 'string') {
       throw new Error('nodeId must be a string');
@@ -70,6 +71,7 @@ function validateInput(body: unknown) {
     result.nodeId = input.nodeId.trim();
   }
 
+  // Validate context
   if (input.context !== undefined) {
     if (typeof input.context !== 'string') {
       throw new Error('context must be a string');
@@ -80,6 +82,7 @@ function validateInput(body: unknown) {
     result.context = input.context.trim();
   }
 
+  // Validate required fields based on action
   if ((input.action === 'analyze' || input.action === 'describe') && !result.nodeId) {
     throw new Error(`nodeId is required for action: ${input.action}`);
   }
@@ -93,7 +96,8 @@ serve(async (req) => {
   }
 
   try {
-    const { user, supabaseClient, error: authError } = await verifyAuth(req);
+    // Verify authentication - admin only for AI node operations
+    const { user, isAdmin, error: authError } = await verifyAuth(req);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: authError || 'Authentication required' }),
@@ -101,6 +105,14 @@ serve(async (req) => {
       );
     }
 
+    if (!isAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Parse and validate input
     let body: unknown;
     try {
       body = await req.json();
@@ -121,46 +133,22 @@ serve(async (req) => {
       );
     }
 
-    const { academyId, action, nodeId, context } = validatedInput;
-
+    const { action, nodeId, context } = validatedInput;
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error("Supabase config missing");
 
-    // Rate limiting
-    const rateLimitKey = `ai-nodes:${user.id}:${academyId}`;
-    const rateLimit = checkRateLimit(rateLimitKey, { windowMs: 60000, maxRequests: 10 });
-    if (!rateLimit.allowed) {
-      return new Response(
-        JSON.stringify({ error: "Demasiadas peticiones. Espera un momento." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Verificar membresía
-    const isMember = await verifyAcademyMembership(supabaseClient, academyId, user.id);
-    if (!isMember) {
-      return new Response(
-        JSON.stringify({ error: 'No eres miembro de esta academia' }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Obtener rol y verificar admin
-    const role = await getAcademyRole(supabaseClient, academyId, user.id);
-    const isAdmin = role === 'owner' || role === 'admin';
-
-    // Obtener oracle_persona_prompt de la academia
-    const { data: academy } = await supabaseClient
-      .from('academies')
-      .select('oracle_persona_prompt')
-      .eq('id', academyId)
-      .single();
-
-    // Fetch nodes filtered by academy
+    // Fetch nodes and axes from Supabase
     const [nodesRes, axesRes, edgesRes] = await Promise.all([
-      supabaseClient.from("topology_nodes").select("*").eq("academy_id", academyId),
-      supabaseClient.from("thematic_axes").select("*").eq("academy_id", academyId).eq("is_active", true),
-      supabaseClient.from("topology_edges").select("*").eq("academy_id", academyId),
+      supabase.from("topology_nodes").select("*"),
+      supabase.from("thematic_axes").select("*").eq("is_active", true),
+      supabase.from("topology_edges").select("*"),
     ]);
 
     if (nodesRes.error) throw new Error(nodesRes.error.message);
@@ -171,31 +159,14 @@ serve(async (req) => {
     const axes = axesRes.data || [];
     const edges = edgesRes.data || [];
 
+    // Build dynamic system prompt from DB data
     const axesList = axes.map((a: any) => `- **${a.label}**: ${a.description || a.id}`).join("\n");
     const nodesList = nodes.map((n: any) => `- ${n.label} (${n.axis}): ${n.description}`).join("\n");
 
-    const SYSTEM_PROMPT = buildAcademySystemPrompt(
-      academy?.oracle_persona_prompt || undefined,
-      `## INSTRUCCIÓN ESPECÍFICA: Arquitecto Topológico
-Eres el Arquitecto Topológico del Sistema Lagrange. Analizas y generas contenido sobre la red conceptual de tensiones.
-
-## Ejes Temáticos Activos:
-${axesList}
-
-## Nodos Actuales:
-${nodesList}
-
-Tu misión es:
-- Analizar conexiones entre conceptos
-- Sugerir nuevos nodos o modificaciones
-- Explorar tensiones latentes
-- Generar descripciones profundas
-- Mantener la incomodidad: los nodos deben generar fricción cognitiva
-
-Responde siempre en JSON estructurado según la acción solicitada.`
-    );
+    const SYSTEM_PROMPT = `${getArchitectPrompt(`Eres el Arquitecto Topológico del Sistema Lagrange. Analizas y generas contenido sobre la red conceptual de tensiones.\n\n## Ejes Temáticos Activos:\n${axesList}\n\n## Nodos Actuales:\n${nodesList}\n\nTu misión es:\n- Analizar conexiones entre conceptos\n- Sugerir nuevos nodos o modificaciones\n- Explorar tensiones latentes\n- Generar descripciones profundas\n\nResponde siempre en JSON estructurado según la acción solicitada.`)}`;
 
     let userPrompt = "";
+    let responseFormat = {};
 
     switch (action) {
       case "analyze":
@@ -236,9 +207,12 @@ La descripción debe:
 
 Responde en JSON: { "description_short": string (max 100 chars), "description_full": string (300+ palabras), "key_tensions": string[] }`;
         break;
+
+      default:
+        throw new Error(`Acción no reconocida: ${action}`);
     }
 
-    console.log(`AI Nodes - User: ${user.id}, Academy: ${academyId}, Action: ${action}, IsAdmin: ${isAdmin}`);
+    console.log(`AI Nodes - Admin: ${user.id}, Action: ${action}, Node: ${nodeId || "N/A"}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -262,12 +236,19 @@ Responde en JSON: { "description_short": string (max 100 chars), "description_fu
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Créditos agotados" }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       throw new Error("Error en AI gateway");
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
 
+    // Parse JSON response
     let parsed;
     try {
       const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || [null, content];
@@ -276,7 +257,7 @@ Responde en JSON: { "description_short": string (max 100 chars), "description_fu
       parsed = { raw: content, action };
     }
 
-    return new Response(JSON.stringify({ action, nodeId, result: parsed, isAdmin }), {
+    return new Response(JSON.stringify({ action, nodeId, result: parsed }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

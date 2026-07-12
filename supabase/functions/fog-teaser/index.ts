@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
+import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -115,37 +115,7 @@ serve(async (req) => {
       ? Math.max(0.3, 1 - proximityToCenter * 0.5) // More transparent when closer to center
       : 0.7; // Default moderate fog
 
-    // Build system prompt using shared architect prompt
-    const basePrompt = getArchitectPrompt();
-    const SYSTEM_PROMPT = `${basePrompt}
-
-## INSTRUCCIÓN ESPECÍFICA: Generador de Teasers Poéticos para la Niebla
-Tu misión es generar "teasers poéticos" - frases cortas, misteriosas y provocadoras que sugieren lo que hay bajo la niebla.
-
-## ¿Qué es un teaser poético?
-Un teaser poético es una frase de 1-2 líneas que:
-- NO revela el contenido, solo lo sugiere
-- Usa metáforas y lenguaje evocador
-- Genera curiosidad sin dar respuestas
-- Conecta con la tensión del eje temático
-- Suena como un susurro, no como un anuncio
-- Mantiene la incomodidad: sugiere verdades que duelen
-
-## Reglas:
-- Máximo 60 caracteres
-- No uses signos de interrogación (no es pregunta, es afirmación críptica)
-- No reveles, sugiere
-- El tono es íntimo, casi secreto
-- Debe poder entenderse sin contexto pero ganar significado con él
-
-## Ejemplos:
-- "Las raíces que no ves sostienen el peso que cargas"
-- "Hay preguntas que duelen más que sus respuestas"
-- "El silencio entre palabras guarda más verdad"
-- "Lo que nombras, lo fortaleces"
-
-## Formato de respuesta:
-Responde SOLO con el teaser en texto plano, sin comillas, sin JSON.`;
+    const SYSTEM_PROMPT = `${getArchitectPrompt(`Eres el Vidente del Sistema Lagrange. Tu misión es generar "teasers poéticos" - frases cortas, misteriosas y provocadoras que sugieren lo que hay bajo la niebla.\n\n## ¿Qué es un teaser poético?\nUn teaser poético es una frase de 1-2 líneas que:\n- NO revela el contenido, solo lo sugiere\n- Usa metáforas y lenguaje evocador\n- Genera curiosidad sin dar respuestas\n- Conecta con la tensión del eje temático\n- Suena como un susurro, no como un anuncio\n\n## Los 5 Ejes de Tensión:\n1. **Miedo**: El miedo como herramienta de control\n2. **Control**: Mecanismos de dominación\n3. **SaludMental**: Patologización del malestar\n4. **Legitimidad**: Construcción de autoridad\n5. **Responsabilidad**: Distribución de consecuencias\n\n## Reglas:\n- Máximo 50 caracteres\n- No uses signos de interrogación\n- No reveles, sugiere\n- El tono es íntimo, casi secreto\n- Debe poder entenderse sin contexto pero ganar significado con él\n\n## Ejemplos:\n- \"Las raíces que no ves sostienen el peso que cargas\"\n- \"Hay preguntas que duelen más que sus respuestas\"\n- \"El silencio entre palabras guarda más verdad\"\n- \"Lo que nombras, lo fortaleces\"\n\n## Formato de respuesta:\nResponde SOLO con el teaser en texto plano, sin comillas, sin JSON.`)}`;
 
     let userPrompt = 'Genera un teaser poético';
     

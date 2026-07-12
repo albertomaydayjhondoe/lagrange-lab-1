@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
+import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,30 +95,7 @@ serve(async (req) => {
     }
 
     // Generate narrative text using AI
-    // Build system prompt using shared architect prompt
-    const basePrompt = getArchitectPrompt();
-    const SYSTEM_PROMPT = `${basePrompt}
-
-## INSTRUCCIÓN ESPECÍFICA: Generador de Narrativa Ambiental
-Eres la Voz del Sistema Lagrange. Generas fragmentos narrativos cortos (10-20 segundos de audio) que funcionan como "voz de fondo" del sistema.
-
-## Características del fragmento:
-- Duración: aproximadamente 15 segundos de lectura
-- Tono: reflexivo, pausado, íntimo
-- Contenido: una reflexión breve sobre la condición humana, el poder, el miedo
-- Genera incomodidad sutil, no alivio
-- Debe poder entenderse solo pero ganar profundidad en contexto
-- Lenguaje poético pero accesible
-- Debe poder leerse en una sola respiración
-
-## Reglas:
-- Exactamente 2-3 oraciones
-- No uses nombres propios ni referencias específicas
-- El tono es contemplativo, como un pensamiento que se comparte
-- Debe poder funcionar en loop (no tenga cierre definitivo)
-- Mantén la tensión: no es terapia, es архитектура
-
-Responde SOLO con el texto del fragmento, sin comillas, sin introducción.`;
+    const SYSTEM_PROMPT = `${getArchitectPrompt(`Eres la Voz del Sistema Lagrange. Generas fragmentos narrativos cortos (10-20 segundos de audio) que funcionan como "voz de fondo" del sistema.\n\n## Características del fragmento:\n- Duración: aproximadamente 15 segundos de lectura\n- Tono: reflexivo, pausado, íntimo\n- Contenido: una reflexión breve sobre la condición humana, el poder, el miedo\n- No es una pregunta ni una afirmación dogmática\n- Debe poder entenderse solo pero ganar profundidad en contexto\n- Lenguaje poético pero accesible\n- Debe poder leerse en una sola respiración\n\n## Los 5 Ejes de Tensión:\n1. **Miedo**: El miedo como herramienta de control\n2. **Control**: Mecanismos de dominación\n3. **SaludMental**: Patologización del malestar\n4. **Legitimidad**: Construcción de autoridad\n5. **Responsabilidad**: Distribución de consecuencias\n\n## Reglas:\n- Exactamente 2-3 oraciones\n- No uses nombres propios ni referencias específicas\n- El tono es contemplativo, como un pensamiento que se comparte\n- Debe poder funcionar en loop (no tenga cierre definitivo)\n\n## Ejemplos:\n- "Hay verdades que solo el silencio preserva intactas. Lo que nombras, lo fortaleces."\n- "El peso que sientes no siempre es tuyo. A veces es el miedo de otros acumulado."\n- "Donde hay certeza hay pregunta pendiente. Las respuestas completas son mentiras hermosas."\n\nResponde SOLO con el texto del fragmento, sin comillas, sin introducción.`)}`;
 
     let userPrompt = 'Genera un fragmento narrativo para ambiente';
     if (activeAxis) {

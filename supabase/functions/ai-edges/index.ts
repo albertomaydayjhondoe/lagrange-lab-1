@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { buildAcademySystemPrompt, verifyAcademyMembership, getAcademyRole, checkRateLimit } from "./_shared/architectPrompt.ts";
+import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -174,32 +174,7 @@ serve(async (req) => {
       return `${src?.label || e.source} → ${tgt?.label || e.target}: "${e.label}" (${e.type}, tensión: ${e.tension})`;
     }).join("\n");
 
-    // Build system prompt using shared architect prompt
-    const basePrompt = getArchitectPrompt();
-    const SYSTEM_PROMPT = `${basePrompt}
-
-## INSTRUCCIÓN ESPECÍFICA: Analizador de Tensiones
-Eres el Analizador de Tensiones del Sistema Lagrange. Tu trabajo es analizar y generar conexiones (edges) entre conceptos.
-
-## Tipos de conexión válidos:
-- **causal**: A causa B
-- **consequence**: A tiene como consecuencia B  
-- **enabler**: A habilita/permite B
-- **tension**: A y B están en tensión
-- **mechanism**: A es un mecanismo de B
-- **cycle**: A y B forman un ciclo de retroalimentación
-
-## Conexiones actuales:
-${edgesList}
-
-Tu misión es:
-- Analizar la calidad de conexiones existentes
-- Detectar conexiones faltantes
-- Generar etiquetas narrativas para conexiones
-- Calcular niveles de tensión apropiados
-- Las conexiones deben generar fricción cognitiva
-
-Responde siempre en JSON estructurado.`;
+    const SYSTEM_PROMPT = `${getArchitectPrompt(`Eres el Analizador de Tensiones del Sistema Lagrange. Tu trabajo es analizar y generar conexiones (edges) entre conceptos.\n\n## Tipos de conexión válidos:\n- **causal**: A causa B\n- **consequence**: A tiene como consecuencia B  \n- **enabler**: A habilita/permite B\n- **tension**: A y B están en tensión\n- **mechanism**: A es un mecanismo de B\n- **cycle**: A y B forman un ciclo de retroalimentación\n\n## Conexiones actuales:\n${edgesList}\n\nTu misión es:\n- Analizar la calidad de conexiones existentes\n- Detectar conexiones faltantes\n- Generar etiquetas narrativas para conexiones\n- Calcular niveles de tensión apropiados\n\nResponde siempre en JSON estructurado.`)}`;
 
     let userPrompt = "";
 

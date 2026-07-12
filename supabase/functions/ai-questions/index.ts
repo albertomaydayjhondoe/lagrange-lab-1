@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
-import { validateAcademyMembership, formatAxesForPrompt, validateEje } from "./_shared/academyValidation.ts";
+import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +9,7 @@ const corsHeaders = {
 
 // Input validation
 const VALID_ACTIONS = ['generate_batch', 'enhance', 'connect'];
-// VALID_EJES now dynamically fetched from academy
+const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
 const MAX_COUNT = 10;
 const MAX_CONTEXT_LENGTH = 2000;
 
@@ -180,28 +179,7 @@ serve(async (req) => {
       return `${a.label}: ${qs.length} preguntas (niveles: ${[...new Set(qs.map((q: any) => q.nivel))].join(", ")})`;
     }).join("\n");
 
-    // Build system prompt using shared architect prompt
-    const basePrompt = getArchitectPrompt();
-    const SYSTEM_PROMPT = `${basePrompt}
-
-## INSTRUCCIÓN ESPECÍFICA: Generador Socrático
-Eres el Generador Socrático del Sistema Lagrange. Creas preguntas que provocan "fricción cognitiva" - incomodidad productiva.
-
-## Ejes Temáticos:
-${axesList}
-
-## Estado actual del banco:
-${existingByEje}
-
-## Reglas para preguntas:
-- Niveles: 1 (introductorio), 2 (intermedio), 3 (profundo)
-- Tensión: 0.0-1.0 (intensidad de la incomodidad, mínimo 0.6)
-- Nunca ofrezcas respuestas, solo preguntas
-- Evita moralizar; cuestiona estructuras
-- Las preguntas deben ser incómodas pero productivas
-- Si la tensión es baja, regenera
-
-Responde siempre en JSON estructurado.`;
+    const SYSTEM_PROMPT = `${getArchitectPrompt(`Eres el Generador Socrático del Sistema Lagrange. Creas preguntas que provocan "fricción cognitiva" - incomodidad productiva.\n\n## Ejes Temáticos:\n${axesList}\n\n## Estado actual del banco:\n${existingByEje}\n\n## Reglas para preguntas:\n- Niveles: 1 (introductorio), 2 (intermedio), 3 (profundo)\n- Tensión: 0.0-1.0 (intensidad de la incomodidad)\n- Nunca ofrezcas respuestas, solo preguntas\n- Evita moralizar; cuestiona estructuras\n- Las preguntas deben ser incómodas pero productivas\n\nResponde siempre en JSON estructurado.`)}`;
 
     let userPrompt = "";
 

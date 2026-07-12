@@ -1,27 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
+import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-function buildSystemPrompt(): string {
-  return `${getArchitectPrompt()}
-
-## INSTRUCCIÓN ESPECÍFICA: Analista de Diálogos Socráticos
-Eres un analista filosófico especializado en diálogos socráticos. Tu tarea es generar un resumen conciso pero profundo de un diálogo entre un usuario y un oráculo socrático.
-
-El resumen debe:
-1. Identificar los temas principales explorados
-2. Destacar las tensiones o contradicciones que emergieron
-3. Resumir la evolución del pensamiento del usuario
-4. Mencionar los ejes temáticos predominantes (Miedo, Control, Salud Mental, Legitimidad, Responsabilidad)
-5. Ser escrito en español, en tercera persona, máximo 3-4 oraciones
-
-Responde SOLO con el resumen, sin introducciones ni explicaciones adicionales.`;
-}
 
 // Input validation
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -159,7 +143,7 @@ serve(async (req) => {
       }
     });
 
-    const systemPrompt = buildSystemPrompt();
+    const systemPrompt = `${getArchitectPrompt(`Eres un analista filosófico especializado en diálogos socráticos. Tu tarea es generar un resumen conciso pero profundo de un diálogo entre un usuario y un oráculo socrático.\n\nEl resumen debe:\n1. Identificar los temas principales explorados\n2. Destacar las tensiones o contradicciones que emergieron\n3. Resumir la evolución del pensamiento del usuario\n4. Mencionar los ejes temáticos predominantes (Miedo, Control, Salud Mental, Legitimidad, Responsabilidad)\n5. Ser escrito en español, en tercera persona, máximo 3-4 oraciones\n\nResponde SOLO con el resumen, sin introducciones ni explicaciones adicionales.`)}`;
 
     console.log(`Generating summary for user ${user.id}, dialogue:`, dialogueId);
 

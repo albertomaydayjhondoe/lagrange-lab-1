@@ -1,13 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { 
-  getArchitectPrompt, 
-  validarPregunta, 
-  getRefuerzoPrompt,
-  buildAcademySystemPrompt,
-  verifyAcademyMembership,
-  checkRateLimit
-} from "./_shared/architectPrompt.ts";
+import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
+import { resolveAcademyId } from "../_shared/academyContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,13 +10,13 @@ const corsHeaders = {
 
 // Rate limiting for echoes
 const ECHO_COOLDOWN_MS = 30000; // 30 seconds between echoes
-const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
-const RATE_LIMIT_MAX = 5; // 5 echoes per minute
 
-async function verifyAuth(req: Request): Promise<{ user: any; supabaseClient: any; error?: string }> {
+const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
+
+async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
-    return { user: null, supabaseClient: null, error: 'Authentication required' };
+    return { user: null, error: 'Authentication required' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -34,10 +28,10 @@ async function verifyAuth(req: Request): Promise<{ user: any; supabaseClient: an
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();
   if (error || !user) {
-    return { user: null, supabaseClient, error: 'Invalid or expired token' };
+    return { user: null, error: 'Invalid or expired token' };
   }
 
-  return { user, supabaseClient };
+  return { user };
 }
 
 serve(async (req) => {
@@ -46,7 +40,7 @@ serve(async (req) => {
   }
 
   try {
-    const { user, supabaseClient, error: authError } = await verifyAuth(req);
+    const { user, error: authError } = await verifyAuth(req);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: authError || 'Authentication required' }),
@@ -66,42 +60,8 @@ serve(async (req) => {
 
     const input = body as Record<string, unknown>;
     
-    // Validate academyId (required)
-    const academyId = input.academyId as string;
-    if (!academyId) {
-      return new Response(
-        JSON.stringify({ error: 'academyId is required' }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Rate limiting por (user_id, academy_id)
-    const rateLimitKey = `echo:${user.id}:${academyId}`;
-    const rateLimit = checkRateLimit(rateLimitKey, {
-      windowMs: RATE_LIMIT_WINDOW_MS,
-      maxRequests: RATE_LIMIT_MAX
-    });
-    
-    if (!rateLimit.allowed) {
-      return new Response(
-        JSON.stringify({ 
-          error: "Demasiados ecos. Espera un momento.",
-          retryAfter: rateLimit.resetAt - Date.now()
-        }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Verificar membresía
-    const isMember = await verifyAcademyMembership(supabaseClient, academyId, user.id);
-    if (!isMember) {
-      return new Response(
-        JSON.stringify({ error: 'No eres miembro de esta academia' }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const lastQuestion = input.lastQuestion as string | undefined;
+    const academyId = input.academyId as string | undefined;
     const silenceDuration = input.silenceDuration as number | undefined;
     const eje = input.eje as string | undefined;
     const selectedNodeId = input.selectedNodeId as string | undefined;
@@ -112,16 +72,25 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Fetch context: selected node and recent questions (filtered by academy)
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error("Supabase config missing");
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const resolvedAcademyId = await resolveAcademyId(supabase, academyId);
+
+    // Fetch context: selected node and recent questions
     let nodeContext = '';
     let questionsContext = '';
     
     if (selectedNodeId) {
-      const { data: node } = await supabaseClient
+      const { data: node } = await supabase
         .from("topology_nodes")
         .select("label, description, axis")
         .eq("id", selectedNodeId)
-        .eq("academy_id", academyId)
+        .eq("academy_id", resolvedAcademyId)
         .single();
       
       if (node) {
@@ -142,52 +111,7 @@ serve(async (req) => {
     // Calculate echo type based on silence duration
     const echoType = silenceDuration && silenceDuration > 60000 ? 'deep_probe' : 'gentle_nudge';
     
-    // Get oracle_persona_prompt from academy
-    const { data: academy } = await supabaseClient
-      .from('academies')
-      .select('oracle_persona_prompt')
-      .eq('id', academyId)
-      .single();
-
-    // Build system prompt using shared architect prompt
-    const SYSTEM_PROMPT = buildAcademySystemPrompt(
-      academy?.oracle_persona_prompt || undefined,
-      `## INSTRUCCIÓN ESPECÍFICA: Generador de Ecos Socráticos
-Tu misión es generar "ecos" - preguntas cortas e incisivas que responden al silencio del usuario.
-
-## ¿Qué es un eco?
-Un eco es una pregunta de seguimiento que se genera cuando el usuario no ha respondido o ha permanecido en silencio. A diferencia de una pregunta normal, el eco debe ser:
-- **Corto**: Máximo 15 palabras
-- **Incisivo**: Va directo al grano
-- **Provocador**: Toca el nervio de la pregunta anterior
-- **No es un reintento**: No repitas la pregunta, profundiza en una dirección inesperada
-
-## Tipos de eco:
-1. **gentle_nudge** (< 60s de silencio): Un recordatorio suave, una reformulación que invita
-2. **deep_probe** (> 60s de silencio): Una pregunta que ataca la resistencia directamente
-
-## Validación:
-- Tension mínimo: 0.6
-- Máximo 15 palabras
-- Si no genera incomodidad, regenera con más fuerza
-
-## Reglas:
-- NUNCA repitas la pregunta anterior
-- El eco debe ofrecer UN ángulo nuevo, no reformular el mismo
-- Si la pregunta anterior era sobre el QUÉ, el eco pregunta el POR QUÉ o el PARA QUÉ
-- Si era teórica, hazla personal
-- Si era personal, hazla estructural
-- El tono es urgente pero no agresivo
-
-## Formato de respuesta:
-Responde SOLO con JSON válido:
-{
-  "echo": "La pregunta eco (máximo 15 palabras)",
-  "type": "gentle_nudge | deep_probe",
-  "direction": "Breve explicación de por qué esta pregunta eco",
-  "tension_shift": "Cómo se mueve la tensión con este eco (aumenta | mantiene | suaviza)"
-}`
-    );
+    const SYSTEM_PROMPT = `${getArchitectPrompt(`Eres el Oráculo Socrático del Sistema Lagrange. Tu misión es generar "ecos" - preguntas cortas e incisivas que responden al silencio del usuario.\n\n## ¿Qué es un eco?\nUn eco es una pregunta de seguimiento que se genera cuando el usuario no ha respondido o ha permanecido en silencio. A diferencia de una pregunta normal, el eco debe ser:\n- **Corto**: Máximo 15 palabras\n- **Incisivo**: Va directo al grano\n- **Provocador**: Toca el nervio de la pregunta anterior\n- **No es un reintento**: No repitas la pregunta, profundiza en una dirección inesperada\n\n## Tipos de eco:\n1. **gentle_nudge** (< 60s de silencio): Un recordatorio suave, una reformulación que invita\n2. **deep_probe** (> 60s de silencio): Una pregunta que ataca la resistencia directamente\n\n## Los 5 Ejes de Tensión:\n1. **Miedo**: El miedo como herramienta de control y su neutralización\n2. **Control**: Mecanismos de dominación social, institucional y autoimpuesto\n3. **SaludMental**: La patologización del malestar legítimo\n4. **Legitimidad**: Fabricación de legitimidad y control de la narrativa\n5. **Responsabilidad**: Distribución asimétrica de consecuencias\n\n## Reglas:\n- NUNCA repitas la pregunta anterior\n- El eco debe ofrecer UN ángulo nuevo, no reformular el mismo\n- Si la pregunta anterior era sobre el QUÉ, el eco pregunta el POR QUÉ o el PARA QUÉ\n- Si era teórica, hazla personal\n- Si era personal, hazla estructural\n- El tono es urgente pero no agresivo\n\n## Formato de respuesta:\nResponde SOLO con JSON válido:\n{\n  \"echo\": \"La pregunta eco (máximo 15 palabras)\",\n  \"type\": \"gentle_nudge | deep_probe\",\n  \"direction\": \"Breve explicación de por qué esta pregunta eco\",\n  \"tension_shift\": \"Cómo se mueve la tensión con este eco (aumenta | mantiene | suaviza)\"\n}`)}`;
 
     let userPrompt = `El usuario ha permanecido en silencio`;
     
@@ -260,24 +184,10 @@ Responde SOLO con JSON válido:
       };
     }
 
-    // Validate echo meets friction requirements
-    const wordCount = parsed.echo.split(/\s+/).length;
-    const isQuestion = parsed.echo.includes('?');
-    const hasComfort = ['tranquilo', 'relájate', 'todo bien', 'no te preocupes'].some(
-      w => parsed.echo.toLowerCase().includes(w)
-    );
-
-    if (wordCount > 15 || !isQuestion || hasComfort) {
-      console.log(`Oracle Echo - Validation failed: words=${wordCount}, isQuestion=${isQuestion}, hasComfort=${hasComfort}`);
-      // Return with warning but still deliver
-      parsed._validation_warning = "Eco entregado pero no cumple todos los criterios de fricción";
-    }
-
     return new Response(JSON.stringify({
       ...parsed,
       silenceDuration,
-      timestamp: new Date().toISOString(),
-      validated: wordCount <= 15 && isQuestion && !hasComfort
+      timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
