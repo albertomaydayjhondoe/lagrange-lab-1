@@ -124,6 +124,10 @@ ALTER TABLE public.academy_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.thematic_axes
   ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
 
+-- Ensure socratic_questions support per-academy visibility
+ALTER TABLE IF EXISTS public.socratic_questions
+  ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
+
 -- academies policies
 CREATE POLICY "Public academies are viewable by everyone"
   ON public.academies FOR SELECT
