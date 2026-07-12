@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
+import { validateAcademyMembership, formatAxesForPrompt, validateEje } from "./_shared/academyValidation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,7 +10,7 @@ const corsHeaders = {
 
 // Input validation
 const VALID_ACTIONS = ['generate_batch', 'enhance', 'connect'];
-const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
+// VALID_EJES now dynamically fetched from academy
 const MAX_COUNT = 10;
 const MAX_CONTEXT_LENGTH = 2000;
 

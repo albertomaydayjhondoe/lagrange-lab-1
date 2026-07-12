@@ -14,11 +14,11 @@ const corsHeaders = {
 };
 
 // Input validation schemas
-const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_HISTORY_LENGTH = 50;
 const MAX_MESSAGE_LENGTH = 3000;
 const MAX_INTENTS = 2; // Máximo intentos para generar pregunta válida
+const GENESIS_ACADEMY_ID = '00000000-0000-0000-0000-000000000001';
 
 async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
@@ -41,7 +41,57 @@ async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> 
   return { user };
 }
 
+async function validateAcademyMembership(
+  supabase: any,
+  userId: string,
+  academyId: string | null
+): Promise<{ valid: boolean; error?: string; axes?: any[] }> {
+  const effectiveAcademyId = academyId || GENESIS_ACADEMY_ID;
+  
+  // Check if academy exists
+  const { data: academy, error: academyError } = await supabase
+    .from('academies')
+    .select('id, is_public')
+    .eq('id', effectiveAcademyId)
+    .single();
+
+  if (academyError || !academy) {
+    return { valid: false, error: 'Academy not found' };
+  }
+
+  // Fetch thematic axes for this academy
+  const { data: axes, error: axesError } = await supabase
+    .from('thematic_axes')
+    .select('label, description')
+    .eq('academy_id', effectiveAcademyId)
+    .eq('is_active', true);
+
+  if (axesError) {
+    return { valid: false, error: 'Failed to fetch axes' };
+  }
+
+  // If academy is public, allow access
+  if (academy.is_public) {
+    return { valid: true, axes: axes || [] };
+  }
+
+  // Check membership for private academies
+  const { data: membership, error: membershipError } = await supabase
+    .from('academy_members')
+    .select('role')
+    .eq('academy_id', effectiveAcademyId)
+    .eq('user_id', userId)
+    .single();
+
+  if (membershipError || !membership) {
+    return { valid: false, error: 'Access denied to this academy' };
+  }
+
+  return { valid: true, axes: axes || [] };
+}
+
 function validateInput(body: unknown): { 
+  academyId?: string;
   context?: string; 
   eje?: string; 
   nivel?: number; 
@@ -55,6 +105,19 @@ function validateInput(body: unknown): {
   const input = body as Record<string, unknown>;
   const result: ReturnType<typeof validateInput> = {};
 
+  // Validate academyId (optional)
+  if (input.academyId !== undefined) {
+    if (typeof input.academyId !== 'string') {
+      throw new Error('academyId must be a string');
+    }
+    // UUID format validation
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(input.academyId)) {
+      throw new Error('academyId must be a valid UUID');
+    }
+    result.academyId = input.academyId;
+  }
+
   // Validate context
   if (input.context !== undefined) {
     if (typeof input.context !== 'string') {
@@ -66,14 +129,12 @@ function validateInput(body: unknown): {
     result.context = input.context.trim();
   }
 
-  // Validate eje
+  // Validate eje (will be validated against academy axes later)
   if (input.eje !== undefined) {
     if (typeof input.eje !== 'string') {
       throw new Error('eje must be a string');
     }
-    if (!VALID_EJES.includes(input.eje)) {
-      throw new Error(`eje must be one of: ${VALID_EJES.join(', ')}`);
-    }
+    // Eje will be validated against academy axes in the serve function
     result.eje = input.eje;
   }
 
@@ -237,8 +298,11 @@ async function generateAndValidateQuestion(
 }
 
 // Build system prompt for socratic oracle
-function buildSystemPrompt(corpusContext?: string): string {
+function buildSystemPrompt(corpusContext?: string, academyAxes?: string[]): string {
   const base = getArchitectPrompt();
+  const ejeList = academyAxes && academyAxes.length > 0 
+    ? academyAxes.map(a => `- ${a}`).join('\n')
+    : '- Miedo\n- Control\n- Salud Mental\n- Legitimidad\n- Responsabilidad';
   
   return `${base}
 
@@ -247,11 +311,14 @@ Tu misión es generar preguntas que provoquen "fricción cognitiva" - incomodida
 
 ${corpusContext || ''}
 
+## Ejes Temáticos de esta Academia:
+${ejeList}
+
 ## Formato de respuesta:
 Responde SOLO con un JSON válido con esta estructura:
 {
   "pregunta": "La pregunta generada",
-  "eje": "Uno de: Miedo, Control, SaludMental, Legitimidad, Responsabilidad",
+  "eje": "Uno de los ejes listados arriba",
   "nivel": 1-3 (1=introductorio, 2=intermedio, 3=profundo),
   "tension": 0.0-1.0 (intensidad de la fricción, mínimo 0.6),
   "conexion": "Breve explicación de por qué esta pregunta conecta con el contexto"
@@ -294,7 +361,42 @@ serve(async (req) => {
       );
     }
 
-    const { context, eje, nivel, conversationHistory, includeCorpus = true } = validatedInput;
+    const { academyId, context, eje, nivel, conversationHistory, includeCorpus = true } = validatedInput;
+    
+    // Validate academy membership and get axes
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error("Supabase configuration missing");
+    }
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const academyValidation = await validateAcademyMembership(supabase, user.id, academyId);
+    
+    if (!academyValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: academyValidation.error }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const validAxes = academyValidation.axes || [];
+    const validAxisLabels = validAxes.map((a: any) => a.label);
+    
+    // Validate eje against academy axes if provided
+    if (eje && validAxisLabels.length > 0) {
+      const ejeNormalized = eje.replace(/\s+/g, '');
+      const isValidEje = validAxisLabels.some((label: string) => 
+        label.replace(/\s+/g, '') === ejeNormalized || 
+        label.toLowerCase() === eje.toLowerCase()
+      );
+      if (!isValidEje) {
+        return new Response(
+          JSON.stringify({ error: `Invalid eje. Available axes: ${validAxisLabels.join(', ')}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -316,7 +418,7 @@ serve(async (req) => {
     }
 
     // Build system prompt
-    const systemPrompt = buildSystemPrompt(corpusContext);
+    const systemPrompt = buildSystemPrompt(corpusContext, validAxisLabels);
 
     // Build user prompt
     let userPrompt: string;

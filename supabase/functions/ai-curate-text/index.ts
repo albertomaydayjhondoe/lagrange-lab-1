@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,26 @@ const corsHeaders = {
 
 const MAX_DIALOGUE_ENTRIES = 100;
 const MAX_WORD_COUNT = 2000;
+
+function buildSystemPrompt(targetWordCount: number): string {
+  return `${getArchitectPrompt()}
+
+## INSTRUCCIÓN ESPECÍFICA: Curador de Textos Socráticos
+Eres un editor experto en filosofía socrática y narrativa reflexiva. Tu tarea es transformar diálogos socráticos en textos narrativos fluidos para podcast.
+
+INSTRUCCIONES:
+1. Convierte el diálogo en una narrativa fluida de aproximadamente ${targetWordCount} palabras
+2. Mantén la esencia filosófica y las preguntas clave
+3. Elimina redundancias y respuestas cortas sin contenido
+4. Crea transiciones suaves entre ideas
+5. El texto debe ser apropiado para ser leído en voz alta
+6. Mantén un tono reflexivo y profundo
+7. NO incluyas metadatos, timestamps o información técnica
+8. Escribe en español, con un estilo elegante y accesible
+
+FORMATO DE SALIDA:
+Devuelve SOLO el texto curado, sin explicaciones adicionales.`;
+}
 
 async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
@@ -112,20 +133,7 @@ serve(async (req) => {
       }
     }
 
-    const systemPrompt = `Eres un editor experto en filosofía socrática y narrativa reflexiva. Tu tarea es transformar diálogos socráticos en textos narrativos fluidos para podcast.
-
-INSTRUCCIONES:
-1. Convierte el diálogo en una narrativa fluida de aproximadamente ${targetWordCount} palabras
-2. Mantén la esencia filosófica y las preguntas clave
-3. Elimina redundancias y respuestas cortas sin contenido
-4. Crea transiciones suaves entre ideas
-5. El texto debe ser apropiado para ser leído en voz alta
-6. Mantén un tono reflexivo y profundo
-7. NO incluyas metadatos, timestamps o información técnica
-8. Escribe en español, con un estilo elegante y accesible
-
-FORMATO DE SALIDA:
-Devuelve SOLO el texto curado, sin explicaciones adicionales.`;
+    const systemPrompt = buildSystemPrompt(targetWordCount);
 
     console.log(`Processing dialogue for user ${user.id} with AI, target word count:`, targetWordCount);
 

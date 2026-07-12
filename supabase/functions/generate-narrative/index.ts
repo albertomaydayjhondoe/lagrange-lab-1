@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
+import { getArchitectPrompt, formatCorpusContext, CorpusFragment } from "./_shared/architectPrompt.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -152,6 +152,44 @@ Eres un ensayista crítico del Sistema Lagrange. Tu misión es generar textos na
 
 Genera textos que exploren estos temas con profundidad y matiz. Basa tu narrativa exclusivamente en el contenido fuente proporcionado.`;
 
+// Fetch corpus fragments for context
+async function fetchCorpusFragments(
+  supabase: any, 
+  eje: string | undefined,
+  limit: number = 2
+): Promise<CorpusFragment[]> {
+  try {
+    let query = supabase
+      .from('corpus_fragments')
+      .select('*')
+      .order('tension', { ascending: false })
+      .limit(limit * 2);
+    
+    if (eje) {
+      const ejeMap: Record<string, string[]> = {
+        'Miedo': ['Miedo', 'miedo'],
+        'Control': ['Control', 'control'],
+        'SaludMental': ['Salud Mental', 'SaludMental', 'salud mental'],
+        'Legitimidad': ['Legitimidad', 'legitimidad'],
+        'Responsabilidad': ['Responsabilidad', 'responsabilidad'],
+      };
+      const axisFilters = ejeMap[eje] || [eje.toLowerCase()];
+      query = query.overlaps('axis', axisFilters);
+    }
+
+    const { data, error } = await query;
+    
+    if (error || !data || data.length === 0) {
+      return [];
+    }
+
+    return data.slice(0, limit);
+  } catch (error) {
+    console.error('Error fetching corpus fragments:', error);
+    return [];
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -267,6 +305,14 @@ serve(async (req) => {
     }
 
     const wordCount = length === 'short' ? 150 : length === 'long' ? 500 : 300;
+
+    // Fetch corpus fragments for additional context
+    const corpusFragments = await fetchCorpusFragments(supabase, eje, 2);
+    const corpusContext = formatCorpusContext(corpusFragments);
+    
+    if (corpusFragments.length > 0) {
+      console.log(`Using ${corpusFragments.length} corpus fragments for narrative generation`);
+    }
     
     const userPrompt = `
 ## Fuente
@@ -274,6 +320,8 @@ ${sourceContext}
 
 ## Contenido fuente
 ${sourceContent}
+
+${corpusContext}
 
 ${eje ? `## Eje temático principal: ${eje}` : ''}
 

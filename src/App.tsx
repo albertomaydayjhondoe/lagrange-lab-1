@@ -10,6 +10,9 @@ import Auth from "./pages/Auth";
 import Podcast from "./pages/Podcast";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import Academias from "./pages/Academias";
+import CreateAcademy from "./pages/CreateAcademy";
+import AcademyDetail from "./pages/AcademyDetail";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +22,7 @@ const App = () => (
       <Sonner />
       <HashRouter>
         <Routes>
+          {/* Legacy routes - redirect to genesis */}
           <Route path="/" element={<Index />} />
           <Route path="/map" element={<Map />} />
           <Route path="/lab" element={<Lab />} />
@@ -26,6 +30,14 @@ const App = () => (
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/auth" element={<Auth />} />
+
+          {/* Academy routes */}
+          <Route path="/academias" element={<Academias />} />
+          <Route path="/academias/crear" element={<CreateAcademy />} />
+          <Route path="/academia/:slug" element={<AcademyDetail />} />
+          <Route path="/academia/:slug/map" element={<Map />} />
+          <Route path="/academia/:slug/admin" element={<Admin />} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </HashRouter>

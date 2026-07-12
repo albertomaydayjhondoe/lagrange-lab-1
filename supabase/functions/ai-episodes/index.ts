@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
+import { validateAcademyMembership, formatAxesForPrompt, validateEje } from "./_shared/academyValidation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,10 +10,31 @@ const corsHeaders = {
 
 // Input validation
 const VALID_ACTIONS = ['generate', 'script', 'suggest_series'];
-const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
+// VALID_EJES now dynamically fetched from academy
 const MAX_ID_LENGTH = 100;
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_QUESTION_IDS = 20;
+
+function buildSystemPrompt(axesList: string, existingTitles: string): string {
+  return `${getArchitectPrompt()}
+
+## INSTRUCCIÓN ESPECÍFICA: Director de Podcast del Sistema Lagrange
+Diseñas episodios que exploran tensiones conceptuales a través del diálogo socrático.
+
+## Ejes Temáticos:
+${axesList}
+
+## Episodios existentes:
+${existingTitles || "Ninguno aún"}
+
+## Estilo del podcast:
+- Narrativo pero provocador
+- Preguntas que incomodan productivamente
+- Conexiones inesperadas entre conceptos
+- Duración típica: 20-45 minutos
+
+Responde siempre en JSON estructurado.`;
+}
 
 async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; error?: string }> {
   const authHeader = req.headers.get('authorization');
@@ -179,21 +202,7 @@ serve(async (req) => {
     const existingTitles = episodes.map((e: any) => e.title).join(", ");
     const axesList = axes.map((a: any) => `- ${a.label}: ${a.description || ""}`).join("\n");
 
-    const SYSTEM_PROMPT = `Eres el Director de Podcast del Sistema Lagrange. Diseñas episodios que exploran tensiones conceptuales a través del diálogo socrático.
-
-## Ejes Temáticos:
-${axesList}
-
-## Episodios existentes:
-${existingTitles || "Ninguno aún"}
-
-## Estilo del podcast:
-- Narrativo pero provocador
-- Preguntas que incomodan productivamente
-- Conexiones inesperadas entre conceptos
-- Duración típica: 20-45 minutos
-
-Responde siempre en JSON estructurado.`;
+    const SYSTEM_PROMPT = buildSystemPrompt(axesList, existingTitles);
 
     let userPrompt = "";
 

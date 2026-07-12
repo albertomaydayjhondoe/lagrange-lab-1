@@ -19,6 +19,7 @@ import { RolesEditor } from '@/components/admin/RolesEditor';
 import { AccessRequestsEditor } from '@/components/admin/AccessRequestsEditor';
 import { PodcastTextCurator } from '@/components/admin/PodcastTextCurator';
 import { DifferentialImport } from '@/components/admin/DifferentialImport';
+import { RAGSourcesEditor } from '@/components/admin/RAGSourcesEditor';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
 

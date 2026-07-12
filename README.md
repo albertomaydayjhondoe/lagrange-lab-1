@@ -95,3 +95,152 @@ Archivos históricos en `src/data/_legacy/`:
 | Salud Mental | ¿Tu sufrimiento es tuyo o del sistema? |
 | Legitimidad | ¿Por qué crees lo que crees? |
 | Responsabilidad | ¿Quién paga las consecuencias? |
+
+---
+
+## Arquitectura Multi-Tenant
+
+### Diagrama de Entidades
+
+```
+┌─────────────────┐       ┌─────────────────────┐
+│    academies     │       │   academy_members    │
+├─────────────────┤       ├─────────────────────┤
+│ id (PK)         │──┐    │ academy_id (FK)     │◄─┐
+│ slug            │  │    │ user_id (FK)       │  │
+│ name            │  │    │ role               │  │
+│ description     │  │    │ joined_at          │  │
+│ owner_user_id   │  │    └─────────────────────┘  │
+│ is_public       │  │                            │
+│ created_at      │  │                            │
+└─────────────────┘  │                            │
+         │           │         ┌──────────────────┘
+         │           │         │
+         ▼           ▼         ▼
+┌─────────────────────────────────────────────────┐
+│            Tablas por Academia                  │
+├─────────────────────────────────────────────────┤
+│ thematic_axes (academy_id FK)                   │
+│ topology_nodes (academy_id FK)                  │
+│ topology_edges (academy_id FK)                  │
+│ socratic_questions (academy_id FK)              │
+│ saved_dialogues (academy_id FK)                 │
+│ podcast_episodes (academy_id FK)                 │
+│ user_interactions (academy_id FK)               │
+│ access_requests (academy_id FK)                 │
+│ corpus_fragments (academy_id FK)               │
+└─────────────────────────────────────────────────┘
+```
+
+### Roles de Academia
+
+| Rol        | Permisos                                      |
+|------------|-----------------------------------------------|
+| owner      | Crea academias, gestión completa              |
+| admin      | Gestión de miembros, contenido                |
+| platon     | Puede generar contenido con IA                |
+| member     | Acceso de lectura (academias públicas)         |
+
+### Rutas de Academia
+
+| Ruta                        | Descripción                              |
+|-----------------------------|------------------------------------------|
+| `/academias`                | Listado de academias                     |
+| `/academias/crear`          | Wizard de creación                       |
+| `/academia/:slug`           | Dashboard de academia                     |
+| `/academia/:slug/map`       | Mapa de topología                        |
+| `/academia/:slug/admin`     | Panel de administración                   |
+
+---
+
+## Sistema RAG (Retrieval Augmented Generation)
+
+### Flujo de Datos
+
+```
+┌──────────────┐    ┌───────────────┐    ┌─────────────────────┐
+│   Usuario    │───►│ ingest-source │───►│  corpus_fragments   │
+│  sube texto  │    │  Edge Fn      │    │  (con embeddings)   │
+└──────────────┘    └───────────────┘    └─────────────────────┘
+                          │                        │
+                          │                        ▼
+                          │              ┌─────────────────────┐
+                          │              │  pgvector index     │
+                          │              │  (similitud coseno) │
+                          │              └─────────────────────┘
+                          │                        │
+                          ▼                        ▼
+                   ┌──────────────┐    ┌─────────────────────┐
+                   │ Chunking     │    │  fetchCorpusFragments│
+                   │ (parrafos)   │    │  (con query vector) │
+                   └──────────────┘    └─────────────────────┘
+                          │                        │
+                          ▼                        ▼
+                   ┌──────────────┐    ┌─────────────────────┐
+                   │ Embedding    │    │  socratic-oracle    │
+                   │ (ada-002)    │    │  + corpusContext    │
+                   └──────────────┘    └─────────────────────┘
+```
+
+### corpus_fragments Schema (Extendido)
+
+```sql
+corpus_fragments (
+  -- Campos originales
+  id              UUID PRIMARY KEY,
+  source_file     TEXT,
+  source_section  TEXT,
+  axis            TEXT[],
+  tension         REAL,
+  content         TEXT,
+  keywords        TEXT[],
+  weight          REAL,
+  
+  -- Multi-tenant
+  academy_id      UUID REFERENCES academies(id),
+  
+  -- RAG
+  embedding       vector(1536),    -- OpenAI ada-002
+  source_type     TEXT,            -- 'seed' | 'user_upload'
+  title           TEXT,
+  user_upload_id  UUID REFERENCES profiles(id),
+  upload_status   TEXT,
+  processing_error TEXT,
+  
+  created_at      TIMESTAMPTZ,
+  updated_at      TIMESTAMPTZ
+)
+```
+
+### Índices RAG
+
+```sql
+-- Búsqueda vectorial
+CREATE INDEX idx_corpus_fragments_embedding 
+ON corpus_fragments USING ivfflat (embedding vector_cosine_ops);
+
+-- Filtros
+CREATE INDEX idx_corpus_fragments_academy ON corpus_fragments(academy_id);
+CREATE INDEX idx_corpus_fragments_source_type ON corpus_fragments(source_type);
+```
+
+---
+
+## Migraciones Supabase
+
+| Archivo | Descripción |
+|---------|-------------|
+| `20250712130000_*.sql` | Vitalidad de nodos |
+| `20250712150000_*.sql` | Tabla corpus_fragments |
+| `20250712170000_*.sql` | Sistema multi-tenant (academies, academy_members) |
+| `20250712180000_*.sql` | Soporte RAG (embeddings, pgvector) |
+
+### Aplicar Migraciones
+
+```bash
+# Desarrollo local
+npx supabase db push
+
+# Producción
+npx supabase db push --project-ref <project-ref>
+```
