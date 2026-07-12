@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
 import { resolveAcademyId } from "../_shared/academyContext.ts";
+import { fetchCorpusContext } from "../_shared/corpusRetrieval.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,7 +10,6 @@ const corsHeaders = {
 };
 
 // Input validation schemas
-const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_HISTORY_LENGTH = 50;
 const MAX_MESSAGE_LENGTH = 3000;
@@ -60,13 +60,10 @@ function validateInput(body: unknown): {
     result.context = input.context.trim();
   }
 
-  // Validate eje
+  // Validate eje (basic shape only; existence checked against thematic_axes later)
   if (input.eje !== undefined) {
     if (typeof input.eje !== 'string') {
       throw new Error('eje must be a string');
-    }
-    if (!VALID_EJES.includes(input.eje)) {
-      throw new Error(`eje must be one of: ${VALID_EJES.join(', ')}`);
     }
     result.eje = input.eje;
   }
@@ -175,18 +172,31 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    let academyAxes: any[] = [];
     if (resolvedAcademyId) {
       const { data: academyRows } = await supabase
         .from('thematic_axes')
-        .select('label, description')
+        .select('id, label, description')
         .eq('academy_id', resolvedAcademyId)
         .eq('is_active', true)
         .order('order_index');
 
-      if (academyRows && academyRows.length > 0) {
-        const academyAxes = academyRows.map((row: any) => `- ${row.label}: ${row.description || 'Sin descripción'}`).join('\n');
+      academyAxes = academyRows || [];
+      if (academyAxes.length > 0) {
+        const axesText = academyAxes.map((row: any) => `- ${row.label}: ${row.description || 'Sin descripción'}`).join('\n');
         if (context) {
-          context += `\n\nEjes disponibles para esta academia:\n${academyAxes}`;
+          context += `\n\nEjes disponibles para esta academia:\n${axesText}`;
+        }
+      }
+
+      // If eje provided, verify it exists in academy axes (by label or id)
+      if (eje) {
+        const exists = academyAxes.some((a: any) => a.label === eje || a.id === eje);
+        if (!exists) {
+          return new Response(
+            JSON.stringify({ error: 'Eje no válido para esta academia' }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
       }
     }
@@ -233,6 +243,19 @@ serve(async (req) => {
       }
       
       messages.push({ role: "user", content: userPrompt });
+    }
+
+    // Fetch corpus context and inject into prompt
+    let corpusContext = '';
+    try {
+      const { context: c } = await fetchCorpusContext(supabase, resolvedAcademyId, eje, 4);
+      corpusContext = c;
+    } catch (err) {
+      console.warn('socratic-oracle corpus fetch error', err);
+    }
+
+    if (corpusContext && corpusContext.length > 0) {
+      messages.push({ role: 'system', content: `Contexto de corpus relevante:${corpusContext}` });
     }
 
     console.log(`Socratic Oracle - User: ${user.id}, Eje: ${eje || 'N/A'}, Nivel: ${nivel || 'N/A'}, History: ${conversationHistory?.length || 0}`);

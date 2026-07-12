@@ -9,7 +9,6 @@ const corsHeaders = {
 
 // Input validation
 const VALID_ACTIONS = ['generate_batch', 'enhance', 'connect'];
-const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
 const MAX_COUNT = 10;
 const MAX_CONTEXT_LENGTH = 2000;
 
@@ -44,6 +43,7 @@ function validateInput(body: unknown): {
   nivel?: number;
   count?: number;
   context?: string;
+  academyId?: string;
 } {
   if (!body || typeof body !== 'object') {
     throw new Error('Request body must be an object');
@@ -63,13 +63,10 @@ function validateInput(body: unknown): {
     action: input.action
   };
 
-  // Validate eje
+  // Validate eje (existence validated against thematic_axes after DB query)
   if (input.eje !== undefined) {
     if (typeof input.eje !== 'string') {
       throw new Error('eje must be a string');
-    }
-    if (!VALID_EJES.includes(input.eje)) {
-      throw new Error(`eje must be one of: ${VALID_EJES.join(', ')}`);
     }
     result.eje = input.eje;
   }
@@ -101,6 +98,13 @@ function validateInput(body: unknown): {
       throw new Error(`context must be less than ${MAX_CONTEXT_LENGTH} characters`);
     }
     result.context = input.context.trim();
+  }
+
+  // Validate academyId
+  if (input.academyId !== undefined) {
+    if (typeof input.academyId !== 'string') throw new Error('academyId must be a string');
+    if (!input.academyId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) throw new Error('academyId must be a valid UUID');
+    result.academyId = input.academyId;
   }
 
   return result;
@@ -160,11 +164,18 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const [questionsRes, axesRes, nodesRes] = await Promise.all([
+    const [questionsRes, nodesRes] = await Promise.all([
       supabase.from("socratic_questions").select("*"),
-      supabase.from("thematic_axes").select("*").eq("is_active", true),
       supabase.from("topology_nodes").select("id, label, description, axis"),
     ]);
+
+    // Fetch axes with optional academy filtering
+    let axesRes;
+    if ((body as any).academyId) {
+      axesRes = await supabase.from('thematic_axes').select('*').eq('is_active', true).eq('academy_id', (body as any).academyId);
+    } else {
+      axesRes = await supabase.from('thematic_axes').select('*').eq('is_active', true);
+    }
 
     if (questionsRes.error) throw new Error(questionsRes.error.message);
     if (axesRes.error) throw new Error(axesRes.error.message);
@@ -182,6 +193,14 @@ serve(async (req) => {
     const SYSTEM_PROMPT = `${getArchitectPrompt(`Eres el Generador Socrático del Sistema Lagrange. Creas preguntas que provocan "fricción cognitiva" - incomodidad productiva.\n\n## Ejes Temáticos:\n${axesList}\n\n## Estado actual del banco:\n${existingByEje}\n\n## Reglas para preguntas:\n- Niveles: 1 (introductorio), 2 (intermedio), 3 (profundo)\n- Tensión: 0.0-1.0 (intensidad de la incomodidad)\n- Nunca ofrezcas respuestas, solo preguntas\n- Evita moralizar; cuestiona estructuras\n- Las preguntas deben ser incómodas pero productivas\n\nResponde siempre en JSON estructurado.`)}`;
 
     let userPrompt = "";
+
+    // If eje provided, ensure it exists in axes list (match by label or id)
+    if (eje) {
+      const found = axes.some((a: any) => a.label === eje || a.id === eje);
+      if (!found) {
+        return new Response(JSON.stringify({ error: 'Eje no válido' }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
 
     switch (action) {
       case "generate_batch":

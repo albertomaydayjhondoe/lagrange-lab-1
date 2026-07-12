@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
+import { fetchCorpusContext } from "../_shared/corpusRetrieval.ts";
 import { resolveAcademyId } from "../_shared/academyContext.ts";
 
 const corsHeaders = {
@@ -267,17 +268,8 @@ serve(async (req) => {
 
     let corpusContext = '';
     try {
-      const { data: corpusRows } = await supabase
-        .from('corpus_fragments')
-        .select('content, axis, tension')
-        .eq('axis', eje || 'Miedo')
-        .eq('academy_id', resolvedAcademyId)
-        .order('tension', { ascending: false })
-        .limit(4);
-
-      if (corpusRows && corpusRows.length > 0) {
-        corpusContext = `\n## Contexto de corpus relevante\n${corpusRows.map((row: any) => `- [${row.axis}] ${row.content}`).join('\n')}\n`;
-      }
+      const { context } = await fetchCorpusContext(supabase, resolvedAcademyId, eje, 4);
+      corpusContext = context;
     } catch (corpusError) {
       console.warn('No se pudo cargar corpus para generate-narrative', corpusError);
     }
