@@ -206,6 +206,39 @@ CREATE INDEX IF NOT EXISTS idx_saved_dialogues_academy_id ON public.saved_dialog
 CREATE INDEX IF NOT EXISTS idx_access_requests_academy_id ON public.access_requests (academy_id);
 
 -- RLS policies for academies
+-- Drop policies if they exist to make this migration idempotent
+DO $$ BEGIN
+  PERFORM 1 FROM pg_policy WHERE polname = 'Anyone can view public academies' LIMIT 1;
+EXCEPTION WHEN undefined_table THEN NULL; END$$;
+DROP POLICY IF EXISTS "Anyone can view public academies" ON public.academies;
+DROP POLICY IF EXISTS "Members can manage their academies" ON public.academies;
+DROP POLICY IF EXISTS "Admins can update academies" ON public.academies;
+DROP POLICY IF EXISTS "Admins can delete academies" ON public.academies;
+
+DROP POLICY IF EXISTS "Users can view their own memberships" ON public.academy_memberships;
+DROP POLICY IF EXISTS "Admins can manage memberships" ON public.academy_memberships;
+
+DROP POLICY IF EXISTS "Users can view academy content" ON public.topology_nodes;
+DROP POLICY IF EXISTS "Admins can manage topology nodes" ON public.topology_nodes;
+DROP POLICY IF EXISTS "Users can view academy content" ON public.topology_edges;
+DROP POLICY IF EXISTS "Admins can manage topology edges" ON public.topology_edges;
+DROP POLICY IF EXISTS "Users can view academy content" ON public.socratic_questions;
+DROP POLICY IF EXISTS "Admins can manage questions" ON public.socratic_questions;
+DROP POLICY IF EXISTS "Users can view academy content" ON public.thematic_axes;
+DROP POLICY IF EXISTS "Admins can manage axes" ON public.thematic_axes;
+DROP POLICY IF EXISTS "Users can view published academy episodes" ON public.podcast_episodes;
+DROP POLICY IF EXISTS "Admins can manage episodes" ON public.podcast_episodes;
+
+DROP POLICY IF EXISTS "Users can view their own dialogues or academy content" ON public.saved_dialogues;
+DROP POLICY IF EXISTS "Users can insert their own dialogues" ON public.saved_dialogues;
+DROP POLICY IF EXISTS "Users can update their own dialogues or manage academy" ON public.saved_dialogues;
+DROP POLICY IF EXISTS "Users can delete their own dialogues or manage academy" ON public.saved_dialogues;
+
+DROP POLICY IF EXISTS "Users can view academy access requests" ON public.access_requests;
+DROP POLICY IF EXISTS "Anyone can submit access request" ON public.access_requests;
+DROP POLICY IF EXISTS "Admins can update access requests" ON public.access_requests;
+DROP POLICY IF EXISTS "Admins can delete access requests" ON public.access_requests;
+
 CREATE POLICY "Anyone can view public academies"
 ON public.academies
 FOR SELECT
