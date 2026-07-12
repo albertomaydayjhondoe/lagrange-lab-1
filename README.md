@@ -14,6 +14,38 @@ Edge Functions (Deno)
 AI Gateway (Lovely API)
 ```
 
+## Arquitectura Multi-Tenant
+
+Lagrange Lab es una plataforma donde cualquier usuario puede crear su propia "academia socrática" con ejes personalizados, oráculo propio y comunidad.
+
+### Modelo de Datos
+```
+academies ─────┬──── academy_members (academy_id, user_id, role)
+               │
+               ├──── thematic_axes
+               ├──── topology_nodes
+               ├──── topology_edges
+               ├──── socratic_questions
+               ├──── saved_dialogues
+               ├──── podcast_episodes
+               ├──── user_interactions
+               ├──── access_requests
+               └──── corpus_fragments
+```
+
+### Roles por Academia
+- **owner**: Creador, puede borrar la academia
+- **admin**: Puede gestionar miembros y contenido
+- **platon**: Ve contenido sin niebla
+- **member**: Rol base, ve contenido según fog
+
+### Rutas
+- `/academia/:slug` - Academia específica
+- `/academies` - Directorio de academias públicas
+- `/academies/create` - Crear nueva academia
+
+**Nota**: Las rutas legacy (/map, /lab, etc.) redirigen a `/academia/genesis/`
+
 ## Edge Functions
 
 | Función | Propósito |
@@ -28,6 +60,10 @@ AI Gateway (Lovely API)
 | `ai-questions` | Generación de preguntas batch |
 | `regenerate-topology-delta` | Delta incremental del grafo |
 | `sync-corpus` | Sync corpus a corpus_fragments |
+| `list-academies` | Lista academias públicas + membresías |
+| `get-academy` | Obtiene academia por slug |
+
+**Nota**: Todas las funciones generativas requieren `academyId` en el body.
 
 ## Sistema Vivo - 4 Capas
 
