@@ -128,6 +128,10 @@ ALTER TABLE IF EXISTS public.thematic_axes
 ALTER TABLE IF EXISTS public.socratic_questions
   ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
 
+-- Ensure podcast episodes support academy visibility
+ALTER TABLE IF EXISTS public.podcast_episodes
+  ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
+
 -- academies policies
 CREATE POLICY "Public academies are viewable by everyone"
   ON public.academies FOR SELECT
