@@ -235,7 +235,7 @@ AS $$
     SELECT 1 FROM public.academy_members am
     WHERE am.academy_id = p_academy_id
     AND am.user_id = auth.uid()
-    AND am.role = p_role
+    AND am.role::text = p_role::text
   )
 $$;
 
