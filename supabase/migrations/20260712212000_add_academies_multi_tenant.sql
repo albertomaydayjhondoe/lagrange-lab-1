@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS public.academies (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Ensure owner_user_id column exists if the table was created by another migration
+ALTER TABLE IF EXISTS public.academies
+  ADD COLUMN IF NOT EXISTS owner_user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+
 -- Index for slug lookups
 CREATE INDEX IF NOT EXISTS idx_academies_slug ON public.academies(slug);
 CREATE INDEX IF NOT EXISTS idx_academies_owner ON public.academies(owner_user_id);
