@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import {
   VolumeX,
   Loader2,
   Disc3,
+  Waves,
+  CloudFog,
 } from 'lucide-react';
 
 interface RadioEpisode {
@@ -21,9 +23,14 @@ interface RadioEpisode {
 interface RadioPlayerProps {
   episodes: RadioEpisode[];
   onEpisodeChange?: (episodeId: string) => void;
+  activeAxis?: string | null;
+  enableAmbient?: boolean;
+  defaultAmbientEnabled?: boolean;
 }
 
-export function RadioPlayer({ episodes, onEpisodeChange }: RadioPlayerProps) {
+export function RadioPlayer({ episodes, onEpisodeChange, activeAxis, enableAmbient = false, defaultAmbientEnabled = false }: RadioPlayerProps) {
+  const [ambientEnabled, setAmbientEnabled] = useState(defaultAmbientEnabled);
+  
   const {
     isPlaying,
     currentTime,
@@ -35,7 +42,21 @@ export function RadioPlayer({ episodes, onEpisodeChange }: RadioPlayerProps) {
     formatTime,
     progress,
     toggleMute,
+    isAmbientMode,
+    ambientNarrative,
+    setAmbientMode,
+    fetchAmbientNarrative,
   } = useRadioPlayer(episodes);
+
+  // Enable/disable ambient mode
+  useEffect(() => {
+    if (enableAmbient) {
+      setAmbientMode(ambientEnabled);
+      if (ambientEnabled && !ambientNarrative) {
+        fetchAmbientNarrative(activeAxis || undefined);
+      }
+    }
+  }, [ambientEnabled, enableAmbient, setAmbientMode, fetchAmbientNarrative, activeAxis, ambientNarrative]);
 
   // Notify parent of episode changes
   useEffect(() => {
@@ -48,7 +69,11 @@ export function RadioPlayer({ episodes, onEpisodeChange }: RadioPlayerProps) {
     setVolume(value[0] / 100);
   };
 
-  if (episodes.length === 0) {
+  const toggleAmbient = () => {
+    setAmbientEnabled(!ambientEnabled);
+  };
+
+  if (episodes.length === 0 && !enableAmbient) {
     return null;
   }
 
@@ -63,8 +88,10 @@ export function RadioPlayer({ episodes, onEpisodeChange }: RadioPlayerProps) {
           {/* Radio indicator */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="relative">
-              {isLoading ? (
+              {isLoading || (enableAmbient && ambientEnabled && !ambientNarrative) ? (
                 <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              ) : enableAmbient && ambientEnabled ? (
+                <CloudFog className={`w-8 h-8 text-primary ${isPlaying ? 'animate-pulse' : ''}`} />
               ) : (
                 <Disc3 className={`w-8 h-8 text-primary ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
               )}
@@ -74,23 +101,41 @@ export function RadioPlayer({ episodes, onEpisodeChange }: RadioPlayerProps) {
             </div>
             <div className="hidden sm:flex flex-col">
               <span className="text-xs font-mono text-primary uppercase tracking-wider flex items-center gap-1">
-                <Radio className="w-3 h-3" />
-                En vivo
+                {enableAmbient && ambientEnabled ? (
+                  <>
+                    <CloudFog className="w-3 h-3" />
+                    Ambiental
+                  </>
+                ) : (
+                  <>
+                    <Radio className="w-3 h-3" />
+                    En vivo
+                  </>
+                )}
               </span>
+              {activeAxis && (
+                <span className="text-[10px] font-mono text-muted-foreground">
+                  {activeAxis}
+                </span>
+              )}
             </div>
           </div>
 
           {/* Current episode info + progress */}
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium text-foreground truncate mb-1">
-              {currentEpisode?.title || 'Cargando...'}
+              {enableAmbient && ambientEnabled && ambientNarrative ? (
+                <span className="italic">"{ambientNarrative.narrative.substring(0, 60)}..."</span>
+              ) : (
+                currentEpisode?.title || 'Cargando...'
+              )}
             </div>
             
-            {/* Progress bar (read-only for radio) */}
+            {/* Progress bar */}
             <div className="flex items-center gap-2">
               <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
                 <motion.div 
-                  className="h-full bg-primary"
+                  className={`h-full ${enableAmbient && ambientEnabled ? 'bg-primary/50' : 'bg-primary'}`}
                   style={{ width: `${progress}%` }}
                   transition={{ duration: 0.1 }}
                 />
@@ -101,8 +146,22 @@ export function RadioPlayer({ episodes, onEpisodeChange }: RadioPlayerProps) {
             </div>
           </div>
 
-          {/* Volume control */}
+          {/* Mode toggle and volume */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Ambient mode toggle */}
+            {enableAmbient && (
+              <Button
+                variant={ambientEnabled ? "secondary" : "ghost"}
+                size="icon"
+                onClick={toggleAmbient}
+                className="h-8 w-8"
+                title="Modo ambiental"
+              >
+                <Waves className="w-4 h-4" />
+              </Button>
+            )}
+            
+            {/* Volume control */}
             <Button
               variant="ghost"
               size="icon"

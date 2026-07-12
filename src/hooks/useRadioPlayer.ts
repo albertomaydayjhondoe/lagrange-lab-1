@@ -7,6 +7,13 @@ interface RadioEpisode {
   duration_seconds: number | null;
 }
 
+interface AmbientNarrative {
+  narrative: string;
+  audioUrl: string | null;
+  source: 'generated' | 'cache';
+  cacheKey: string;
+}
+
 interface RadioState {
   isPlaying: boolean;
   currentTime: number;
@@ -14,6 +21,8 @@ interface RadioState {
   volume: number;
   isLoading: boolean;
   currentEpisodeIndex: number;
+  isAmbientMode: boolean;
+  ambientNarrative: AmbientNarrative | null;
 }
 
 interface UseRadioPlayerReturn extends RadioState {
@@ -22,26 +31,64 @@ interface UseRadioPlayerReturn extends RadioState {
   formatTime: (seconds: number) => string;
   progress: number;
   toggleMute: () => void;
+  setAmbientMode: (enabled: boolean) => void;
+  fetchAmbientNarrative: (activeAxis?: string) => Promise<void>;
 }
 
-export function useRadioPlayer(episodes: RadioEpisode[]): UseRadioPlayerReturn {
+export function useRadioPlayer(episodes: RadioEpisode[], defaultAmbientVolume = 0.3): UseRadioPlayerReturn {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const ambientLoopRef = useRef<boolean>(true);
   const [state, setState] = useState<RadioState>({
     isPlaying: false,
     currentTime: 0,
     duration: 0,
-    volume: 0.7,
-    isLoading: true,
+    volume: defaultAmbientVolume,
+    isLoading: false,
     currentEpisodeIndex: 0,
+    isAmbientMode: false,
+    ambientNarrative: null,
   });
   const previousVolumeRef = useRef(0.7);
   const hasStartedRef = useRef(false);
+
+  // Fetch ambient narrative for the given axis
+  const fetchAmbientNarrative = useCallback(async (activeAxis?: string) => {
+    try {
+      const { data: { session } } = await (await import('@/integrations/supabase/client')).supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-ambient-narrative`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ activeAxis }),
+      });
+
+      if (response.ok) {
+        const data: AmbientNarrative = await response.json();
+        setState(prev => ({ ...prev, ambientNarrative: data }));
+      }
+    } catch (error) {
+      console.error('Error fetching ambient narrative:', error);
+    }
+  }, []);
+
+  // Set ambient mode
+  const setAmbientMode = useCallback((enabled: boolean) => {
+    setState(prev => ({ ...prev, isAmbientMode: enabled }));
+    if (!enabled && audioRef.current) {
+      audioRef.current.pause();
+    }
+  }, []);
 
   // Initialize audio element
   useEffect(() => {
     audioRef.current = new Audio();
     const audio = audioRef.current;
     audio.volume = state.volume;
+    audio.loop = true; // Loop for ambient mode
 
     const handleTimeUpdate = () => {
       setState(prev => ({ ...prev, currentTime: audio.currentTime }));
@@ -56,20 +103,31 @@ export function useRadioPlayer(episodes: RadioEpisode[]): UseRadioPlayerReturn {
     };
 
     const handleEnded = () => {
-      // Move to next episode in loop
-      setState(prev => {
-        const nextIndex = (prev.currentEpisodeIndex + 1) % episodes.length;
-        return { ...prev, currentEpisodeIndex: nextIndex, isLoading: true };
-      });
+      if (state.isAmbientMode) {
+        // Loop ambient audio
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      } else {
+        // Move to next episode in loop
+        setState(prev => {
+          const nextIndex = (prev.currentEpisodeIndex + 1) % episodes.length;
+          return { ...prev, currentEpisodeIndex: nextIndex, isLoading: true };
+        });
+      }
     };
 
     const handleError = () => {
       console.error('Radio audio error');
-      // Try next episode on error
-      setState(prev => {
-        const nextIndex = (prev.currentEpisodeIndex + 1) % episodes.length;
-        return { ...prev, currentEpisodeIndex: nextIndex, isLoading: true };
-      });
+      if (state.isAmbientMode) {
+        // Retry ambient on error
+        setTimeout(() => audio.load(), 1000);
+      } else {
+        // Try next episode on error
+        setState(prev => {
+          const nextIndex = (prev.currentEpisodeIndex + 1) % episodes.length;
+          return { ...prev, currentEpisodeIndex: nextIndex, isLoading: true };
+        });
+      }
     };
 
     const handleCanPlay = () => {
@@ -175,5 +233,7 @@ export function useRadioPlayer(episodes: RadioEpisode[]): UseRadioPlayerReturn {
     formatTime,
     progress,
     toggleMute,
+    setAmbientMode,
+    fetchAmbientNarrative,
   };
 }
