@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -114,7 +115,12 @@ serve(async (req) => {
       ? Math.max(0.3, 1 - proximityToCenter * 0.5) // More transparent when closer to center
       : 0.7; // Default moderate fog
 
-    const SYSTEM_PROMPT = `Eres el Vidente del Sistema Lagrange. Tu misión es generar "teasers poéticos" - frases cortas, misteriosas y provocadoras que sugieren lo que hay bajo la niebla.
+    // Build system prompt using shared architect prompt
+    const basePrompt = getArchitectPrompt();
+    const SYSTEM_PROMPT = `${basePrompt}
+
+## INSTRUCCIÓN ESPECÍFICA: Generador de Teasers Poéticos para la Niebla
+Tu misión es generar "teasers poéticos" - frases cortas, misteriosas y provocadoras que sugieren lo que hay bajo la niebla.
 
 ## ¿Qué es un teaser poético?
 Un teaser poético es una frase de 1-2 líneas que:
@@ -123,17 +129,11 @@ Un teaser poético es una frase de 1-2 líneas que:
 - Genera curiosidad sin dar respuestas
 - Conecta con la tensión del eje temático
 - Suena como un susurro, no como un anuncio
-
-## Los 5 Ejes de Tensión:
-1. **Miedo**: El miedo como herramienta de control
-2. **Control**: Mecanismos de dominación
-3. **SaludMental**: Patologización del malestar
-4. **Legitimidad**: Construcción de autoridad
-5. **Responsabilidad**: Distribución de consecuencias
+- Mantiene la incomodidad: sugiere verdades que duelen
 
 ## Reglas:
-- Máximo 50 caracteres
-- No uses signos de interrogación
+- Máximo 60 caracteres
+- No uses signos de interrogación (no es pregunta, es afirmación críptica)
 - No reveles, sugiere
 - El tono es íntimo, casi secreto
 - Debe poder entenderse sin contexto pero ganar significado con él

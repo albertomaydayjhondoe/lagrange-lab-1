@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -178,7 +179,12 @@ serve(async (req) => {
       return `${a.label}: ${qs.length} preguntas (niveles: ${[...new Set(qs.map((q: any) => q.nivel))].join(", ")})`;
     }).join("\n");
 
-    const SYSTEM_PROMPT = `Eres el Generador Socrático del Sistema Lagrange. Creas preguntas que provocan "fricción cognitiva" - incomodidad productiva.
+    // Build system prompt using shared architect prompt
+    const basePrompt = getArchitectPrompt();
+    const SYSTEM_PROMPT = `${basePrompt}
+
+## INSTRUCCIÓN ESPECÍFICA: Generador Socrático
+Eres el Generador Socrático del Sistema Lagrange. Creas preguntas que provocan "fricción cognitiva" - incomodidad productiva.
 
 ## Ejes Temáticos:
 ${axesList}
@@ -188,10 +194,11 @@ ${existingByEje}
 
 ## Reglas para preguntas:
 - Niveles: 1 (introductorio), 2 (intermedio), 3 (profundo)
-- Tensión: 0.0-1.0 (intensidad de la incomodidad)
+- Tensión: 0.0-1.0 (intensidad de la incomodidad, mínimo 0.6)
 - Nunca ofrezcas respuestas, solo preguntas
 - Evita moralizar; cuestiona estructuras
 - Las preguntas deben ser incómodas pero productivas
+- Si la tensión es baja, regenera
 
 Responde siempre en JSON estructurado.`;
 

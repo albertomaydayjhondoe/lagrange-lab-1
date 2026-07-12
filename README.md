@@ -1,73 +1,97 @@
-# Welcome to your Lovable project
+# Sistema Lagrange
 
-## Project info
+Sistema vivo de fricción cognitiva. Genera, muta y reacciona en tiempo real usando IA generativa.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Arquitectura
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+Frontend (React + Vite)
+    ↓
+Supabase (Database + Auth + Storage)
+    ↓
+Edge Functions (Deno)
+    ↓
+AI Gateway (Lovely API)
 ```
 
-**Edit a file directly in GitHub**
+## Edge Functions
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Función | Propósito |
+|---------|-----------|
+| `socratic-oracle` | Generador de preguntas socráticas |
+| `oracle-echo` | Ecos por silencio del usuario |
+| `fog-teaser` | Teasers poéticos para la niebla |
+| `generate-ambient-narrative` | Narrativa TTS ambiental |
+| `generate-narrative` | Textos narrativos extensos |
+| `ai-nodes` | Análisis/generación de nodos |
+| `ai-edges` | Análisis/generación de aristas |
+| `ai-questions` | Generación de preguntas batch |
+| `regenerate-topology-delta` | Delta incremental del grafo |
+| `sync-corpus` | Sync corpus a corpus_fragments |
 
-**Use GitHub Codespaces**
+## Sistema Vivo - 4 Capas
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. **Mapa como Organismo**: Nodos con vitalidad, animación de aparición
+2. **Oráculo Reactivo**: Preguntas contextuales + ecos por silencio
+3. **Niebla Dinámica**: Densidad variable + teasers poéticos
+4. **Radio Ambiental**: TTS en loop como voz de fondo
 
-## What technologies are used for this project?
+## Setup
 
-This project is built with:
+```bash
+# Instalar dependencias
+npm install
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+# Desarrollo
+npm run dev
 
-## How can I deploy this project?
+# Build
+npm run build
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+# Deploy edge functions
+npx supabase functions deploy <function-name>
 
-## Can I connect a custom domain to my Lovable project?
+# Aplicar migraciones
+npx supabase db push
+```
 
-Yes, you can!
+## Variables de Entorno
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```env
+VITE_SUPABASE_URL=
+VITE_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+LOVABLE_API_KEY=
+ELEVENLABS_API_KEY=  # Opcional, para TTS
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Fuente Única de Verdad
+
+El tono y reglas del sistema están definidos en:
+- `src/config/Lagrange_Architect_Prompt_v2.md` - Documento madre
+- `supabase/functions/_shared/architectPrompt.ts` - Código exportado
+
+**Primer Mandamiento**: Si el resultado no incomoda, se descarta.
+
+## Datos Legacy
+
+Archivos históricos en `src/data/_legacy/`:
+- `topology/*.json` - Seed para nuevas instalaciones
+- `corpus/*.me` - Narrativa fuente (usada por sync-corpus)
+
+## Stack
+
+- **Frontend**: React + Vite + TypeScript + Tailwind
+- **Backend**: Supabase Edge Functions (Deno)
+- **AI**: LoVable API (Gemini)
+- **TTS**: ElevenLabs (opcional)
+
+## Ejes de Tensión
+
+| Eje | Pregunta Nuclear |
+|-----|------------------|
+| Miedo | ¿A quién beneficia tu miedo? |
+| Control | ¿Quién escribió las reglas que sigues? |
+| Salud Mental | ¿Tu sufrimiento es tuyo o del sistema? |
+| Legitimidad | ¿Por qué crees lo que crees? |
+| Responsabilidad | ¿Quién paga las consecuencias? |

@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { 
+  getArchitectPrompt, 
+  validarPregunta, 
+  getRefuerzoPrompt,
+  formatCorpusContext,
+  CorpusFragment
+} from "./_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +18,7 @@ const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsab
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_HISTORY_LENGTH = 50;
 const MAX_MESSAGE_LENGTH = 3000;
+const MAX_INTENTS = 2; // Máximo intentos para generar pregunta válida
 
 async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
@@ -37,7 +45,8 @@ function validateInput(body: unknown): {
   context?: string; 
   eje?: string; 
   nivel?: number; 
-  conversationHistory?: { role: string; content: string }[] 
+  conversationHistory?: { role: string; content: string }[];
+  includeCorpus?: boolean;
 } {
   if (!body || typeof body !== 'object') {
     return {};
@@ -104,25 +113,139 @@ function validateInput(body: unknown): {
     });
   }
 
+  // Validate includeCorpus
+  if (input.includeCorpus !== undefined) {
+    result.includeCorpus = Boolean(input.includeCorpus);
+  }
+
   return result;
 }
 
-const LAGRANGE_SYSTEM_PROMPT = `Eres el Oráculo Socrático del Sistema Lagrange. Tu misión es generar preguntas que provoquen "fricción cognitiva" - incomodidad productiva que desafía asunciones y expone contradicciones.
+// Fetch corpus fragments for context
+async function fetchCorpusFragments(
+  supabase: any, 
+  eje: string | undefined,
+  limit: number = 2
+): Promise<CorpusFragment[]> {
+  try {
+    let query = supabase
+      .from('corpus_fragments')
+      .select('*')
+      .order('tension', { ascending: false })
+      .limit(limit * 2); // Fetch extra to filter by eje
+    
+    if (eje) {
+      // Map eje to standard names
+      const ejeMap: Record<string, string[]> = {
+        'Miedo': ['Miedo', 'miedo'],
+        'Control': ['Control', 'control'],
+        'SaludMental': ['Salud Mental', 'SaludMental', 'salud mental'],
+        'Legitimidad': ['Legitimidad', 'legitimidad'],
+        'Responsabilidad': ['Responsabilidad', 'responsabilidad'],
+      };
+      const axisFilters = ejeMap[eje] || [eje.toLowerCase()];
+      query = query.overlaps('axis', axisFilters);
+    }
 
-## Los 5 Ejes de Tensión:
-1. **Miedo**: El miedo como herramienta de control y su neutralización
-2. **Control**: Mecanismos de dominación social, institucional y autoimpuesto
-3. **SaludMental**: La patologización del malestar legítimo
-4. **Legitimidad**: Fabricación de legitimidad y control de la narrativa
-5. **Responsabilidad**: Distribución asimétrica de consecuencias
+    const { data, error } = await query;
+    
+    if (error || !data || data.length === 0) {
+      return [];
+    }
 
-## Reglas para generar preguntas:
-- Las preguntas deben ser incómodas pero productivas
-- Nunca ofrezcas respuestas, solo preguntas
-- El tono es filosófico, no terapéutico
-- Evita moralizar; cuestiona estructuras, no personas
-- La tensión debe ser alta pero no agresiva
-- Conecta con el contexto del usuario cuando lo haya
+    // Return up to limit fragments
+    return data.slice(0, limit);
+  } catch (error) {
+    console.error('Error fetching corpus fragments:', error);
+    return [];
+  }
+}
+
+// Generate question with validation and retry
+async function generateAndValidateQuestion(
+  LOVABLE_API_KEY: string,
+  systemPrompt: string,
+  userPrompt: string,
+  intento: number = 1
+): Promise<any> {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.85,
+    }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error("Límite de peticiones excedido. Intenta de nuevo más tarde.");
+    }
+    if (response.status === 402) {
+      throw new Error("Créditos agotados. Añade más créditos a tu workspace.");
+    }
+    throw new Error("Error en AI gateway");
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new Error("No se recibió respuesta del modelo");
+  }
+
+  // Parse JSON response
+  let parsedQuestion;
+  try {
+    const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || 
+                      content.match(/```\n?([\s\S]*?)\n?```/) ||
+                      [null, content];
+    parsedQuestion = JSON.parse(jsonMatch[1] || content);
+  } catch (parseError) {
+    console.error("Error parsing AI response:", content);
+    // Fallback: create structured response from raw text
+    parsedQuestion = {
+      pregunta: content.replace(/[{}"]/g, '').trim(),
+      eje: "Miedo",
+      nivel: 2,
+      tension: 0.85,
+      conexion: "Pregunta generada dinámicamente"
+    };
+  }
+
+  // VALIDATE against Primer Mandamiento
+  const validation = validarPregunta(parsedQuestion.tension, parsedQuestion.pregunta);
+  
+  if (!validation.valido && intento < MAX_INTENTS) {
+    console.log(`Intento ${intento}: Pregunta rechazada - ${validation.razon}. Regenerando...`);
+    const reinforcedPrompt = userPrompt + getRefuerzoPrompt(validation.razon);
+    return generateAndValidateQuestion(LOVABLE_API_KEY, systemPrompt, reinforcedPrompt, intento + 1);
+  }
+
+  return {
+    ...parsedQuestion,
+    _validation: validation,
+    _intentos: intento
+  };
+}
+
+// Build system prompt for socratic oracle
+function buildSystemPrompt(corpusContext?: string): string {
+  const base = getArchitectPrompt();
+  
+  return `${base}
+
+## INSTRUCCIÓN ESPECÍFICA: Generador de Preguntas Socráticas
+Tu misión es generar preguntas que provoquen "fricción cognitiva" - incomodidad productiva que desafía asunciones y expone contradicciones.
+
+${corpusContext || ''}
 
 ## Formato de respuesta:
 Responde SOLO con un JSON válido con esta estructura:
@@ -130,9 +253,10 @@ Responde SOLO con un JSON válido con esta estructura:
   "pregunta": "La pregunta generada",
   "eje": "Uno de: Miedo, Control, SaludMental, Legitimidad, Responsabilidad",
   "nivel": 1-3 (1=introductorio, 2=intermedio, 3=profundo),
-  "tension": 0.0-1.0 (intensidad de la fricción),
+  "tension": 0.0-1.0 (intensidad de la fricción, mínimo 0.6),
   "conexion": "Breve explicación de por qué esta pregunta conecta con el contexto"
 }`;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -170,41 +294,59 @@ serve(async (req) => {
       );
     }
 
-    const { context, eje, nivel, conversationHistory } = validatedInput;
+    const { context, eje, nivel, conversationHistory, includeCorpus = true } = validatedInput;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Build messages array
-    const messages: { role: string; content: string }[] = [
-      { role: "system", content: LAGRANGE_SYSTEM_PROMPT }
-    ];
-
-    // If we have conversation history, add it
-    if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
-      for (const msg of conversationHistory) {
-        if (msg.role === 'oracle') {
-          messages.push({ 
-            role: "assistant", 
-            content: `{"pregunta": "${msg.content}", "eje": "Reflexión", "nivel": 2, "tension": 0.7, "conexion": "Continuación del diálogo"}` 
-          });
-        } else {
-          messages.push({ 
-            role: "user", 
-            content: `El usuario responde: "${msg.content}". Genera una nueva pregunta socrática que profundice en su respuesta, desafíe sus asunciones y exponga posibles contradicciones.` 
-          });
-        }
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    // Fetch corpus fragments for context
+    let corpusContext = '';
+    if (includeCorpus && SUPABASE_URL && SUPABASE_ANON_KEY) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const fragments = await fetchCorpusFragments(supabase, eje);
+      if (fragments.length > 0) {
+        corpusContext = formatCorpusContext(fragments);
+        console.log(`Socratic Oracle - Using ${fragments.length} corpus fragments`);
       }
-      // Final instruction for continuing the dialogue
-      messages.push({
-        role: "user",
-        content: "Basándote en el intercambio anterior, genera la siguiente pregunta socrática que continúe el diálogo de manera natural, aumentando gradualmente la tensión y profundidad."
-      });
+    }
+
+    // Build system prompt
+    const systemPrompt = buildSystemPrompt(corpusContext);
+
+    // Build user prompt
+    let userPrompt: string;
+    
+    if (conversationHistory && Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      // Dialogue continuation mode
+      const historyText = conversationHistory.map(msg => {
+        if (msg.role === 'oracle') {
+          return `ORÁCULO: "${msg.content}"`;
+        } else {
+          return `USUARIO: "${msg.content}"`;
+        }
+      }).join('\n');
+
+      userPrompt = `## Diálogo en curso:
+${historyText}
+
+## Instrucciones:
+Basándote en el intercambio anterior, genera la siguiente pregunta socrática que:
+- Continúe el diálogo de manera natural
+- Aumente gradualmente la tensión y profundidad
+- Cuestione las asunciones del usuario
+- Exponga contradicciones en su razonamiento`;
+
+      if (eje) {
+        userPrompt += `\n- Enfócate en el eje: ${eje}`;
+      }
     } else {
-      // Original single question logic
-      let userPrompt = "Genera una pregunta socrática profunda para iniciar un diálogo";
+      // New question mode
+      userPrompt = "Genera una pregunta socrática profunda para iniciar un diálogo";
       
       if (context) {
         userPrompt += ` basada en este contexto del usuario: "${context}"`;
@@ -217,71 +359,19 @@ serve(async (req) => {
       if (nivel) {
         userPrompt += `. Nivel de profundidad: ${nivel} (1=introductorio, 2=intermedio, 3=profundo)`;
       }
-      
-      messages.push({ role: "user", content: userPrompt });
     }
 
-    console.log(`Socratic Oracle - User: ${user.id}, Eje: ${eje || 'N/A'}, Nivel: ${nivel || 'N/A'}, History: ${conversationHistory?.length || 0}`);
+    console.log(`Socratic Oracle - User: ${user.id}, Eje: ${eje || 'N/A'}, Nivel: ${nivel || 'N/A'}, History: ${conversationHistory?.length || 0}, Corpus: ${includeCorpus}`);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        temperature: 0.85,
-      }),
-    });
+    // Generate and validate question
+    const result = await generateAndValidateQuestion(LOVABLE_API_KEY, systemPrompt, userPrompt);
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Límite de peticiones excedido. Intenta de nuevo más tarde." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos agotados. Añade más créditos a tu workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("Error en AI gateway");
-    }
+    console.log(`Socratic Oracle - Generated in ${result._intentos} attempt(s), Valid: ${result._validation.valido}`);
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    // Remove internal validation fields before returning
+    const { _validation, _intentos, ...cleanResult } = result;
 
-    if (!content) {
-      throw new Error("No se recibió respuesta del modelo");
-    }
-
-    // Parse JSON response from AI
-    let parsedQuestion;
-    try {
-      // Extract JSON from potential markdown code blocks
-      const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || 
-                        content.match(/```\n?([\s\S]*?)\n?```/) ||
-                        [null, content];
-      parsedQuestion = JSON.parse(jsonMatch[1] || content);
-    } catch (parseError) {
-      console.error("Error parsing AI response:", content);
-      // Fallback: create structured response from raw text
-      parsedQuestion = {
-        pregunta: content.replace(/[{}"]/g, '').trim(),
-        eje: eje || "Miedo",
-        nivel: nivel || 2,
-        tension: 0.85,
-        conexion: "Pregunta generada dinámicamente"
-      };
-    }
-
-    return new Response(JSON.stringify(parsedQuestion), {
+    return new Response(JSON.stringify(cleanResult), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

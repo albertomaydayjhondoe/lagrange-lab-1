@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -162,7 +163,12 @@ serve(async (req) => {
     const axesList = axes.map((a: any) => `- **${a.label}**: ${a.description || a.id}`).join("\n");
     const nodesList = nodes.map((n: any) => `- ${n.label} (${n.axis}): ${n.description}`).join("\n");
 
-    const SYSTEM_PROMPT = `Eres el Arquitecto Topológico del Sistema Lagrange. Analizas y generas contenido sobre la red conceptual de tensiones.
+    // Build system prompt using shared architect prompt
+    const basePrompt = getArchitectPrompt();
+    const SYSTEM_PROMPT = `${basePrompt}
+
+## INSTRUCCIÓN ESPECÍFICA: Arquitecto Topológico
+Eres el Arquitecto Topológico del Sistema Lagrange. Analizas y generas contenido sobre la red conceptual de tensiones.
 
 ## Ejes Temáticos Activos:
 ${axesList}
@@ -175,6 +181,7 @@ Tu misión es:
 - Sugerir nuevos nodos o modificaciones
 - Explorar tensiones latentes
 - Generar descripciones profundas
+- Mantener la incomodidad: los nodos deben generar fricción cognitiva
 
 Responde siempre en JSON estructurado según la acción solicitada.`;
 

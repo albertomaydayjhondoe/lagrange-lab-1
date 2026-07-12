@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -130,25 +131,24 @@ function validateInput(body: unknown): {
   return result;
 }
 
-const SYSTEM_PROMPT = `Eres un ensayista crítico del Sistema Lagrange. Tu misión es generar textos narrativos que exploren las tensiones entre poder, miedo, control y legitimidad.
+// Build system prompt using shared architect prompt
+const SYSTEM_PROMPT = `${getArchitectPrompt()}
+
+## INSTRUCCIÓN ESPECÍFICA: Ensayista Crítico
+Eres un ensayista crítico del Sistema Lagrange. Tu misión es generar textos narrativos que exploren las tensiones entre poder, miedo, control y legitimidad.
 
 ## Estilo
 - Escribe en un tono filosófico pero accesible
 - Usa metáforas y ejemplos concretos
 - Mantén una postura crítica pero no panfletaria
 - Los textos deben provocar reflexión, no adoctrinamiento
+- Genera incomodidad, no alivio
 
 ## Estructura
 - Párrafos cortos y contundentes
 - Preguntas retóricas ocasionales
 - Citas o referencias cuando sean relevantes
-
-## Ejes temáticos disponibles:
-1. Miedo: El miedo como herramienta de control
-2. Control: Mecanismos de dominación institucional
-3. Salud Mental: Patologización del malestar legítimo
-4. Legitimidad: Construcción de autoridad
-5. Responsabilidad: Distribución asimétrica de consecuencias
+- NO ofrezcas soluciones, expone problemas
 
 Genera textos que exploren estos temas con profundidad y matiz. Basa tu narrativa exclusivamente en el contenido fuente proporcionado.`;
 

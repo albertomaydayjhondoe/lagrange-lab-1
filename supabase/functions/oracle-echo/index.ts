@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getArchitectPrompt, validarPregunta, getRefuerzoPrompt } from "./_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +9,7 @@ const corsHeaders = {
 
 // Rate limiting for echoes
 const ECHO_COOLDOWN_MS = 30000; // 30 seconds between echoes
+const MAX_INTENTS = 2;
 
 const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
 
@@ -106,7 +108,12 @@ serve(async (req) => {
     // Calculate echo type based on silence duration
     const echoType = silenceDuration && silenceDuration > 60000 ? 'deep_probe' : 'gentle_nudge';
     
-    const SYSTEM_PROMPT = `Eres el Oráculo Socrático del Sistema Lagrange. Tu misión es generar "ecos" - preguntas cortas e incisivas que responden al silencio del usuario.
+    // Build system prompt using shared architect prompt
+    const basePrompt = getArchitectPrompt();
+    const SYSTEM_PROMPT = `${basePrompt}
+
+## INSTRUCCIÓN ESPECÍFICA: Generador de Ecos Socráticos
+Tu misión es generar "ecos" - preguntas cortas e incisivas que responden al silencio del usuario.
 
 ## ¿Qué es un eco?
 Un eco es una pregunta de seguimiento que se genera cuando el usuario no ha respondido o ha permanecido en silencio. A diferencia de una pregunta normal, el eco debe ser:
@@ -119,12 +126,10 @@ Un eco es una pregunta de seguimiento que se genera cuando el usuario no ha resp
 1. **gentle_nudge** (< 60s de silencio): Un recordatorio suave, una reformulación que invita
 2. **deep_probe** (> 60s de silencio): Una pregunta que ataca la resistencia directamente
 
-## Los 5 Ejes de Tensión:
-1. **Miedo**: El miedo como herramienta de control y su neutralización
-2. **Control**: Mecanismos de dominación social, institucional y autoimpuesto
-3. **SaludMental**: La patologización del malestar legítimo
-4. **Legitimidad**: Fabricación de legitimidad y control de la narrativa
-5. **Responsabilidad**: Distribución asimétrica de consecuencias
+## Validación:
+- Tension mínimo: 0.6
+- Máximo 15 palabras
+- Si no genera incomodidad, regenera con más fuerza
 
 ## Reglas:
 - NUNCA repitas la pregunta anterior
@@ -214,10 +219,24 @@ Responde SOLO con JSON válido:
       };
     }
 
+    // Validate echo meets friction requirements
+    const wordCount = parsed.echo.split(/\s+/).length;
+    const isQuestion = parsed.echo.includes('?');
+    const hasComfort = ['tranquilo', 'relájate', 'todo bien', 'no te preocupes'].some(
+      w => parsed.echo.toLowerCase().includes(w)
+    );
+
+    if (wordCount > 15 || !isQuestion || hasComfort) {
+      console.log(`Oracle Echo - Validation failed: words=${wordCount}, isQuestion=${isQuestion}, hasComfort=${hasComfort}`);
+      // Return with warning but still deliver
+      parsed._validation_warning = "Eco entregado pero no cumple todos los criterios de fricción";
+    }
+
     return new Response(JSON.stringify({
       ...parsed,
       silenceDuration,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      validated: wordCount <= 15 && isQuestion && !hasComfort
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -173,7 +174,12 @@ serve(async (req) => {
       return `${src?.label || e.source} → ${tgt?.label || e.target}: "${e.label}" (${e.type}, tensión: ${e.tension})`;
     }).join("\n");
 
-    const SYSTEM_PROMPT = `Eres el Analizador de Tensiones del Sistema Lagrange. Tu trabajo es analizar y generar conexiones (edges) entre conceptos.
+    // Build system prompt using shared architect prompt
+    const basePrompt = getArchitectPrompt();
+    const SYSTEM_PROMPT = `${basePrompt}
+
+## INSTRUCCIÓN ESPECÍFICA: Analizador de Tensiones
+Eres el Analizador de Tensiones del Sistema Lagrange. Tu trabajo es analizar y generar conexiones (edges) entre conceptos.
 
 ## Tipos de conexión válidos:
 - **causal**: A causa B
@@ -191,6 +197,7 @@ Tu misión es:
 - Detectar conexiones faltantes
 - Generar etiquetas narrativas para conexiones
 - Calcular niveles de tensión apropiados
+- Las conexiones deben generar fricción cognitiva
 
 Responde siempre en JSON estructurado.`;
 
