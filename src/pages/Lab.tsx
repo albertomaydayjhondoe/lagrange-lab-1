@@ -13,7 +13,11 @@ import { toast } from 'sonner';
 
 const ADMIN_EMAIL = 'sampayo@gmail.com';
 
-const Lab = () => {
+interface LabProps {
+  academyId?: string;
+}
+
+const Lab = ({ academyId }: LabProps) => {
   const [activeTab, setActiveTab] = useState('dialogue');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -47,8 +51,8 @@ const Lab = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <FogOverlay />
-      <LagrangeNav />
+      <FogOverlay academyId={academyId} />
+      <LagrangeNav academyId={academyId} />
       
       <main className="pt-20 md:pt-24 pb-8 md:pb-12 px-4 md:px-6">
         <div className="container mx-auto max-w-4xl">
