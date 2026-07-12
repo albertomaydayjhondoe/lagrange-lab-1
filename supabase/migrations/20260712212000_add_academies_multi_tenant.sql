@@ -120,6 +120,10 @@ UPDATE public.corpus_fragments SET academy_id = '00000000-0000-0000-0000-0000000
 ALTER TABLE public.academies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.academy_members ENABLE ROW LEVEL SECURITY;
 
+-- Ensure thematic axes have an is_public flag to support academy visibility
+ALTER TABLE IF EXISTS public.thematic_axes
+  ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
+
 -- academies policies
 CREATE POLICY "Public academies are viewable by everyone"
   ON public.academies FOR SELECT
