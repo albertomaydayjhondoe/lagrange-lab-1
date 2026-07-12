@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
+import { getArchitectPrompt } from "./_shared/architectPrompt.ts";
+import { validateAcademyMembership, formatAxesForPrompt, validateEje } from "./_shared/academyValidation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,9 +10,31 @@ const corsHeaders = {
 
 // Input validation
 const VALID_ACTIONS = ['generate', 'script', 'suggest_series'];
+// VALID_EJES now dynamically fetched from academy
 const MAX_ID_LENGTH = 100;
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_QUESTION_IDS = 20;
+
+function buildSystemPrompt(axesList: string, existingTitles: string): string {
+  return `${getArchitectPrompt()}
+
+## INSTRUCCIÓN ESPECÍFICA: Director de Podcast del Sistema Lagrange
+Diseñas episodios que exploran tensiones conceptuales a través del diálogo socrático.
+
+## Ejes Temáticos:
+${axesList}
+
+## Episodios existentes:
+${existingTitles || "Ninguno aún"}
+
+## Estilo del podcast:
+- Narrativo pero provocador
+- Preguntas que incomodan productivamente
+- Conexiones inesperadas entre conceptos
+- Duración típica: 20-45 minutos
+
+Responde siempre en JSON estructurado.`;
+}
 
 async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; error?: string }> {
   const authHeader = req.headers.get('authorization');
@@ -43,7 +66,6 @@ function validateInput(body: unknown): {
   eje?: string;
   questionIds?: string[];
   context?: string;
-  academyId?: string;
 } {
   if (!body || typeof body !== 'object') {
     throw new Error('Request body must be an object');
@@ -63,12 +85,11 @@ function validateInput(body: unknown): {
     action: input.action
   };
 
-  // Validate eje
+  // Validate eje (passed through - validated later against academy axes)
   if (input.eje !== undefined) {
     if (typeof input.eje !== 'string') {
       throw new Error('eje must be a string');
     }
-    // existence will be validated against thematic_axes after DB query
     result.eje = input.eje;
   }
 
@@ -101,13 +122,6 @@ function validateInput(body: unknown): {
       throw new Error(`context must be less than ${MAX_CONTEXT_LENGTH} characters`);
     }
     result.context = input.context.trim();
-  }
-
-  // Validate academyId
-  if (input.academyId !== undefined) {
-    if (typeof input.academyId !== 'string') throw new Error('academyId must be a string');
-    if (!input.academyId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) throw new Error('academyId must be a valid UUID');
-    result.academyId = input.academyId;
   }
 
   return result;
@@ -167,19 +181,12 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const [episodesRes, questionsRes, nodesRes] = await Promise.all([
+    const [episodesRes, questionsRes, axesRes, nodesRes] = await Promise.all([
       supabase.from("podcast_episodes").select("*"),
       supabase.from("socratic_questions").select("*"),
+      supabase.from("thematic_axes").select("*").eq("is_active", true),
       supabase.from("topology_nodes").select("id, label, axis"),
     ]);
-
-    // Fetch axes with optional academy filtering
-    let axesRes;
-    if ((body as any).academyId) {
-      axesRes = await supabase.from('thematic_axes').select('*').eq('is_active', true).eq('academy_id', (body as any).academyId);
-    } else {
-      axesRes = await supabase.from('thematic_axes').select('*').eq('is_active', true);
-    }
 
     if (episodesRes.error) throw new Error(episodesRes.error.message);
     if (questionsRes.error) throw new Error(questionsRes.error.message);
@@ -187,20 +194,12 @@ serve(async (req) => {
     const episodes = episodesRes.data || [];
     const questions = questionsRes.data || [];
     const axes = axesRes.data || [];
-
-    // If eje provided, ensure it exists in axes list (match by label or id)
-    if (eje) {
-      const found = axes.some((a: any) => a.label === eje || a.id === eje);
-      if (!found) {
-        return new Response(JSON.stringify({ error: 'Eje no válido' }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-    }
     const nodes = nodesRes.data || [];
 
     const existingTitles = episodes.map((e: any) => e.title).join(", ");
     const axesList = axes.map((a: any) => `- ${a.label}: ${a.description || ""}`).join("\n");
 
-    const SYSTEM_PROMPT = `${getArchitectPrompt(`Eres el Director de Podcast del Sistema Lagrange. Diseñas episodios que exploran tensiones conceptuales a través del diálogo socrático.\n\n## Ejes Temáticos:\n${axesList}\n\n## Episodios existentes:\n${existingTitles || "Ninguno aún"}\n\n## Estilo del podcast:\n- Narrativo pero provocador\n- Preguntas que incomodan productivamente\n- Conexiones inesperadas entre conceptos\n- Duración típica: 20-45 minutos\n\nResponde siempre en JSON estructurado.`)}`;
+    const SYSTEM_PROMPT = buildSystemPrompt(axesList, existingTitles);
 
     let userPrompt = "";
 
