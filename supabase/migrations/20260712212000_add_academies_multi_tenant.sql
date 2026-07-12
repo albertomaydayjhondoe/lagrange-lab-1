@@ -92,6 +92,9 @@ CREATE INDEX IF NOT EXISTS idx_corpus_fragments_academy ON public.corpus_fragmen
 -- ============================================
 -- 4. CREATE GENESIS ACADEMY (for existing data)
 -- ============================================
+-- Ensure new optional columns exist on academies
+ALTER TABLE IF EXISTS public.academies
+  ADD COLUMN IF NOT EXISTS oracle_persona_prompt TEXT;
 INSERT INTO public.academies (id, slug, name, description, is_public)
 VALUES (
   '00000000-0000-0000-0000-000000000001'::uuid,
