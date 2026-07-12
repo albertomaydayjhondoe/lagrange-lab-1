@@ -1,4 +1,4 @@
-project_id = "rwfqswiwalygzfojyeqk"
+project_id = "ovppjsqowgkzclfldveh"
 
 [functions.socratic-oracle]
 verify_jwt = true

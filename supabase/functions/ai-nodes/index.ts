@@ -166,7 +166,7 @@ serve(async (req) => {
     const SYSTEM_PROMPT = `${getArchitectPrompt(`Eres el Arquitecto Topológico del Sistema Lagrange. Analizas y generas contenido sobre la red conceptual de tensiones.\n\n## Ejes Temáticos Activos:\n${axesList}\n\n## Nodos Actuales:\n${nodesList}\n\nTu misión es:\n- Analizar conexiones entre conceptos\n- Sugerir nuevos nodos o modificaciones\n- Explorar tensiones latentes\n- Generar descripciones profundas\n\nResponde siempre en JSON estructurado según la acción solicitada.`)}`;
 
     let userPrompt = "";
-    let responseFormat = {};
+    const responseFormat = {};
 
     switch (action) {
       case "analyze":

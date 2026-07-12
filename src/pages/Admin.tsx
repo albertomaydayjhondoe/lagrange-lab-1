@@ -6,7 +6,7 @@ import { LagrangeNav } from '@/components/LagrangeNav';
 import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users, UserPlus, BookOpen, Archive } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users, UserPlus, BookOpen, Archive, FileText } from 'lucide-react';
 import { createGlobalBackup, downloadZip } from '@/utils/globalBackup';
 import { NodeEditor } from '@/components/admin/NodeEditor';
 import { EdgeEditor } from '@/components/admin/EdgeEditor';
@@ -402,6 +402,10 @@ const Admin = () => {
                   </TabsTrigger>
                   {isAdmin && (
                     <>
+                      <TabsTrigger value="rag" className="font-mono text-sm gap-2">
+                        <FileText className="w-4 h-4" />
+                        RAG
+                      </TabsTrigger>
                       <TabsTrigger value="curator" className="font-mono text-sm gap-2">
                         <BookOpen className="w-4 h-4" />
                         Curador
@@ -514,6 +518,19 @@ const Admin = () => {
 
                 {isAdmin && (
                   <>
+                    <TabsContent value="rag">
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="bg-card rounded-xl border border-border p-6"
+                      >
+                        <h2 className="font-serif text-xl mb-4">Fuentes RAG</h2>
+                        <p className="text-sm text-muted-foreground mb-6">
+                          Gestiona las fuentes de texto para Retrieval Augmented Generation. Sube documentos o sincroniza el corpus seed.
+                        </p>
+                        <RAGSourcesEditor academyId={null} isAdmin={isAdmin} />
+                      </motion.div>
+                    </TabsContent>
                     <TabsContent value="curator">
                       <motion.div
                         initial={{ opacity: 0 }}

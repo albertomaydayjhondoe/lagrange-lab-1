@@ -85,7 +85,7 @@ export async function fetchCorpusFragmentsWithRAG(
     if (queryEmbedding && queryEmbedding.length === 1536) {
       const embeddingStr = `[${queryEmbedding.join(',')}]`;
       
-      let query = supabase
+      const query = supabase
         .from('corpus_fragments')
         .select('*')
         .or(`academy_id.eq.${academyId},academy_id.is.null`)
@@ -109,4 +109,22 @@ export async function fetchCorpusFragmentsWithRAG(
     // Fallback to basic fetch
     return fetchCorpusFragments(supabase, academyId, eje, limit);
   }
+}
+
+/**
+ * Format corpus fragments for use in prompts
+ */
+export function formatCorpusContext(fragments: CorpusFragment[]): string {
+  if (!fragments || fragments.length === 0) {
+    return '';
+  }
+
+  const formatted = fragments.map((f, i) => {
+    const header = f.title ? `## Fragmento ${i + 1}: ${f.title}` : `## Fragmento ${i + 1}`;
+    const axesInfo = f.axis && f.axis.length > 0 ? `\nAxes: ${f.axis.join(', ')}` : '';
+    const tensionInfo = f.tension ? `\nTensión: ${f.tension}` : '';
+    return `${header}${axesInfo}${tensionInfo}\n${f.content}`;
+  }).join('\n\n');
+
+  return `## Contexto del Corpus\n\n${formatted}\n\n---\n`;
 }

@@ -205,7 +205,7 @@ export const generateFrictionJourney = async (startAxis?: AxisType): Promise<Soc
   const questions = await getQuestions();
   
   // Filtrar por eje si se especifica
-  let pool = startAxis 
+  const pool = startAxis 
     ? questions.filter(q => q.eje === startAxis)
     : [...questions];
   

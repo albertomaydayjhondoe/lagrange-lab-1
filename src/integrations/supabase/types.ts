@@ -6,6 +6,8 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export type AcademyRole = 'owner' | 'admin' | 'platon' | 'member';
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -377,6 +379,128 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      academies: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_public: boolean
+          name: string
+          oracle_persona_prompt: string | null
+          owner_user_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          name: string
+          oracle_persona_prompt?: string | null
+          owner_user_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          name?: string
+          oracle_persona_prompt?: string | null
+          owner_user_id?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      academy_members: {
+        Row: {
+          academy_id: string
+          joined_at: string
+          role: AcademyRole
+          user_id: string
+        }
+        Insert: {
+          academy_id: string
+          joined_at?: string
+          role: AcademyRole
+          user_id: string
+        }
+        Update: {
+          academy_id?: string
+          joined_at?: string
+          role?: AcademyRole
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academy_members_academy_id_fkey"
+            columns: ["academy_id"]
+            isOneToOne: false
+            referencedRelation: "academies"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      corpus_fragments: {
+        Row: {
+          academy_id: string | null
+          axis: string[] | null
+          content: string
+          created_at: string
+          embedding: string | null
+          id: string
+          keywords: string[] | null
+          source_file: string | null
+          source_section: string | null
+          source_type: string | null
+          tension: number | null
+          title: string | null
+          updated_at: string
+          user_upload_id: string | null
+          weight: number | null
+        }
+        Insert: {
+          academy_id?: string | null
+          axis?: string[] | null
+          content: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          keywords?: string[] | null
+          source_file?: string | null
+          source_section?: string | null
+          source_type?: string | null
+          tension?: number | null
+          title?: string | null
+          updated_at?: string
+          user_upload_id?: string | null
+          weight?: number | null
+        }
+        Update: {
+          academy_id?: string | null
+          axis?: string[] | null
+          content?: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          keywords?: string[] | null
+          source_file?: string | null
+          source_section?: string | null
+          source_type?: string | null
+          tension?: number | null
+          title?: string | null
+          updated_at?: string
+          user_upload_id?: string | null
+          weight?: number | null
         }
         Relationships: []
       }

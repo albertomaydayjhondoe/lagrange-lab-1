@@ -11,8 +11,6 @@ const corsHeaders = {
 // Rate limiting for echoes
 const ECHO_COOLDOWN_MS = 30000; // 30 seconds between echoes
 
-const VALID_EJES = ['Miedo', 'Control', 'SaludMental', 'Legitimidad', 'Responsabilidad'];
-
 async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {

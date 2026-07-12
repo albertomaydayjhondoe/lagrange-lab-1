@@ -87,7 +87,7 @@ export function RolesEditor({ isAdmin }: RolesEditorProps) {
         .eq('status', 'approved')
         .single();
 
-      let userId = requestData?.user_id;
+      const userId = requestData?.user_id;
 
       // If not found in requests, search in profiles by checking if display_name contains email
       if (!userId) {
