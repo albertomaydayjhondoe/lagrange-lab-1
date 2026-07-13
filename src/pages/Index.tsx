@@ -2,10 +2,10 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { LagrangeFooter } from '@/components/LagrangeFooter';
-import { FogOverlay } from '@/components/FogOverlay';
-import { SocraticOracle } from '@/components/SocraticOracle';
+import { FogOverlay } from '@/caracteristicas/topologia/FogOverlay';
+import { SocraticOracle } from '@/caracteristicas/oraculo/OraculoSocratico';
 import { ArrowRight, Circle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/compartido/ui/button';
 
 const Index = () => {
   return (

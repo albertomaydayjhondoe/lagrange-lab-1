@@ -20,7 +20,7 @@ import {
   SocraticQuestion,
   Episode,
   invalidateCache
-} from '@/utils/dataService';
+} from '@/compartido/lib/dataService';
 
 export type AxisType = 'Miedo' | 'Control' | 'SaludMental' | 'Legitimidad' | 'Responsabilidad';
 

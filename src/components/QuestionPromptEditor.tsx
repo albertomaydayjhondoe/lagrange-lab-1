@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/compartido/ui/button';
+import { Textarea } from '@/compartido/ui/textarea';
+import { Input } from '@/compartido/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/compartido/ui/select';
+import { Label } from '@/compartido/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/compartido/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/compartido/ui/dialog';
+import { ScrollArea } from '@/compartido/ui/scroll-area';
 import { Sparkles, Loader2, Save, ArrowRight, FileText, HelpCircle, History, Download, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { fetchAxes, ThematicAxis } from '@/utils/dataService';
+import { supabase } from '@/compartido/lib/supabaseClient';
+import { fetchAxes, ThematicAxis } from '@/compartido/lib/dataService';
 import { generateContextualQuestion, AIQuestion } from '@/utils/aiService';
 import jsPDF from 'jspdf';
 

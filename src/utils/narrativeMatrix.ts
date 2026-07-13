@@ -1,7 +1,7 @@
 // Motor Lógico - El Espejo Crítico
 // Algoritmo que calcula pesos de tensión y genera la matriz narrativa
 
-import { LagrangeNode, LagrangeEdge, fetchNodes, fetchEdges, fetchAxes, getSuggestedQuestionIds } from './dataService';
+import { LagrangeNode, LagrangeEdge, fetchNodes, fetchEdges, fetchAxes, getSuggestedQuestionIds } from '@/compartido/lib/dataService';
 
 export interface TensionState {
   nodeId: string;

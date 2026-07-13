@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/compartido/lib/supabaseClient';
 
 export interface TopologyNode {
   id: string;

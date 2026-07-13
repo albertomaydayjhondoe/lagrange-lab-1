@@ -5,7 +5,7 @@
  * Conecta frontend con las edge functions de IA
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/compartido/lib/supabaseClient';
 
 // Types for AI responses
 export interface AINodeAnalysis {

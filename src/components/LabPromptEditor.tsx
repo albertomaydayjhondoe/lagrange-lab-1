@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/compartido/ui/button';
+import { Textarea } from '@/compartido/ui/textarea';
 import { Send, Sparkles, Brain, Loader2 } from 'lucide-react';
-import { fetchQuestionsByEje } from '@/utils/dataService';
+import { fetchQuestionsByEje } from '@/compartido/lib/dataService';
 import { generateContextualQuestion, AIQuestion } from '@/utils/aiService';
 import { toast } from 'sonner';
 

@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/compartido/lib/supabaseClient';
 
 // Generate a unique session ID for anonymous users
 function getSessionId(): string {

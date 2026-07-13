@@ -5,7 +5,7 @@
  * Utiliza Lovable AI para generar preguntas dinámicas
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/compartido/lib/supabaseClient';
 
 export interface AIQuestion {
   pregunta: string;
