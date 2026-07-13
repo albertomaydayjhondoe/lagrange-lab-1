@@ -11,7 +11,7 @@ Supabase (Database + Auth + Storage)
     ↓
 Edge Functions (Deno)
     ↓
-AI Gateway (Lovely API)
+AI Gateway compatible con OpenAI
 ```
 
 ## Arquitectura Multi-Tenant
@@ -97,7 +97,10 @@ npx supabase db push
 VITE_SUPABASE_URL=
 VITE_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-LOVABLE_API_KEY=
+AI_API_KEY=
+AI_GATEWAY_URL=https://api.openai.com/v1
+AI_CHAT_MODEL=gpt-4o-mini
+AI_EMBEDDING_MODEL=text-embedding-3-small
 ELEVENLABS_API_KEY=  # Opcional, para TTS
 ```
 
@@ -119,7 +122,7 @@ Archivos históricos en `src/data/_legacy/`:
 
 - **Frontend**: React + Vite + TypeScript + Tailwind
 - **Backend**: Supabase Edge Functions (Deno)
-- **AI**: LoVable API (Gemini)
+- **AI**: Proveedor compatible con OpenAI (configurable por entorno)
 - **TTS**: ElevenLabs (opcional)
 
 ## Ejes de Tensión
@@ -214,7 +217,7 @@ Archivos históricos en `src/data/_legacy/`:
                           ▼                        ▼
                    ┌──────────────┐    ┌─────────────────────┐
                    │ Embedding    │    │  socratic-oracle    │
-                   │ (ada-002)    │    │  + corpusContext    │
+                   │ (configurable)    │    │  + corpusContext    │
                    └──────────────┘    └─────────────────────┘
 ```
 
@@ -236,7 +239,7 @@ corpus_fragments (
   academy_id      UUID REFERENCES academies(id),
   
   -- RAG
-  embedding       vector(1536),    -- OpenAI ada-002
+  embedding       vector(1536),    -- modelo configurado por AI_EMBEDDING_MODEL
   source_type     TEXT,            -- 'seed' | 'user_upload'
   title           TEXT,
   user_upload_id  UUID REFERENCES profiles(id),

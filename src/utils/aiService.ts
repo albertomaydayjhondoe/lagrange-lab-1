@@ -2,7 +2,7 @@
  * aiService.ts
  * 
  * Servicio de conexión con el Oráculo Socrático IA
- * Utiliza Lovable AI para generar preguntas dinámicas
+ * Utiliza proveedor IA compatible con OpenAI para generar preguntas dinámicas
  */
 
 import { supabase } from '@/compartido/lib/supabaseClient';
