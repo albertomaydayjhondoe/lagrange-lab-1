@@ -19,6 +19,7 @@ import AcademyProfile from "./pages/AcademyProfile";
 import CreateAcademy from "./pages/CreateAcademy";
 import { AcademyHeader } from "./caracteristicas/academia/AcademyHeader";
 import { SessionProvider } from "./compartido/lib/SessionProvider";
+import { AcademyProvider } from "./caracteristicas/academia/AcademyContext";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +29,9 @@ const App = () => (
       <Sonner />
       {/* Session provider for authentication state */}
       <SessionProvider>
-        <HashRouter>
+        {/* Academy provider for multi-tenant context */}
+        <AcademyProvider>
+          <HashRouter>
           {/* Header global con selector de academia */}
           <AcademyHeader />
           
@@ -58,7 +61,8 @@ const App = () => (
             
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </HashRouter>
+          </HashRouter>
+        </AcademyProvider>
       </SessionProvider>
     </TooltipProvider>
   </QueryClientProvider>
