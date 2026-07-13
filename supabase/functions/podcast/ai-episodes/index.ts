@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { getArchitectPrompt } from "../../_shared/architectPrompt.ts";
-import { validateAcademyMembership, formatAxesForPrompt, validateEje } from "../../_shared/academyContext.ts";
+import { getAcademyContext, validateEje } from "../../_shared/academyContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,10 +36,10 @@ ${existingTitles || "Ninguno aún"}
 Responde siempre en JSON estructurado.`;
 }
 
-async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; error?: string }> {
+async function verifyAuth(req: Request): Promise<{ user: any; supabase: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
-    return { user: null, isAdmin: false, error: 'Authentication required' };
+    return { user: null, supabase: null, error: 'Authentication required' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -51,18 +51,15 @@ async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; 
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();
   if (error || !user) {
-    return { user: null, isAdmin: false, error: 'Invalid or expired token' };
+    return { user: null, supabase: null, error: 'Invalid or expired token' };
   }
 
-  // Check if user is admin
-  const { data: isAdminData } = await supabaseClient.rpc('is_admin_user');
-  const isAdmin = isAdminData === true;
-
-  return { user, isAdmin };
+  return { user, supabase: supabaseClient };
 }
 
 function validateInput(body: unknown): {
   action: string;
+  academyId?: string;
   eje?: string;
   questionIds?: string[];
   context?: string;
@@ -84,6 +81,14 @@ function validateInput(body: unknown): {
   const result: ReturnType<typeof validateInput> = {
     action: input.action
   };
+
+  // Validate academy_id (optional - validated later against membership)
+  if (input.academy_id !== undefined) {
+    if (typeof input.academy_id !== 'string') {
+      throw new Error('academy_id must be a string');
+    }
+    result.academyId = input.academy_id;
+  }
 
   // Validate eje (passed through - validated later against academy axes)
   if (input.eje !== undefined) {
@@ -133,19 +138,12 @@ serve(async (req) => {
   }
 
   try {
-    // Verify authentication - admin only for AI episode operations
-    const { user, isAdmin, error: authError } = await verifyAuth(req);
+    // Verify authentication
+    const { user, supabase, error: authError } = await verifyAuth(req);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: authError || 'Authentication required' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!isAdmin) {
-      return new Response(
-        JSON.stringify({ error: 'Admin access required' }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -170,7 +168,7 @@ serve(async (req) => {
       );
     }
 
-    const { action, eje, questionIds, context } = validatedInput;
+    const { action, academyId: requestedAcademyId, eje, questionIds, context } = validatedInput;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -179,13 +177,26 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error("Supabase config missing");
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Validate membership and get academy context using shared module
+    const academyContext = await getAcademyContext(supabase, user.id, requestedAcademyId);
 
+    // Check if user has admin/owner role in the academy
+    const isAcademyAdmin = academyContext.role === 'owner' || academyContext.role === 'admin';
+    if (!isAcademyAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'Academy admin access required' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const academyId = academyContext.academyId;
+
+    // Fetch data filtered by academy_id
     const [episodesRes, questionsRes, axesRes, nodesRes] = await Promise.all([
-      supabase.from("podcast_episodes").select("*"),
-      supabase.from("socratic_questions").select("*"),
-      supabase.from("thematic_axes").select("*").eq("is_active", true),
-      supabase.from("topology_nodes").select("id, label, axis"),
+      supabase.from("podcast_episodes").select("*").eq("academy_id", academyId),
+      supabase.from("socratic_questions").select("*").eq("academy_id", academyId),
+      supabase.from("thematic_axes").select("*").eq("is_active", true).eq("academy_id", academyId),
+      supabase.from("topology_nodes").select("id, label, axis").eq("academy_id", academyId),
     ]);
 
     if (episodesRes.error) throw new Error(episodesRes.error.message);
@@ -268,7 +279,7 @@ Responde en JSON: { "titulo_serie": string, "descripcion_serie": string, "episod
         throw new Error(`Acción no reconocida: ${action}`);
     }
 
-    console.log(`AI Episodes - Admin: ${user.id}, Action: ${action}, Eje: ${eje || "N/A"}`);
+    console.log(`AI Episodes - User: ${user.id}, Academy: ${academyId}, Action: ${action}, Eje: ${eje || "N/A"}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
