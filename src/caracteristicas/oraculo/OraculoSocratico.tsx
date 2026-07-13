@@ -5,8 +5,10 @@ import { generateSocraticQuestion, AIQuestion } from '@/utils/aiService';
 import { supabase } from '@/compartido/lib/supabaseClient';
 import { Button } from '@/compartido/ui/button';
 import { Input } from '@/compartido/ui/input';
-import { RefreshCw, Sparkles, Send, Radio } from 'lucide-react';
+import { Sparkles, Send, Radio, CloudFog, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAcademy, useAcademyTheme } from '@/caracteristicas/academia/AcademyContext';
+import { useUserRole } from '@/caracteristicas/academia/hooks/useAcademyRole';
 
 type DisplayQuestion = SocraticQuestion | AIQuestion;
 
@@ -20,6 +22,12 @@ interface OracleEcho {
   timestamp: string;
 }
 
+// Fog teaser interface
+interface FogTeaser {
+  teaser: string;
+  source: 'generated' | 'cache' | 'fallback';
+}
+
 function isAIQuestion(q: DisplayQuestion): q is AIQuestion {
   return 'pregunta' in q;
 }
@@ -29,21 +37,29 @@ interface SocraticOracleProps {
   activeAxis?: string | null;
   selectedNodeId?: string | null;
   onQuestionGenerated?: (question: string, eje: string) => void;
+  onOpenDialogue?: () => void;
 }
 
-export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated }: SocraticOracleProps) {
+export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated, onOpenDialogue }: SocraticOracleProps) {
   const [question, setQuestion] = useState<DisplayQuestion | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isAIMode, setIsAIMode] = useState(false);
   const [userContext, setUserContext] = useState('');
   const [showContextInput, setShowContextInput] = useState(false);
+  const [fogTeaser, setFogTeaser] = useState<FogTeaser | null>(null);
+  const [isLoadingTeaser, setIsLoadingTeaser] = useState(false);
   
   // Echo state
   const [echo, setEcho] = useState<OracleEcho | null>(null);
   const [isEchoVisible, setIsEchoVisible] = useState(false);
-  const [silenceTimer, setSilenceTimer] = useState<number | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
   const conversationHistoryRef = useRef<Array<{role: string; content: string}>>([]);
+
+  // Academy context
+  const academyContext = useAcademy();
+  const theme = academyContext?.theme ?? null;
+  const academy = academyContext?.academy;
+  const { isPlaton, isAdmin, loading: roleLoading } = useUserRole();
 
   // Silence detection config
   const SILENCE_THRESHOLD_MS = 45000; // 45 seconds before showing echo
@@ -61,6 +77,50 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
     legitimidad: 'Legitimidad',
     responsabilidad: 'Responsabilidad'
   };
+
+  // Accent color from academy theme
+  const accentColor = theme?.primaryColor ?? 'var(--primary)';
+
+  // Fetch fog teaser
+  const fetchFogTeaser = useCallback(async () => {
+    if (!activeAxis) {
+      setFogTeaser({ teaser: 'La niebla guarda sus secretos...', source: 'fallback' });
+      return;
+    }
+
+    setIsLoadingTeaser(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setFogTeaser({ teaser: 'Más allá de la niebla hay preguntas por descubrir...', source: 'fallback' });
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fog-teaser`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          activeAxis,
+          dominantAxis: null,
+          proximityToCenter: 0.5,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFogTeaser(data);
+      } else {
+        setFogTeaser({ teaser: 'Entre los nodos, hay preguntas sin respuesta...', source: 'fallback' });
+      }
+    } catch {
+      setFogTeaser({ teaser: 'La niebla revela sus secretos a quien sabe preguntar...', source: 'fallback' });
+    } finally {
+      setIsLoadingTeaser(false);
+    }
+  }, [activeAxis]);
 
   // Fetch node context for AI
   const fetchNodeContext = async (nodeId: string): Promise<{label: string; description: string; axis: string} | null> => {
@@ -98,7 +158,7 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
           silenceDuration,
           eje: activeAxis,
           selectedNodeId,
-          conversationHistory: conversationHistoryRef.current.slice(-6), // Last 6 messages
+          conversationHistory: conversationHistoryRef.current.slice(-6),
         }),
       });
 
@@ -107,7 +167,6 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
         setEcho(echoData);
         setIsEchoVisible(true);
         
-        // Auto-hide echo after 15 seconds
         setTimeout(() => {
           setIsEchoVisible(false);
         }, 15000);
@@ -117,7 +176,7 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
     }
   }, [question, activeAxis, selectedNodeId]);
 
-  // Record user activity (resets silence timer)
+  // Record user activity
   const recordActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
     setIsEchoVisible(false);
@@ -152,20 +211,20 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
   }, [recordActivity]);
 
   // Load static question
-  const loadStaticQuestion = async () => {
+  const loadStaticQuestion = useCallback(async () => {
     setIsLoading(true);
     const q = await fetchRandomQuestion();
     setQuestion(q);
     setIsAIMode(false);
     setIsLoading(false);
     recordActivity();
-  };
+    fetchFogTeaser();
+  }, [fetchFogTeaser, recordActivity]);
 
   // Load AI question with context
   const loadAIQuestion = async (context?: string) => {
     setIsLoading(true);
     try {
-      // Build enhanced context
       let enhancedContext = context || '';
       
       if (activeAxis) {
@@ -190,20 +249,45 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
       setUserContext('');
       recordActivity();
       
-      // Add to conversation history
       conversationHistoryRef.current.push({
         role: 'oracle',
         content: q.pregunta
       });
       
-      // Notify parent
       if (onQuestionGenerated) {
         onQuestionGenerated(q.pregunta, q.eje);
       }
+      
+      fetchFogTeaser();
     } catch (error) {
       console.error('Error generating AI question:', error);
       toast.error('Error al generar pregunta. Usando banco estático.');
       await loadStaticQuestion();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load question from a different axis
+  const loadFromDifferentAxis = async () => {
+    setIsLoading(true);
+    try {
+      // Get all available axes
+      const axes = await fetchAxes();
+      if (axes && axes.length > 0) {
+        // Pick a random axis different from current
+        const currentAxis = activeAxis || '';
+        const otherAxes = axes.filter(a => a.id !== currentAxis);
+        if (otherAxes.length > 0) {
+          const randomAxis = otherAxes[Math.floor(Math.random() * otherAxes.length)];
+          await loadAIQuestion(`Quiero explorar el eje de ${ejeLabels[randomAxis.id] || randomAxis.id}`);
+          return;
+        }
+      }
+      // Fallback to any random question
+      await loadAIQuestion();
+    } catch {
+      await loadAIQuestion();
     } finally {
       setIsLoading(false);
     }
@@ -218,17 +302,16 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
 
   useEffect(() => {
     loadStaticQuestion();
-  }, []);
+  }, [loadStaticQuestion]);
 
-  // Generate contextual question when props change
   useEffect(() => {
     if (activeAxis || selectedNodeId) {
-      // Only auto-generate if we don't have a current question yet
       if (!question) {
         loadAIQuestion();
       }
     }
-  }, [activeAxis, selectedNodeId]);
+    fetchFogTeaser();
+  }, [activeAxis, selectedNodeId, fetchFogTeaser]);
 
   const getQuestionText = (q: DisplayQuestion): string => {
     return isAIQuestion(q) ? q.pregunta : q.texto;
@@ -247,78 +330,184 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
   };
 
   return (
-    <div className="relative">
-      {/* Context indicator */}
-      {(activeAxis || selectedNodeId) && (
-        <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-2">
-          {activeAxis && (
-            <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-mono flex items-center gap-1">
-              <Radio className="w-2.5 h-2.5" />
-              {ejeLabels[activeAxis] || activeAxis}
+    <div className="relative min-h-[calc(100vh-8rem)] flex flex-col">
+      {/* Fog teaser - SIEMPRE visible como indicación de contenido bloqueado */}
+      <div 
+        className="absolute top-4 left-4 right-4 md:left-auto md:right-auto md:max-w-md mx-auto"
+        style={{ maxWidth: '28rem' }}
+      >
+        <div 
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border backdrop-blur-sm"
+          style={{ 
+            backgroundColor: `${accentColor}10`,
+            borderColor: `${accentColor}30`,
+          }}
+        >
+          <CloudFog className="w-4 h-4 flex-shrink-0" style={{ color: accentColor }} />
+          {isLoadingTeaser ? (
+            <span className="text-xs italic" style={{ color: theme?.mutedColor || 'hsl(var(--muted-foreground))' }}>
+              La niebla susurra...
             </span>
-          )}
-          {selectedNodeId && (
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-mono">
-              Nodo activo
+          ) : fogTeaser ? (
+            <span className="text-xs italic" style={{ color: theme?.mutedColor || 'hsl(var(--muted-foreground))' }}>
+              {fogTeaser.teaser}
             </span>
-          )}
+          ) : null}
         </div>
-      )}
+      </div>
 
-      <AnimatePresence mode="wait">
-        {question && (
-          <motion.div
-            key={getQuestionText(question)}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5 }}
-            className="text-center"
-          >
-            <div className="mb-4 flex items-center justify-center gap-3 flex-wrap">
-              <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-mono uppercase tracking-wider">
-                {ejeLabels[getQuestionAxis(question)] || getQuestionAxis(question)}
-              </span>
-              <span className="text-muted-foreground text-xs font-mono">
-                Nivel {getQuestionLevel(question)}
-              </span>
-              {isAIMode && (
-                <span className="px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-mono flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
-                  IA
-                </span>
-              )}
-            </div>
-            
-            <blockquote className="font-serif text-2xl md:text-3xl lg:text-4xl text-foreground leading-relaxed max-w-4xl mx-auto">
-              <span className="text-primary opacity-50">"</span>
-              {getQuestionText(question)}
-              <span className="text-primary opacity-50">"</span>
-            </blockquote>
-
-            {isAIQuestion(question) && question.conexion && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="mt-6 text-sm text-muted-foreground italic max-w-2xl mx-auto"
+      {/* Question card - centro visual */}
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div 
+          className="w-full max-w-3xl rounded-2xl border p-8 md:p-12 backdrop-blur-sm"
+          style={{ 
+            backgroundColor: theme ? `${theme.backgroundColor}80` : 'hsl(var(--card) / 0.5)',
+            borderColor: theme ? `${theme.borderColor}60` : 'hsl(var(--border) / 0.5)',
+          }}
+        >
+          {/* Axis badge */}
+          <AnimatePresence mode="wait">
+            {question && (
+              <motion.div
+                key={getQuestionText(question) + '-badge'}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6 flex items-center justify-center gap-3 flex-wrap"
               >
-                {question.conexion}
-              </motion.p>
+                <span 
+                  className="px-3 py-1 rounded-full text-xs font-mono uppercase tracking-wider"
+                  style={{ 
+                    backgroundColor: `${accentColor}20`,
+                    color: accentColor,
+                  }}
+                >
+                  {ejeLabels[getQuestionAxis(question)] || getQuestionAxis(question)}
+                </span>
+                <span className="text-muted-foreground text-xs font-mono">
+                  Nivel {getQuestionLevel(question)}
+                </span>
+                {isAIMode && (
+                  <span 
+                    className="px-2 py-0.5 rounded-full text-xs font-mono flex items-center gap-1"
+                    style={{ 
+                      backgroundColor: '#f59e0b20',
+                      color: '#f59e0b',
+                    }}
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    IA
+                  </span>
+                )}
+              </motion.div>
             )}
+          </AnimatePresence>
 
-            <div className="mt-8 flex items-center justify-center gap-2">
-              <div 
-                className="h-1 rounded-full bg-primary/30"
-                style={{ width: `${getQuestionTension(question) * 100}px` }}
-              />
-              <span className="text-muted-foreground text-xs font-mono">
-                Tensión: {(getQuestionTension(question) * 100).toFixed(0)}%
-              </span>
+          {/* Question text */}
+          <AnimatePresence mode="wait">
+            {question && (
+              <motion.div
+                key={getQuestionText(question)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
+              >
+                <blockquote 
+                  className="font-serif text-xl md:text-2xl lg:text-3xl leading-relaxed text-center"
+                  style={{ 
+                    color: theme?.textColor || 'hsl(var(--foreground))',
+                    fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
+                    fontWeight: 400,
+                  }}
+                >
+                  <span style={{ color: accentColor, opacity: 0.4 }}>"</span>
+                  {getQuestionText(question)}
+                  <span style={{ color: accentColor, opacity: 0.4 }}>"</span>
+                </blockquote>
+
+                {isAIQuestion(question) && question.conexion && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="mt-6 text-sm italic text-center max-w-xl mx-auto"
+                    style={{ color: theme?.mutedColor || 'hsl(var(--muted-foreground))' }}
+                  >
+                    {question.conexion}
+                  </motion.p>
+                )}
+
+                {/* Tension indicator */}
+                <div className="mt-8 flex items-center justify-center gap-3">
+                  <div 
+                    className="h-1 rounded-full"
+                    style={{ 
+                      width: `${Math.min(getQuestionTension(question) * 150, 150)}px`,
+                      backgroundColor: `${accentColor}40`,
+                    }}
+                  />
+                  <span className="text-xs font-mono" style={{ color: theme?.mutedColor || 'hsl(var(--muted-foreground))' }}>
+                    Tensión: {(getQuestionTension(question) * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Loading state */}
+          {isLoading && !question && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin" style={{ color: accentColor }} />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+
+          {/* Action buttons */}
+          <div className="mt-10 flex items-center justify-center gap-4 flex-wrap">
+            <Button
+              onClick={() => onOpenDialogue?.()}
+              size="lg"
+              className="font-serif gap-2"
+              style={{ 
+                backgroundColor: accentColor,
+                color: 'white',
+              }}
+            >
+              <Send className="w-4 h-4" />
+              Responder
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={loadFromDifferentAxis}
+              disabled={isLoading}
+              className="font-serif gap-2"
+              style={{ 
+                borderColor: `${accentColor}50`,
+                color: accentColor,
+              }}
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              Otro eje
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer with metadata */}
+      <div 
+        className="px-4 py-4 text-center"
+        style={{ borderTop: `1px solid ${theme?.borderColor || 'hsl(var(--border))'}` }}
+      >
+        <p className="text-xs" style={{ color: theme?.mutedColor || 'hsl(var(--muted-foreground))' }}>
+          eje activo: {ejeLabels[activeAxis || ''] || activeAxis || 'ninguno'} · academia: {academy?.name || 'Genesis'}
+        </p>
+      </div>
 
       {/* Echo overlay - shown when user is silent */}
       <AnimatePresence>
@@ -328,7 +517,7 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-xl"
+            className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm"
           >
             <div className="text-center max-w-lg px-4">
               <div className="mb-3 flex items-center justify-center gap-2">
@@ -347,13 +536,19 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
                   {echo.type === 'deep_probe' ? 'Eco profundo' : 'Eco suave'}
                 </span>
               </div>
-              <p className="font-serif text-xl md:text-2xl text-foreground leading-relaxed">
-                <span className="text-primary opacity-50">"</span>
+              <p 
+                className="font-serif text-xl md:text-2xl leading-relaxed"
+                style={{ color: theme?.textColor || 'hsl(var(--foreground))' }}
+              >
+                <span style={{ color: accentColor, opacity: 0.4 }}>"</span>
                 {echo.echo}
-                <span className="text-primary opacity-50">"</span>
+                <span style={{ color: accentColor, opacity: 0.4 }}>"</span>
               </p>
               {echo.direction && (
-                <p className="mt-3 text-xs text-muted-foreground italic max-w-xs mx-auto">
+                <p 
+                  className="mt-3 text-xs italic max-w-xs mx-auto"
+                  style={{ color: theme?.mutedColor || 'hsl(var(--muted-foreground))' }}
+                >
                   {echo.direction}
                 </p>
               )}
@@ -366,64 +561,48 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
       <AnimatePresence>
         {showContextInput && (
           <motion.form
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
             onSubmit={handleContextSubmit}
-            className="mt-8 max-w-xl mx-auto"
+            className="mt-6 max-w-xl mx-auto px-4"
           >
             <div className="flex gap-2">
               <Input
                 value={userContext}
                 onChange={(e) => setUserContext(e.target.value)}
                 placeholder="¿Qué te preocupa? ¿Qué situación enfrentas?"
-                className="flex-1 bg-background/50 border-primary/30 focus:border-primary"
+                className="flex-1"
+                style={{ 
+                  backgroundColor: theme ? `${theme.backgroundColor}50` : 'hsl(var(--input))',
+                  borderColor: `${accentColor}30`,
+                }}
               />
               <Button
                 type="submit"
                 disabled={!userContext.trim() || isLoading}
                 className="gap-2"
+                style={{ backgroundColor: accentColor }}
               >
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-2 text-center">
+            <p className="text-xs text-center mt-2" style={{ color: theme?.mutedColor || 'hsl(var(--muted-foreground))' }}>
               Comparte tu contexto para una pregunta personalizada
             </p>
           </motion.form>
         )}
       </AnimatePresence>
 
-      <div className="mt-12 flex justify-center gap-3 flex-wrap">
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={loadStaticQuestion}
-          disabled={isLoading}
-          className="font-serif gap-2 border-primary/30 hover:bg-primary/10 hover:border-primary/50"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading && !isAIMode ? 'animate-spin' : ''}`} />
-          Del banco
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => loadAIQuestion()}
-          disabled={isLoading}
-          className="font-serif gap-2 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50 text-amber-400"
-        >
-          <Sparkles className={`w-4 h-4 ${isLoading && isAIMode ? 'animate-spin' : ''}`} />
-          Generar con IA
-        </Button>
-
+      {/* Contextualizar button */}
+      <div className="flex justify-center mt-4">
         <Button
           variant="ghost"
-          size="lg"
+          size="sm"
           onClick={() => setShowContextInput(!showContextInput)}
-          className="font-serif gap-2 text-muted-foreground hover:text-foreground"
+          className="gap-2 text-muted-foreground hover:text-foreground"
         >
-          <Send className="w-4 h-4" />
+          <Send className="w-3 h-3" />
           Contextualizar
         </Button>
       </div>
