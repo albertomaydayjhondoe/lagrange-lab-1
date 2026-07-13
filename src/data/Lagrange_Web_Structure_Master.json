@@ -60,7 +60,7 @@
         "_files": {
           "dataService.ts": "Fetch async desde Supabase (nodos, edges, questions, episodes)",
           "corpusSync.ts": "Validación y estadísticas (usa dataService)",
-          "aiService.ts": "Conexión con Lovable AI para generación socrática",
+          "aiService.ts": "Conexión con proveedor IA compatible con OpenAI para generación socrática",
           "narrativeMatrix.ts": "Motor de tensión narrativa",
           "interactionService.ts": "Tracking de interacciones (requiere auth)",
           "dataExport.ts": "Exportación de datos del sistema"
@@ -75,7 +75,7 @@
       }
     },
     "supabase": {
-      "_comment": "BACKEND REAL - Lovable Cloud",
+      "_comment": "BACKEND REAL - Supabase Edge Functions",
       "functions": {
         "_comment": "Edge Functions desplegadas automáticamente",
         "_files": [
@@ -149,7 +149,7 @@
   "metadata": {
     "version": "1.0.0",
     "sprint": "2 - Fullstack Migration",
-    "architecture": "Lovable Cloud + Supabase",
+    "architecture": "Supabase Edge Functions + Supabase",
     "mandamiento": "Neutralización del Miedo",
     "timestamp": "2024-12-28"
   }

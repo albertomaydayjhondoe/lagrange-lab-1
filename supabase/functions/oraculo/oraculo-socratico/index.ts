@@ -15,6 +15,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const AI_GATEWAY_URL = (Deno.env.get("AI_GATEWAY_URL") ?? "https://api.openai.com/v1").replace(/\/$/, "");
+const AI_CHAT_MODEL = Deno.env.get("AI_CHAT_MODEL") ?? "gpt-4o-mini";
+
 // Constants
 const MAX_CONTEXT_LENGTH = 2000;
 const MAX_HISTORY_LENGTH = 50;
@@ -138,19 +141,19 @@ function validateInput(body: unknown): {
 
 // Generate question with validation and retry
 async function generateAndValidateQuestion(
-  LOVABLE_API_KEY: string,
+  AI_API_KEY: string,
   systemPrompt: string,
   userPrompt: string,
   intento: number = 1
 ): Promise<any> {
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch(`${AI_GATEWAY_URL}/chat/completions`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${AI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: AI_CHAT_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -201,7 +204,7 @@ async function generateAndValidateQuestion(
   if (!validation.valido && intento < MAX_INTENTS) {
     console.log(`Intento ${intento}: Pregunta rechazada - ${validation.razon}. Regenerando...`);
     const reinforcedPrompt = userPrompt + getRefuerzoPrompt(validation.razon);
-    return generateAndValidateQuestion(LOVABLE_API_KEY, systemPrompt, reinforcedPrompt, intento + 1);
+    return generateAndValidateQuestion(AI_API_KEY, systemPrompt, reinforcedPrompt, intento + 1);
   }
 
   return {
@@ -281,9 +284,9 @@ serve(async (req) => {
 
     const { academyId, context, eje, nivel, conversationHistory, includeCorpus = true } = validatedInput;
     
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const AI_API_KEY = Deno.env.get("AI_API_KEY");
+    if (!AI_API_KEY) {
+      throw new Error("AI_API_KEY is not configured");
     }
 
     // Rate limiting por (user_id, academy_id)
@@ -389,7 +392,7 @@ Basándote en el intercambio anterior, genera la siguiente pregunta socrática q
     console.log(`Socratic Oracle - User: ${user.id}, Eje: ${eje || 'N/A'}, Nivel: ${nivel || 'N/A'}, History: ${conversationHistory?.length || 0}, Corpus: ${includeCorpus}`);
 
     // Generate and validate question
-    const result = await generateAndValidateQuestion(LOVABLE_API_KEY, systemPrompt, userPrompt);
+    const result = await generateAndValidateQuestion(AI_API_KEY, systemPrompt, userPrompt);
 
     console.log(`Socratic Oracle - Generated in ${result._intentos} attempt(s), Valid: ${result._validation.valido}`);
 

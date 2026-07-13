@@ -6,12 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const AI_GATEWAY_URL = (Deno.env.get("AI_GATEWAY_URL") ?? "https://api.openai.com/v1").replace(/\/$/, "");
+const AI_EMBEDDING_MODEL = Deno.env.get("AI_EMBEDDING_MODEL") ?? "text-embedding-3-small";
+
 const GENESIS_ACADEMY_ID = '00000000-0000-0000-0000-000000000001';
 
 // Limits
 const MAX_TEXT_LENGTH = 50000; // 50KB per source
 const MAX_CHUNK_SIZE = 2000; // characters per chunk
-const EMBEDDING_MODEL = 'text-embedding-ada-002';
+const EMBEDDING_MODEL = AI_EMBEDDING_MODEL;
 
 interface IngestResult {
   chunks_created: number;
@@ -41,7 +44,7 @@ function chunkText(text: string, chunkSize: number = MAX_CHUNK_SIZE): string[] {
 }
 
 async function getEmbedding(text: string, apiKey: string): Promise<number[]> {
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+  const response = await fetch(`${AI_GATEWAY_URL}/embeddings`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -75,9 +78,9 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+    const AI_API_KEY = Deno.env.get("AI_API_KEY")!;
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !LOVABLE_API_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !AI_API_KEY) {
       throw new Error("Missing configuration");
     }
 
@@ -147,7 +150,7 @@ serve(async (req) => {
     const records = [];
     for (const chunk of chunks) {
       try {
-        const embedding = await getEmbedding(chunk, LOVABLE_API_KEY);
+        const embedding = await getEmbedding(chunk, AI_API_KEY);
         
         records.push({
           source_file: title || 'user_upload',

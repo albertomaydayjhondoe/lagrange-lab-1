@@ -105,29 +105,20 @@ export function RAGSourcesEditor({ academyId, isAdmin = false }: RAGSourcesEdito
 
     setUploading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Debes iniciar sesión');
-        return;
-      }
-
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/functions/ingest-source', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data: result, error } = await supabase.functions.invoke('ingest-source', {
+        body: {
           academyId: academyId || '00000000-0000-0000-0000-000000000001',
           text: newText,
           title: newTitle || 'Fuente personalizada',
-        }),
+        },
       });
 
-      const result: { chunks_created?: number; error?: string } = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Error al subir fuente');
+      if (error) {
+        throw new Error(error.message || 'Error al subir fuente');
+      }
+
+      if (result?.error) {
+        throw new Error(result.error);
       }
 
       toast.success(`Fuente subida: ${result.chunks_created || 0} fragmentos creados`);

@@ -206,7 +206,7 @@ Añade tu dominio de GitHub Pages en la configuración de Supabase:
 1. **La anon key es pública** - Es seguro usarla en el frontend
 2. **RLS está habilitado** - Todas las tablas tienen políticas de seguridad
 3. **Edge Functions son públicas** - Configuradas con `verify_jwt = false`
-4. **El backend sigue funcionando** - Supabase es independiente de Lovable
+4. **El backend sigue funcionando** - Supabase es independiente del proveedor de IA
 
 ## 🧪 Verificar Despliegue
 
