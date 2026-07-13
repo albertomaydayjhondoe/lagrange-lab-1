@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getAcademyContext } from "../../_shared/academyContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,10 +55,10 @@ interface TopologyDelta {
   };
 }
 
-async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
+async function verifyAuth(req: Request): Promise<{ user: any; supabase: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
-    return { user: null, error: 'Authentication required' };
+    return { user: null, supabase: null, error: 'Authentication required' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -69,10 +70,10 @@ async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> 
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();
   if (error || !user) {
-    return { user: null, error: 'Invalid or expired token' };
+    return { user: null, supabase: null, error: 'Invalid or expired token' };
   }
 
-  return { user };
+  return { user, supabase: supabaseClient };
 }
 
 function checkRateLimit(userId: string): { allowed: boolean; remaining: number; resetIn: number } {
@@ -138,8 +139,8 @@ serve(async (req) => {
   }
 
   try {
-    // Verify authentication - any authenticated user can request delta
-    const { user, error: authError } = await verifyAuth(req);
+    // Verify authentication
+    const { user, supabase: authSupabase, error: authError } = await verifyAuth(req);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: authError || 'Authentication required' }),
@@ -147,8 +148,32 @@ serve(async (req) => {
       );
     }
 
-    // Check rate limit
-    const rateCheck = checkRateLimit(user.id);
+    // Parse academy_id from request body
+    let requestedAcademyId: string | undefined;
+    try {
+      const body = await req.json();
+      requestedAcademyId = body?.academy_id;
+    } catch {
+      // academy_id is optional, defaults to genesis
+    }
+
+    // Validate membership and get academy context
+    const academyContext = await getAcademyContext(authSupabase, user.id, requestedAcademyId);
+
+    // Check if user has admin/owner role in the academy
+    const isAcademyAdmin = academyContext.role === 'owner' || academyContext.role === 'admin';
+    if (!isAcademyAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'Academy admin access required' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const academyId = academyContext.academyId;
+
+    // Check rate limit (keyed by user+academy for multi-tenant isolation)
+    const rateKey = `${user.id}:${academyId}`;
+    const rateCheck = checkRateLimit(rateKey);
     if (!rateCheck.allowed) {
       return new Response(
         JSON.stringify({ 
@@ -169,14 +194,14 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch current topology state
+    // Fetch current topology state filtered by academy_id
     const [nodesRes, edgesRes, axesRes, questionsRes, dialoguesRes, interactionsRes] = await Promise.all([
-      supabase.from("topology_nodes").select("*"),
-      supabase.from("topology_edges").select("*"),
-      supabase.from("thematic_axes").select("*").eq("is_active", true),
-      supabase.from("socratic_questions").select("*").order("created_at", { ascending: false }).limit(10),
+      supabase.from("topology_nodes").select("*").eq("academy_id", academyId),
+      supabase.from("topology_edges").select("*").eq("academy_id", academyId),
+      supabase.from("thematic_axes").select("*").eq("is_active", true).eq("academy_id", academyId),
+      supabase.from("socratic_questions").select("*").eq("academy_id", academyId).order("created_at", { ascending: false }).limit(10),
       supabase.from("saved_dialogues").select("*").order("created_at", { ascending: false }).limit(5),
-      supabase.from("user_interactions").select("node_id, created_at").order("created_at", { ascending: false }).limit(50),
+      supabase.from("user_interactions").select("node_id, created_at").eq("academy_id", academyId).order("created_at", { ascending: false }).limit(50),
     ]);
 
     if (nodesRes.error) throw new Error(`Error fetching nodes: ${nodesRes.error.message}`);
@@ -302,7 +327,7 @@ Máximo 2 nodos por respuesta.`;
 
 Sugiere nodos que expandan la conversación actual de forma significativa.`;
 
-      console.log(`Generating topology delta for user ${user.id}`);
+      console.log(`Generating topology delta for user ${user.id}, academy ${academyId}`);
 
       const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -440,7 +465,7 @@ Las conexiones deben expresar tensiones significativas y ser coherentes con el s
     delta.metadata.nodes_added = delta.nodes_to_add.length;
     delta.metadata.edges_added = delta.edges_to_add.length;
 
-    // Insert generated content into database
+    // Insert generated content into database (with academy_id for multi-tenant isolation)
     if (delta.nodes_to_add.length > 0) {
       const insertResult = await supabase
         .from("topology_nodes")
@@ -454,7 +479,8 @@ Las conexiones deben expresar tensiones significativas y ser coherentes con el s
           y: n.y,
           weight: n.weight,
           color: n.color,
-          is_generated: n.is_generated
+          is_generated: n.is_generated,
+          academy_id: academyId
         })));
 
       if (insertResult.error) {
@@ -471,7 +497,8 @@ Las conexiones deben expresar tensiones significativas y ser coherentes con el s
           target: e.target,
           tension: e.tension,
           label: e.label,
-          type: e.type
+          type: e.type,
+          academy_id: academyId
         })));
 
       if (insertResult.error) {
@@ -479,13 +506,14 @@ Las conexiones deben expresar tensiones significativas y ser coherentes con el s
       }
     }
 
-    // Update vitality scores for attenuated nodes
+    // Update vitality scores for attenuated nodes (filter by academy_id)
     if (delta.nodes_to_attenuate.length > 0) {
       for (const node of delta.nodes_to_attenuate) {
         await supabase
           .from("topology_nodes")
           .update({ vitality_score: node.vitality_score })
-          .eq("id", node.id);
+          .eq("id", node.id)
+          .eq("academy_id", academyId);
       }
     }
 
