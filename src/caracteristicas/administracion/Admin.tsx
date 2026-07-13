@@ -371,22 +371,38 @@ const Admin = () => {
           ) : (
             <>
             <Tabs defaultValue="axes" className="space-y-6">
+                {/* 
+                  ORDEN DE TABS:
+                  1. Ejes + Fuentes (las 2 tareas que definen una academia nueva)
+                  2. Topología (Nodos, Tensiones)
+                  3. Contenido (Preguntas, Diálogos)
+                  4. Podcast (Audio, Episodios, Curador)
+                  5. Admin (Solicitudes, Roles)
+                */}
                 <TabsList className="bg-card border border-border flex-wrap h-auto">
                   <TabsTrigger value="axes" className="font-mono text-sm gap-2">
                     <Palette className="w-4 h-4" />
-                    Ejes ({axes.length})
+                    Ejes
+                  </TabsTrigger>
+                  <TabsTrigger value="rag" className="font-mono text-sm gap-2">
+                    <FileText className="w-4 h-4" />
+                    Fuentes
                   </TabsTrigger>
                   <TabsTrigger value="nodes" className="font-mono text-sm gap-2">
                     <Database className="w-4 h-4" />
-                    Nodos ({nodes.length})
+                    Nodos
                   </TabsTrigger>
                   <TabsTrigger value="edges" className="font-mono text-sm gap-2">
                     <Network className="w-4 h-4" />
-                    Tensiones ({edges.length})
+                    Tensiones
                   </TabsTrigger>
                   <TabsTrigger value="questions" className="font-mono text-sm gap-2">
                     <MessageSquare className="w-4 h-4" />
-                    Preguntas ({questions.length})
+                    Preguntas
+                  </TabsTrigger>
+                  <TabsTrigger value="dialogues" className="font-mono text-sm gap-2">
+                    <MessagesSquare className="w-4 h-4" />
+                    Diálogos
                   </TabsTrigger>
                   <TabsTrigger value="audio" className="font-mono text-sm gap-2">
                     <Volume2 className="w-4 h-4" />
@@ -394,18 +410,10 @@ const Admin = () => {
                   </TabsTrigger>
                   <TabsTrigger value="episodes" className="font-mono text-sm gap-2">
                     <Radio className="w-4 h-4" />
-                    Episodios ({episodes.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="dialogues" className="font-mono text-sm gap-2">
-                    <MessagesSquare className="w-4 h-4" />
-                    Diálogos
+                    Episodios
                   </TabsTrigger>
                   {isAdmin && (
                     <>
-                      <TabsTrigger value="rag" className="font-mono text-sm gap-2">
-                        <FileText className="w-4 h-4" />
-                        RAG
-                      </TabsTrigger>
                       <TabsTrigger value="curator" className="font-mono text-sm gap-2">
                         <BookOpen className="w-4 h-4" />
                         Curador

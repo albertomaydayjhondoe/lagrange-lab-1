@@ -27,10 +27,11 @@ export function FogOverlay({ activeAxis, dominantAxis, proximityToCenter = 0.5 }
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   
-  // Dynamic fog state
+  // Dynamic fog state - teaser SIEMPRE visible para nuevos usuarios
   const [teaser, setTeaser] = useState<FogTeaser | null>(null);
   const [isLoadingTeaser, setIsLoadingTeaser] = useState(false);
-  const [showTeaser, setShowTeaser] = useState(false);
+  // El teaser permanece visible (no se oculta) para mostrar que hay más contenido
+  const [teaserDismissed, setTeaserDismissed] = useState(false);
 
   // Calculate fog intensity based on proximity
   const fogIntensity = Math.max(0.3, Math.min(0.95, 0.7 + (0.5 - proximityToCenter) * 0.4));
@@ -60,13 +61,15 @@ export function FogOverlay({ activeAxis, dominantAxis, proximityToCenter = 0.5 }
       if (response.ok) {
         const data: FogTeaser = await response.json();
         setTeaser(data);
-        setShowTeaser(true);
-        
-        // Hide teaser after 8 seconds
-        setTimeout(() => setShowTeaser(false), 8000);
+        // NO ocultar el teaser - mantenerlo visible para mostrar que hay más contenido
       }
     } catch (error) {
       console.error('Error fetching fog teaser:', error);
+      // Fallback teaser si falla la llamada
+      setTeaser({
+        teaser: 'En algún lugar entre los nodos, hay preguntas sin respuesta que esperan ser descubiertas...',
+        source: 'fallback',
+      });
     } finally {
       setIsLoadingTeaser(false);
     }
@@ -155,33 +158,48 @@ export function FogOverlay({ activeAxis, dominantAxis, proximityToCenter = 0.5 }
           }}
         />
         
-        {/* Poetic teaser overlay */}
+        {/* Poetic teaser overlay - SIEMPRE visible para asequibilidad */}
+        {/* No se oculta: sirve como indicación de que hay más contenido */}
         <AnimatePresence>
-          {showTeaser && teaser && (
+          {(teaser || isLoadingTeaser) && !teaserDismissed && !isPlaton && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.8 }}
-              className="absolute top-1/4 left-1/2 -translate-x-1/2 pointer-events-none text-center max-w-md px-4"
+              className="absolute top-20 left-1/2 -translate-x-1/2 pointer-events-auto text-center max-w-lg px-4"
             >
-              <div className="relative">
-                {/* Decorative quotes */}
-                <span className="absolute -left-4 top-0 text-4xl text-primary/20 font-serif">"</span>
-                <span className="absolute -right-4 bottom-0 text-4xl text-primary/20 font-serif rotate-180">"</span>
+              <div className="relative bg-card/80 backdrop-blur-sm rounded-xl p-4 border border-border/30 shadow-lg">
+                {/* Decorative gradient bar */}
+                <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
                 
-                <p className="font-serif text-lg md:text-xl text-foreground/80 italic leading-relaxed px-6">
-                  {teaser.teaser}
-                </p>
-                
-                {/* Source indicator */}
-                <div className="mt-3 flex items-center justify-center gap-2">
-                  <EyeOff className="w-3 h-3 text-muted-foreground/50" />
-                  <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">
-                    {teaser.source === 'generated' ? 'susurro del oráculo' : 
-                     teaser.source === 'cache' ? 'eco anterior' : 'niebla speak'}
-                  </span>
-                </div>
+                {isLoadingTeaser ? (
+                  <p className="font-serif text-sm text-muted-foreground italic">
+                    La niebla revela sus secretos...
+                  </p>
+                ) : teaser && (
+                  <>
+                    <p className="font-serif text-base md:text-lg text-foreground/90 italic leading-relaxed">
+                      {teaser.teaser}
+                    </p>
+                    
+                    {/* Source indicator + dismiss hint */}
+                    <div className="mt-3 flex items-center justify-center gap-2">
+                      <EyeOff className="w-3 h-3 text-primary/50" />
+                      <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">
+                        {teaser.source === 'generated' ? 'susurro del oráculo' : 
+                         teaser.source === 'cache' ? 'eco anterior' : 'niebla habla'}
+                      </span>
+                      <span className="text-muted-foreground/30">•</span>
+                      <button 
+                        onClick={() => setTeaserDismissed(true)}
+                        className="text-[10px] font-mono text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+                      >
+                        ocultar
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </motion.div>
           )}

@@ -1,41 +1,56 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/compartido/ui/button';
-import { User, LogIn, Menu, X } from 'lucide-react';
+import { User, LogIn, Menu, ChevronDown, Map, Radio, FlaskConical, Sparkles } from 'lucide-react';
 import { supabase } from '@/compartido/lib/supabaseClient';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/compartido/ui/sheet';
+import { useAcademy, useAcademyTheme } from '@/caracteristicas/academia/AcademyContext';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/compartido/ui/dropdown-menu';
+
+interface AcademyInfo {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 const ADMIN_EMAIL = 'sampayo@gmail.com';
 
-const navItems = [
-  { path: '/', label: 'Caverna', description: 'La narrativa' },
-  { path: '/map', label: 'Dialéctica', description: 'El mapa' },
-  { path: '/podcast', label: 'Podcast', description: 'El audio' },
-  { path: '/lab', label: 'Academia', description: 'El laboratorio' },
-];
-
-const defaultAcademySlug = 'genesis';
-
+/**
+ * Barra de navegación principal con selector de academia prominente.
+ * El tema visual cambia según la academia seleccionada.
+ */
 export function LagrangeNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { slug } = useParams();
   const isMobile = useIsMobile();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [academyName, setAcademyName] = useState('Genesis');
+  const [academies, setAcademies] = useState<AcademyInfo[]>([]);
+  const [loadingAcademies, setLoadingAcademies] = useState(true);
+  
+  // Tema de la academia actual
+  const { academy, theme } = useAcademy();
 
+  // Cargar academias disponibles
   useEffect(() => {
-    const loadAcademy = async () => {
-      const { data } = await supabase.from('academies').select('name').eq('slug', defaultAcademySlug).maybeSingle();
-      if (data?.name) {
-        setAcademyName(data.name);
+    const loadAcademies = async () => {
+      setLoadingAcademies(true);
+      const { data } = await supabase
+        .from('academies')
+        .select('id, name, slug')
+        .order('name');
+      
+      if (data) {
+        setAcademies(data);
       }
+      setLoadingAcademies(false);
     };
 
-    loadAcademy();
+    loadAcademies();
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
@@ -50,38 +65,52 @@ export function LagrangeNav() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const allNavItems = isAdmin 
-    ? [...navItems, { path: '/admin', label: 'Poder', description: 'El control' }]
-    : navItems;
+  // Navegación principal - Oráculo es la entrada principal
+  const navItems = [
+    { path: 'lab', label: 'Oráculo', icon: Sparkles, description: 'El corazón' },
+    { path: 'map', label: 'Mapa', icon: Map, description: 'La topología' },
+    { path: 'podcast', label: 'Podcast', icon: Radio, description: 'El audio' },
+  ];
+
+  const handleAcademyChange = (newSlug: string) => {
+    navigate(`/academia/${newSlug}/lab`);
+  };
 
   const handleNavClick = (path: string) => {
-    navigate(path);
+    const baseSlug = slug || 'genesis';
+    navigate(`/academia/${baseSlug}/${path}`);
     setMobileMenuOpen(false);
   };
 
+  // Determinar si estamos dentro de una academia
+  const isInAcademy = location.pathname.includes('/academia/');
+  const currentAcademySlug = slug || 'genesis';
+  const currentAcademy = academies.find(a => a.slug === currentAcademySlug);
+
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
-      {allNavItems.map((item) => (
-        <Link
-          key={item.path}
-          to={item.path}
-          onClick={() => mobile && setMobileMenuOpen(false)}
-          className={cn(
-            "relative rounded-lg font-serif transition-all duration-300",
-            mobile 
-              ? "block px-4 py-3 text-lg hover:bg-secondary/50"
-              : "px-4 py-2 text-sm hover:bg-secondary/50",
-            location.pathname === item.path
-              ? "text-primary bg-secondary/30"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <span className="relative z-10">{item.label}</span>
-          {!mobile && location.pathname === item.path && (
-            <div className="absolute inset-0 rounded-lg border border-primary/30 animate-glow-pulse" />
-          )}
-        </Link>
-      ))}
+      {navItems.map((item) => {
+        const isActive = location.pathname.includes(`/${item.path}`);
+        const Icon = item.icon;
+        return (
+          <Button
+            key={item.path}
+            variant="ghost"
+            size={mobile ? "default" : "sm"}
+            onClick={() => handleNavClick(item.path)}
+            className={cn(
+              "gap-2 font-serif transition-all duration-300",
+              mobile ? "w-full justify-start text-lg" : "px-3",
+              isActive 
+                ? "text-primary bg-primary/10 shadow-sm" 
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            )}
+          >
+            <Icon className={cn("w-4 h-4", isActive && "animate-pulse")} />
+            {item.label}
+          </Button>
+        );
+      })}
     </>
   );
 
@@ -90,11 +119,11 @@ export function LagrangeNav() {
       <Button
         variant="ghost"
         size={mobile ? "default" : "sm"}
-        onClick={() => handleNavClick('/profile')}
+        onClick={() => handleNavClick('profile')}
         className={cn(
           "gap-2",
           mobile && "w-full justify-start text-lg",
-          location.pathname === '/profile' 
+          location.pathname.includes('profile') 
             ? "text-primary bg-secondary/30" 
             : "text-muted-foreground hover:text-foreground"
         )}
@@ -106,7 +135,7 @@ export function LagrangeNav() {
       <Button
         variant="ghost"
         size={mobile ? "default" : "sm"}
-        onClick={() => handleNavClick('/auth')}
+        onClick={() => navigate('/auth')}
         className={cn(
           "gap-2 text-muted-foreground hover:text-foreground",
           mobile && "w-full justify-start text-lg"
@@ -119,46 +148,137 @@ export function LagrangeNav() {
   );
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <nav 
+      className="fixed top-0 left-0 right-0 z-50 border-b backdrop-blur-xl transition-all duration-500"
+      style={{ 
+        backgroundColor: `${theme.backgroundColor}cc`,
+        borderColor: theme.borderColor,
+      }}
+    >
+      {/* Indicador de acento superior */}
+      <div 
+        className="h-[2px] w-full transition-all duration-500"
+        style={{ 
+          background: `linear-gradient(90deg, transparent, ${theme.primaryColor}, transparent)`,
+        }}
+      />
+      
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-16">
-          <Link 
-            to="/" 
-            className="flex items-center gap-2 md:gap-3 group"
-          >
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
-              <span className="text-primary font-serif text-lg">λ</span>
-            </div>
-            <span className="font-serif text-lg md:text-xl tracking-wide text-foreground">
-              Lagrange
-            </span>
-            <span className="hidden md:inline-flex rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-primary">
-              {academyName}
-            </span>
-          </Link>
+          {/* Logo + Selector de Academia */}
+          <div className="flex items-center gap-2 md:gap-3">
+            <Link to="/" className="flex items-center gap-2 group">
+              <div 
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+                style={{ 
+                  backgroundColor: `${theme.primaryColor}20`,
+                  boxShadow: `0 0 20px ${theme.glowColor}`
+                }}
+              >
+                <span 
+                  className="font-serif text-lg transition-colors duration-300"
+                  style={{ color: theme.primaryColor }}
+                >
+                  λ
+                </span>
+              </div>
+              <span className="font-serif text-lg md:text-xl tracking-wide" style={{ color: theme.textColor }}>
+                Lagrange
+              </span>
+            </Link>
 
-          {/* Desktop Navigation */}
+            {/* Selector de Academia - PROMINENTE */}
+            {!loadingAcademies && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="gap-2 font-serif transition-all duration-300 hover:scale-105"
+                    style={{ 
+                      borderColor: theme.primaryColor,
+                      color: theme.primaryColor,
+                      backgroundColor: `${theme.primaryColor}10`,
+                    }}
+                  >
+                    <span className="max-w-[100px] md:max-w-[150px] truncate">
+                      {currentAcademy?.name || 'Genesis'}
+                    </span>
+                    <ChevronDown className="w-4 h-4" style={{ color: theme.primaryColor }} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  align="start"
+                  className="min-w-[200px]"
+                  style={{ 
+                    backgroundColor: theme.backgroundColor,
+                    borderColor: theme.borderColor,
+                  }}
+                >
+                  {academies.map((acad) => (
+                    <DropdownMenuItem
+                      key={acad.id}
+                      onClick={() => handleAcademyChange(acad.slug)}
+                      className={cn(
+                        "cursor-pointer font-serif transition-colors",
+                        acad.slug === currentAcademySlug && "bg-primary/20"
+                      )}
+                      style={{ color: theme.textColor }}
+                    >
+                      {acad.name}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator style={{ backgroundColor: theme.borderColor }} />
+                  <DropdownMenuItem
+                    onClick={() => navigate('/academies')}
+                    className="cursor-pointer font-serif text-muted-foreground"
+                  >
+                    + Crear academia
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+
+          {/* Desktop Navigation - Centrado */}
           {!isMobile && (
             <div className="flex items-center gap-1">
               <NavLinks />
-              <div className="ml-2">
-                <AuthButton />
-              </div>
             </div>
           )}
+
+          {/* Auth + Admin */}
+          <div className="flex items-center gap-2">
+            {!isMobile && <AuthButton />}
+            {isAdmin && !isMobile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleNavClick('admin')}
+                className={cn(
+                  "gap-2 text-xs uppercase tracking-wider",
+                  location.pathname.includes('admin') 
+                    ? "text-primary bg-secondary/30" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Admin
+              </Button>
+            )}
+          </div>
 
           {/* Mobile Navigation */}
           {isMobile && (
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10">
+                <Button variant="ghost" size="icon" className="h-10 w-10" style={{ color: theme.primaryColor }}>
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[280px] pt-12">
+              <SheetContent side="right" className="w-[280px] pt-12" style={{ backgroundColor: theme.backgroundColor }}>
                 <div className="flex flex-col gap-2">
                   <NavLinks mobile />
-                  <div className="border-t border-border my-4" />
+                  <div className="border-t my-4" style={{ borderColor: theme.borderColor }} />
                   <AuthButton mobile />
                 </div>
               </SheetContent>
