@@ -18,6 +18,7 @@ import AcademyPodcast from "./pages/AcademyPodcast";
 import AcademyProfile from "./pages/AcademyProfile";
 import CreateAcademy from "./pages/CreateAcademy";
 import { AcademyHeader } from "./caracteristicas/academia/AcademyHeader";
+import { SessionProvider } from "./compartido/lib/SessionProvider";
 
 const queryClient = new QueryClient();
 
@@ -25,37 +26,40 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Sonner />
-      <HashRouter>
-        {/* Header global con selector de academia */}
-        <AcademyHeader />
-        
-        <Routes>
-          {/* Global routes */}
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/academies" element={<AcademiesList />} />
-          <Route path="/academies/create" element={<CreateAcademy />} />
+      {/* Session provider for authentication state */}
+      <SessionProvider>
+        <HashRouter>
+          {/* Header global con selector de academia */}
+          <AcademyHeader />
           
-          {/* Legacy routes - redirect to genesis */}
-          <Route path="/map" element={<Navigate to="/academia/genesis/map" replace />} />
-          <Route path="/lab" element={<Navigate to="/academia/genesis/lab" replace />} />
-          <Route path="/podcast" element={<Navigate to="/academia/genesis/podcast" replace />} />
-          <Route path="/profile" element={<Navigate to="/academia/genesis/profile" replace />} />
-          <Route path="/admin" element={<Navigate to="/academia/genesis/admin" replace />} />
-          
-          {/* Academy routes - multi-tenant */}
-          <Route path="/academia/:slug" element={<AcademyLayout />}>
-            <Route index element={<Map />} />
-            <Route path="map" element={<AcademyMap />} />
-            <Route path="lab" element={<AcademyLab />} />
-            <Route path="podcast" element={<AcademyPodcast />} />
-            <Route path="profile" element={<AcademyProfile />} />
-            <Route path="admin" element={<Admin />} />
-          </Route>
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </HashRouter>
+          <Routes>
+            {/* Global routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/academies" element={<AcademiesList />} />
+            <Route path="/academies/create" element={<CreateAcademy />} />
+            
+            {/* Legacy routes - redirect to genesis */}
+            <Route path="/map" element={<Navigate to="/academia/genesis/map" replace />} />
+            <Route path="/lab" element={<Navigate to="/academia/genesis/lab" replace />} />
+            <Route path="/podcast" element={<Navigate to="/academia/genesis/podcast" replace />} />
+            <Route path="/profile" element={<Navigate to="/academia/genesis/profile" replace />} />
+            <Route path="/admin" element={<Navigate to="/academia/genesis/admin" replace />} />
+            
+            {/* Academy routes - multi-tenant */}
+            <Route path="/academia/:slug" element={<AcademyLayout />}>
+              <Route index element={<Map />} />
+              <Route path="map" element={<AcademyMap />} />
+              <Route path="lab" element={<AcademyLab />} />
+              <Route path="podcast" element={<AcademyPodcast />} />
+              <Route path="profile" element={<AcademyProfile />} />
+              <Route path="admin" element={<Admin />} />
+            </Route>
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </HashRouter>
+      </SessionProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
