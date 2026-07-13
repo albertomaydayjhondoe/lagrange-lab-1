@@ -6,7 +6,7 @@ import { User, LogIn, Menu, ChevronDown, Map, Radio, FlaskConical, Sparkles } fr
 import { supabase } from '@/compartido/lib/supabaseClient';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/compartido/ui/sheet';
-import { useAcademy, useAcademyTheme } from '@/caracteristicas/academia/AcademyContext';
+import { useAcademy } from '@/caracteristicas/academia/AcademyContext';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/compartido/ui/dropdown-menu';
 
 interface AcademyInfo {
@@ -17,9 +17,34 @@ interface AcademyInfo {
 
 const ADMIN_EMAIL = 'sampayo@gmail.com';
 
+/** Default theme for when not inside an AcademyProvider */
+const DEFAULT_NAV_THEME = {
+  primaryColor: '#8B5CF6',
+  secondaryColor: '#A78BFA',
+  backgroundColor: '#0F0F23',
+  textColor: '#E2E8F0',
+  mutedColor: '#94A3B8',
+  borderColor: '#1E293B',
+  gradientStart: '#1E1B4B',
+  gradientEnd: '#0F172A',
+  glowColor: 'rgba(139, 92, 246, 0.3)',
+};
+
+/**
+ * Hook that safely gets academy context, returning null if not available
+ */
+function useAcademySafe() {
+  try {
+    return useAcademy();
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Barra de navegación principal con selector de academia prominente.
  * El tema visual cambia según la academia seleccionada.
+ * Funciona incluso fuera de un AcademyProvider usando tema por defecto.
  */
 export function LagrangeNav() {
   const location = useLocation();
@@ -32,8 +57,10 @@ export function LagrangeNav() {
   const [academies, setAcademies] = useState<AcademyInfo[]>([]);
   const [loadingAcademies, setLoadingAcademies] = useState(true);
   
-  // Tema de la academia actual
-  const { academy, theme } = useAcademy();
+  // Safely get academy context - may be null if not inside AcademyProvider
+  const academyContext = useAcademySafe();
+  const academy = academyContext?.academy ?? null;
+  const theme = academyContext?.theme ?? DEFAULT_NAV_THEME;
 
   // Cargar academias disponibles
   useEffect(() => {

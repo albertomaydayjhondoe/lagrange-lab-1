@@ -1,6 +1,6 @@
 import { useParams, Outlet, useNavigate } from 'react-router-dom';
-import { LagrangeNav } from '@/components/LagrangeNav';
 import { AcademyProvider, useAcademy as useAcademyContext } from '@/caracteristicas/academia/AcademyContext';
+import { AcademyTabs } from '@/caracteristicas/academia/AcademyTabs';
 
 interface Academy {
   id: string;
@@ -19,21 +19,21 @@ function AcademyLayoutContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white/50 animate-pulse">Cargando academia...</div>
+      <div className="min-h-screen flex items-center justify-center pt-14">
+        <div className="text-muted-foreground animate-pulse">Cargando academia...</div>
       </div>
     );
   }
 
   if (!academy) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center pt-14">
         <div className="text-center">
-          <h1 className="text-2xl text-white mb-4">Academia no encontrada</h1>
-          <p className="text-white/50 mb-4">La academia "{slug}" no existe o no tienes acceso.</p>
+          <h1 className="text-2xl text-foreground mb-4">Academia no encontrada</h1>
+          <p className="text-muted-foreground mb-4">La academia "{slug}" no existe o no tienes acceso.</p>
           <button
             onClick={() => navigate('/academies')}
-            className="px-4 py-2 bg-white/10 text-white rounded hover:bg-white/20 transition-colors"
+            className="px-4 py-2 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
           >
             Ver academias disponibles
           </button>
@@ -45,13 +45,13 @@ function AcademyLayoutContent() {
   // If academy is private and user is not member, redirect
   if (!academy.is_public && !isMember) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center pt-14">
         <div className="text-center">
-          <h1 className="text-2xl text-white mb-4">Acceso restringido</h1>
-          <p className="text-white/50 mb-4">Esta academia es privada.</p>
+          <h1 className="text-2xl text-foreground mb-4">Acceso restringido</h1>
+          <p className="text-muted-foreground mb-4">Esta academia es privada.</p>
           <button
             onClick={() => navigate('/academies')}
-            className="px-4 py-2 bg-white/10 text-white rounded hover:bg-white/20 transition-colors"
+            className="px-4 py-2 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
           >
             Volver
           </button>
@@ -61,12 +61,10 @@ function AcademyLayoutContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      <LagrangeNav 
-        academy={academy}
-        academyId={academy.id}
-      />
-      <main className="pt-16">
+    <div className="min-h-screen">
+      {/* Tabs de navegación secundaria */}
+      <AcademyTabs />
+      <main className="pt-0">
         <Outlet context={{ academy, academyId: academy.id }} />
       </main>
     </div>

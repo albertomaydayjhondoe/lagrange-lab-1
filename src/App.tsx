@@ -11,12 +11,13 @@ import Podcast from "./pages/Podcast";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import AcademiesList from "./pages/AcademiesList";
-import AcademyLayout from "./components/AcademyLayout";
+import AcademyLayout from "./caracteristicas/administracion/AcademyLayout";
 import AcademyMap from "./pages/AcademyMap";
 import AcademyLab from "./pages/AcademyLab";
 import AcademyPodcast from "./pages/AcademyPodcast";
 import AcademyProfile from "./pages/AcademyProfile";
 import CreateAcademy from "./pages/CreateAcademy";
+import { AcademyHeader } from "./caracteristicas/academia/AcademyHeader";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,9 @@ const App = () => (
     <TooltipProvider>
       <Sonner />
       <HashRouter>
+        {/* Header global con selector de academia */}
+        <AcademyHeader />
+        
         <Routes>
           {/* Global routes */}
           <Route path="/" element={<Index />} />
