@@ -1,0 +1,22 @@
+# Render Blueprint - Lagrange Lab Multi-Tenant
+# Deploy: https://dashboard.render.com/blueprints
+
+services:
+  # Static Site (Frontend)
+  - type: web
+    name: lagrange-lab
+    env: static
+    region: oregon
+    buildCommand: npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_SUPABASE_PROJECT_ID
+        sync: false
