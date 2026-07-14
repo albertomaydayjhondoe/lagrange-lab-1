@@ -1,4 +1,4 @@
-project_id = "ovppjsqowgkzclfldveh"
+project_id = "eeuuhiseeocsykahzbty"
 
 [functions.socratic-oracle]
 verify_jwt = true
@@ -31,9 +31,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.regenerate-topology-delta]
-verify_jwt = true
-
-[functions.oracle-echo]
 verify_jwt = true
 
 [functions.fog-teaser]
