@@ -1,20 +1,13 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import path from "path";
 
-const repoName = "lagrange-lab-1";
-
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  base: mode === "production" ? `/${repoName}/` : "/",
-  server: {
-    host: "::",
-    port: 8080,
-  },
+export default defineConfig({
+  base: "/lagrange-lab-1/",
   plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
-}));
+});
