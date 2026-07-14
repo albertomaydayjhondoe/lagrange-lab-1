@@ -2,19 +2,15 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Redirecting...</title>
+  <title>Lagrange Lab</title>
   <script>
-    // GitHub Pages SPA fallback - redirect all 404s to index.html
-    var path = window.location.pathname;
-    var search = window.location.search;
-    // Use the repo path
-    window.location.replace('/lagrange-lab-1/' + path + search);
+    // GitHub Pages SPA fallback - store path and redirect to app root
+    var path = window.location.pathname + window.location.search;
+    sessionStorage.setItem('lagrange_redirect', path);
+    window.location.replace('/lagrange-lab-1/');
   </script>
 </head>
 <body>
-  <p>Redirecting to <a id="link"></a>...</p>
-  <script>
-    document.getElementById('link').href = '/lagrange-lab-1/' + window.location.pathname + window.location.search;
-  </script>
+  <p>Loading Lagrange Lab...</p>
 </body>
 </html>

@@ -18,6 +18,17 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // Handle SPA routing from GitHub Pages 404 fallback
+      (function() {
+        var storedPath = sessionStorage.getItem('lagrange_redirect');
+        if (storedPath) {
+          sessionStorage.removeItem('lagrange_redirect');
+          // Use native history API to update URL without reload
+          window.history.replaceState(null, '', storedPath);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
