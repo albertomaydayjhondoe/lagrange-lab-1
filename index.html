@@ -20,12 +20,17 @@
     <div id="root"></div>
     <script>
       // Handle SPA routing from GitHub Pages 404 fallback
+      // Clean up the hash-based URL to make it look cleaner
       (function() {
-        var storedPath = sessionStorage.getItem('lagrange_redirect');
-        if (storedPath) {
-          sessionStorage.removeItem('lagrange_redirect');
-          // Use native history API to update URL without reload
-          window.history.replaceState(null, '', storedPath);
+        var storedRoute = sessionStorage.getItem('lagrange_route');
+        if (storedRoute && window.location.hash) {
+          sessionStorage.removeItem('lagrange_route');
+          // The hash is already set correctly by 404.html redirect
+          // Just clean up the URL bar to show path without hash
+          var basePath = '/lagrange-lab-1';
+          var route = storedRoute;
+          // Use replaceState to update URL without reload
+          window.history.replaceState(null, '', basePath + route);
         }
       })();
     </script>
