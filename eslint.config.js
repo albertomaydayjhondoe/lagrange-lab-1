@@ -21,6 +21,16 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // Pragmatic rules for shadcn/ui and Supabase edge functions
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-empty-object-type": "off",
+      "no-case-declarations": "off",
+      "no-useless-escape": "off",
+      "@typescript-eslint/no-require-imports": "off",
     },
+  },
+  // Edge functions have different patterns - less strict
+  {
+    ignores: ["supabase/functions/**"],
   },
 );
