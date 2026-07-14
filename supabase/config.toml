@@ -33,8 +33,6 @@ verify_jwt = true
 [functions.regenerate-topology-delta]
 verify_jwt = true
 
-[functions.oracle-echo]
-verify_jwt = true
 
 [functions.fog-teaser]
 verify_jwt = true
