@@ -32,16 +32,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create .env.production
+      - name: Build with secrets
         run: |
-          cat > .env.production << 'EOF'
-          VITE_SUPABASE_URL=https://rwfqswiwalygzfojyeqk.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3ZnFzd2l3YWx5Z3pmb2p5ZXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2ODE0NTEsImV4cCI6MjA4MjI1NzQ1MX0.qQ5AqWm-peTqZYXNFMAO2qOLUDkW5Dv2zb6jdwCfmSM
-          VITE_SUPABASE_PROJECT_ID=rwfqswiwalygzfojyeqk
-          EOF
-
-      - name: Build
-        run: npm run build
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> $GITHUB_ENV
+          echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" >> $GITHUB_ENV
+          echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID }}" >> $GITHUB_ENV
+          npm run build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
