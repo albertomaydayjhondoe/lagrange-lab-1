@@ -52,35 +52,43 @@ serve(async (req) => {
     let userMemberships: Record<string, string> = {}; // academyId -> role
     
     if (userId) {
-      const { data: memberships, error: membershipError } = await supabase
-        .from('academy_members')
-        .select(`
-          academy_id,
-          role,
-          academies (
-            id,
-            slug,
-            name,
-            description,
-            is_public,
-            created_at,
-            owner_user_id
-          )
-        `)
-        .eq('user_id', userId);
+      try {
+        const { data: memberships, error: membershipError } = await supabase
+          .from('academy_members')
+          .select(`
+            academy_id,
+            role,
+            academies (
+              id,
+              slug,
+              name,
+              description,
+              is_public,
+              created_at,
+              owner_user_id
+            )
+          `)
+          .eq('user_id', userId);
 
-      if (!membershipError && memberships) {
-        userAcademies = memberships
-          .filter((m: any) => m.academies)
-          .map((m: any) => ({
-            ...m.academies,
-            role: m.role
-          }));
-        
-        userMemberships = memberships.reduce((acc: Record<string, string>, m: any) => {
-          acc[m.academy_id] = m.role;
-          return acc;
-        }, {});
+        if (membershipError) {
+          console.error('Membership query error:', membershipError);
+          // Continue without user academies
+        } else if (memberships) {
+          userAcademies = memberships
+            .filter((m: any) => m.academies)
+            .map((m: any) => ({
+              ...m.academies,
+              role: m.role
+            }));
+          
+          userMemberships = memberships.reduce((acc: Record<string, string>, m: any) => {
+            acc[m.academy_id] = m.role;
+            return acc;
+          }, {});
+        }
+      } catch (membershipErr) {
+        console.error('Membership query exception:', membershipErr);
+        // Continue without user academies
       }
     }
 
