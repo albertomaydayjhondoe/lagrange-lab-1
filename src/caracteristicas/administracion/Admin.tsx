@@ -21,9 +21,9 @@ import { PodcastTextCurator } from '@/caracteristicas/administracion/PodcastText
 import { DifferentialImport } from '@/caracteristicas/administracion/DifferentialImport';
 import { RAGSourcesEditor } from '@/caracteristicas/administracion/RAGSourcesEditor';
 import { toast } from 'sonner';
-import type { User, Session } from '@supabase/supabase-js';
 
-const ADMIN_EMAIL = 'sampayo@gmail.com';
+// Admin panel is now open - authentication disabled for platform admins
+// Authentication is handled by Supabase RLS policies at the database level
 
 interface TopologyNode {
   id: string;
@@ -71,18 +71,15 @@ interface PodcastEpisode {
 }
 
 const Admin = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(true);
   const [nodes, setNodes] = useState<TopologyNode[]>([]);
   const [edges, setEdges] = useState<TopologyEdge[]>([]);
   const [questions, setQuestions] = useState<SocraticQuestion[]>([]);
   const [episodes, setEpisodes] = useState<PodcastEpisode[]>([]);
   const [axes, setAxes] = useState<ThematicAxis[]>([]);
-  const navigate = useNavigate();
 
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  // Admin panel is always accessible - RLS handles security at database level
+  const isAdmin = true;
 
   const fetchData = useCallback(async () => {
     setDataLoading(true);
@@ -105,33 +102,8 @@ const Admin = () => {
   }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (session) {
-      fetchData();
-    }
-  }, [session, fetchData]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/auth');
-  };
+    fetchData();
+  }, [fetchData]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -235,47 +207,6 @@ const Admin = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!session) {
-    return (
-      <div className="min-h-screen bg-background">
-        <LagrangeNav />
-        
-        <main className="pt-24 pb-12 px-6 flex items-center justify-center min-h-[80vh]">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center max-w-md"
-          >
-            <div className="w-20 h-20 mx-auto rounded-full bg-secondary flex items-center justify-center mb-6">
-              <Lock className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <h1 className="font-serif text-3xl text-foreground mb-4">
-              El Poder
-            </h1>
-            <p className="text-muted-foreground font-serif mb-8">
-              Acceso restringido. Este es el nivel de control absoluto sobre 
-              el sistema. God mode.
-            </p>
-            <Button
-              onClick={() => navigate('/auth')}
-              className="font-serif bg-primary hover:bg-primary/90"
-            >
-              Iniciar Sesión
-            </Button>
-          </motion.div>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <LagrangeNav />
@@ -290,14 +221,13 @@ const Admin = () => {
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <div className="inline-block px-3 py-1 rounded-full bg-lagrange-tension/10 text-lagrange-tension text-xs font-mono uppercase tracking-wider mb-2">
-                  {isAdmin ? 'God Mode' : 'Modo Lectura'}
+                  God Mode
                 </div>
                 <h1 className="font-serif text-4xl text-foreground">
                   Panel de Control
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1 font-mono">
-                  {user?.email}
-                  {!isAdmin && ' (solo lectura)'}
+                  Acceso de administrador de plataforma
                 </p>
               </div>
               <div className="flex gap-2 flex-wrap">
@@ -319,46 +249,34 @@ const Admin = () => {
                   <Download className="w-4 h-4" />
                   Exportar JSON
                 </Button>
-                {isAdmin && (
-                  <>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImport}
-                      accept=".json"
-                      className="hidden"
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={dataLoading}
-                      className="font-mono text-sm gap-2"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Importar Total
-                    </Button>
-                    <DifferentialImport onRefresh={fetchData} disabled={dataLoading} />
-                    <Button
-                      onClick={handleGlobalBackup}
-                      disabled={dataLoading || backupLoading}
-                      className="font-mono text-sm gap-2 bg-red-600 hover:bg-red-700 text-white border-red-600"
-                    >
-                      {backupLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Archive className="w-4 h-4" />
-                      )}
-                      Backup ZIP
-                    </Button>
-                  </>
-                )}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImport}
+                  accept=".json"
+                  className="hidden"
+                />
                 <Button
                   variant="outline"
-                  onClick={handleLogout}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={dataLoading}
                   className="font-mono text-sm gap-2"
                 >
-                  <LogOut className="w-4 h-4" />
-                  Cerrar sesión
+                  <Upload className="w-4 h-4" />
+                  Importar Total
+                </Button>
+                <DifferentialImport onRefresh={fetchData} disabled={dataLoading} />
+                <Button
+                  onClick={handleGlobalBackup}
+                  disabled={dataLoading || backupLoading}
+                  className="font-mono text-sm gap-2 bg-red-600 hover:bg-red-700 text-white border-red-600"
+                >
+                  {backupLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Archive className="w-4 h-4" />
+                  )}
+                  Backup ZIP
                 </Button>
               </div>
             </div>
@@ -412,22 +330,18 @@ const Admin = () => {
                     <Radio className="w-4 h-4" />
                     Episodios
                   </TabsTrigger>
-                  {isAdmin && (
-                    <>
-                      <TabsTrigger value="curator" className="font-mono text-sm gap-2">
-                        <BookOpen className="w-4 h-4" />
-                        Curador
-                      </TabsTrigger>
-                      <TabsTrigger value="requests" className="font-mono text-sm gap-2">
-                        <UserPlus className="w-4 h-4" />
-                        Solicitudes
-                      </TabsTrigger>
-                      <TabsTrigger value="roles" className="font-mono text-sm gap-2">
-                        <Users className="w-4 h-4" />
-                        Roles
-                      </TabsTrigger>
-                    </>
-                  )}
+                  <TabsTrigger value="curator" className="font-mono text-sm gap-2">
+                    <BookOpen className="w-4 h-4" />
+                    Curador
+                  </TabsTrigger>
+                  <TabsTrigger value="requests" className="font-mono text-sm gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    Solicitudes
+                  </TabsTrigger>
+                  <TabsTrigger value="roles" className="font-mono text-sm gap-2">
+                    <Users className="w-4 h-4" />
+                    Roles
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="axes">
@@ -524,62 +438,58 @@ const Admin = () => {
                   </motion.div>
                 </TabsContent>
 
-                {isAdmin && (
-                  <>
-                    <TabsContent value="rag">
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="bg-card rounded-xl border border-border p-6"
-                      >
-                        <h2 className="font-serif text-xl mb-4">Fuentes RAG</h2>
-                        <p className="text-sm text-muted-foreground mb-6">
-                          Gestiona las fuentes de texto para Retrieval Augmented Generation. Sube documentos o sincroniza el corpus seed.
-                        </p>
-                        <RAGSourcesEditor academyId={null} isAdmin={isAdmin} />
-                      </motion.div>
-                    </TabsContent>
-                    <TabsContent value="curator">
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="bg-card rounded-xl border border-border p-6"
-                      >
-                        <h2 className="font-serif text-xl mb-4">Curador de Textos</h2>
-                        <p className="text-sm text-muted-foreground mb-6">
-                          Procesa diálogos de usuarios Platón con IA para generar textos de ~500 palabras optimizados para TTS o exportación JSON.
-                        </p>
-                        <PodcastTextCurator />
-                      </motion.div>
-                    </TabsContent>
-                    <TabsContent value="requests">
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="bg-card rounded-xl border border-border p-6"
-                      >
-                        <h2 className="font-serif text-xl mb-4">Solicitudes de Acceso</h2>
-                        <p className="text-sm text-muted-foreground mb-6">
-                          Revisa y aprueba solicitudes de acceso Platón. Al aprobar, se asigna automáticamente el rol.
-                        </p>
-                        <AccessRequestsEditor isAdmin={isAdmin} />
-                      </motion.div>
-                    </TabsContent>
-                    <TabsContent value="roles">
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="bg-card rounded-xl border border-border p-6"
-                      >
-                        <h2 className="font-serif text-xl mb-4">Gestión de Roles</h2>
-                        <p className="text-sm text-muted-foreground mb-6">
-                          Asigna roles Platón a usuarios para darles acceso completo sin neblina.
-                        </p>
-                        <RolesEditor isAdmin={isAdmin} />
-                      </motion.div>
-                    </TabsContent>
-                  </>
-                )}
+                <TabsContent value="rag">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="bg-card rounded-xl border border-border p-6"
+                  >
+                    <h2 className="font-serif text-xl mb-4">Fuentes RAG</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Gestiona las fuentes de texto para Retrieval Augmented Generation. Sube documentos o sincroniza el corpus seed.
+                    </p>
+                    <RAGSourcesEditor academyId={null} isAdmin={isAdmin} />
+                  </motion.div>
+                </TabsContent>
+                <TabsContent value="curator">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="bg-card rounded-xl border border-border p-6"
+                  >
+                    <h2 className="font-serif text-xl mb-4">Curador de Textos</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Procesa diálogos de usuarios Platón con IA para generar textos de ~500 palabras optimizados para TTS o exportación JSON.
+                    </p>
+                    <PodcastTextCurator />
+                  </motion.div>
+                </TabsContent>
+                <TabsContent value="requests">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="bg-card rounded-xl border border-border p-6"
+                  >
+                    <h2 className="font-serif text-xl mb-4">Solicitudes de Acceso</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Revisa y aprueba solicitudes de acceso Platón. Al aprobar, se asigna automáticamente el rol.
+                    </p>
+                    <AccessRequestsEditor isAdmin={isAdmin} />
+                  </motion.div>
+                </TabsContent>
+                <TabsContent value="roles">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="bg-card rounded-xl border border-border p-6"
+                  >
+                    <h2 className="font-serif text-xl mb-4">Gestión de Roles</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Asigna roles Platón a usuarios para darles acceso completo sin neblina.
+                    </p>
+                    <RolesEditor isAdmin={isAdmin} />
+                  </motion.div>
+                </TabsContent>
               </Tabs>
 
               <motion.div
