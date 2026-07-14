@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { getArchitectPrompt } from "../../_shared/architectPrompt.ts";
+import { getAcademyContext } from "../../_shared/academyContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,10 +16,10 @@ const VALID_ACTIONS = ['analyze', 'suggest', 'describe'];
 const MAX_ID_LENGTH = 100;
 const MAX_CONTEXT_LENGTH = 2000;
 
-async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; error?: string }> {
+async function verifyAuth(req: Request): Promise<{ user: any; supabase: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
-    return { user: null, isAdmin: false, error: 'Authentication required' };
+    return { user: null, supabase: null, error: 'Authentication required' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -30,18 +31,15 @@ async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; 
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();
   if (error || !user) {
-    return { user: null, isAdmin: false, error: 'Invalid or expired token' };
+    return { user: null, supabase: null, error: 'Invalid or expired token' };
   }
 
-  // Check if user is admin
-  const { data: isAdminData } = await supabaseClient.rpc('is_admin_user');
-  const isAdmin = isAdminData === true;
-
-  return { user, isAdmin };
+  return { user, supabase: supabaseClient };
 }
 
 function validateInput(body: unknown): {
   action: string;
+  academyId?: string;
   nodeId?: string;
   context?: string;
 } {
@@ -62,6 +60,14 @@ function validateInput(body: unknown): {
   const result: ReturnType<typeof validateInput> = {
     action: input.action
   };
+
+  // Validate academy_id (optional - validated later against membership)
+  if (input.academy_id !== undefined) {
+    if (typeof input.academy_id !== 'string') {
+      throw new Error('academy_id must be a string');
+    }
+    result.academyId = input.academy_id;
+  }
 
   // Validate nodeId
   if (input.nodeId !== undefined) {
@@ -99,19 +105,12 @@ serve(async (req) => {
   }
 
   try {
-    // Verify authentication - admin only for AI node operations
-    const { user, isAdmin, error: authError } = await verifyAuth(req);
+    // Verify authentication
+    const { user, supabase: authSupabase, error: authError } = await verifyAuth(req);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: authError || 'Authentication required' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!isAdmin) {
-      return new Response(
-        JSON.stringify({ error: 'Admin access required' }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -136,7 +135,7 @@ serve(async (req) => {
       );
     }
 
-    const { action, nodeId, context } = validatedInput;
+    const { action, academyId: requestedAcademyId, nodeId, context } = validatedInput;
     
     const AI_API_KEY = Deno.env.get("AI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -145,13 +144,26 @@ serve(async (req) => {
     if (!AI_API_KEY) throw new Error("AI_API_KEY not configured");
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error("Supabase config missing");
 
+    // Validate membership and get academy context
+    const academyContext = await getAcademyContext(authSupabase, user.id, requestedAcademyId);
+
+    // Check if user has admin/owner role in the academy
+    const isAcademyAdmin = academyContext.role === 'owner' || academyContext.role === 'admin';
+    if (!isAcademyAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'Academy admin access required' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const academyId = academyContext.academyId;
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Fetch nodes and axes from Supabase
+    // Fetch nodes and axes from Supabase filtered by academy_id
     const [nodesRes, axesRes, edgesRes] = await Promise.all([
-      supabase.from("topology_nodes").select("*"),
-      supabase.from("thematic_axes").select("*").eq("is_active", true),
-      supabase.from("topology_edges").select("*"),
+      supabase.from("topology_nodes").select("*").eq("academy_id", academyId),
+      supabase.from("thematic_axes").select("*").eq("is_active", true).eq("academy_id", academyId),
+      supabase.from("topology_edges").select("*").eq("academy_id", academyId),
     ]);
 
     if (nodesRes.error) throw new Error(nodesRes.error.message);
@@ -215,7 +227,7 @@ Responde en JSON: { "description_short": string (max 100 chars), "description_fu
         throw new Error(`Acción no reconocida: ${action}`);
     }
 
-    console.log(`AI Nodes - Admin: ${user.id}, Action: ${action}, Node: ${nodeId || "N/A"}`);
+    console.log(`AI Nodes - User: ${user.id}, Academy: ${academyId}, Action: ${action}, Node: ${nodeId || "N/A"}`);
 
     const response = await fetch(`${AI_GATEWAY_URL}/chat/completions`, {
       method: "POST",

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getAcademyContext } from "../../_shared/academyContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,28 @@ interface CorpusFragmentRow {
   keywords: string[];
   created_at?: string;
   updated_at?: string;
+  academy_id?: string;
+}
+
+async function verifyAuth(req: Request): Promise<{ user: any; supabase: any; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    return { user: null, supabase: null, error: 'Authentication required' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  if (error || !user) {
+    return { user: null, supabase: null, error: 'Invalid or expired token' };
+  }
+
+  return { user, supabase: supabaseClient };
 }
 
 interface ParsedCorpusFile {
@@ -127,7 +150,7 @@ async function resolveCorpusText(filePaths: string[], fileName: string): Promise
   return buildInlineCorpusText();
 }
 
-async function upsertCorpusFragments(supabase: any, parsedFiles: ParsedCorpusFile[]) {
+async function upsertCorpusFragments(supabase: any, parsedFiles: ParsedCorpusFile[], academyId: string) {
   const results = [] as Array<{ file: string; inserted: number; updated: number; total: number }>;
 
   for (const parsedFile of parsedFiles) {
@@ -136,7 +159,7 @@ async function upsertCorpusFragments(supabase: any, parsedFiles: ParsedCorpusFil
 
     for (const section of parsedFile.sections) {
       for (const fragment of section.fragments) {
-        const id = `${parsedFile.file}-${fragment.id}`;
+        const id = `${academyId}-${parsedFile.file}-${fragment.id}`;
         const payload = {
           id,
           source: parsedFile.file,
@@ -144,12 +167,14 @@ async function upsertCorpusFragments(supabase: any, parsedFiles: ParsedCorpusFil
           axis: fragment.axis,
           tension: fragment.tension,
           keywords: fragment.keywords,
+          academy_id: academyId,
         };
 
         const { data: existingRows, error: existingError } = await supabase
           .from("corpus_fragments")
           .select("id")
           .eq("id", id)
+          .eq("academy_id", academyId)
           .limit(1);
 
         if (existingError) {
@@ -186,6 +211,15 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const { user, supabase: authSupabase, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     let body: unknown;
     try {
       body = await req.json();
@@ -195,6 +229,7 @@ serve(async (req) => {
 
     const input = (body || {}) as Record<string, unknown>;
     const dryRun = input.dryRun === true;
+    const requestedAcademyId = input.academy_id as string | undefined;
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -202,6 +237,19 @@ serve(async (req) => {
       throw new Error("Supabase config missing");
     }
 
+    // Validate membership and get academy context
+    const academyContext = await getAcademyContext(authSupabase, user.id, requestedAcademyId);
+
+    // Check if user has admin/owner role in the academy
+    const isAcademyAdmin = academyContext.role === 'owner' || academyContext.role === 'admin';
+    if (!isAcademyAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'Academy admin access required' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const academyId = academyContext.academyId;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const parsedFiles = [] as ParsedCorpusFile[];
@@ -216,15 +264,17 @@ serve(async (req) => {
         fragments: parsedFile.sections.reduce((count, section) => count + section.fragments.length, 0),
       }));
 
-      return new Response(JSON.stringify({ dryRun: true, preview, message: "Preview only; no changes applied." }), {
+      return new Response(JSON.stringify({ dryRun: true, preview, message: "Preview only; no changes applied.", academyId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const results = await upsertCorpusFragments(supabase, parsedFiles);
+    const results = await upsertCorpusFragments(supabase, parsedFiles, academyId);
     const total = results.reduce((sum, item) => sum + item.total, 0);
 
-    return new Response(JSON.stringify({ dryRun: false, synced: true, totalFragments: total, files: results }), {
+    console.log(`Sync Corpus - User: ${user.id}, Academy: ${academyId}, Total: ${total}`);
+
+    return new Response(JSON.stringify({ dryRun: false, synced: true, totalFragments: total, files: results, academyId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
