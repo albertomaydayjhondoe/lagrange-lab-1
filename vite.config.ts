@@ -4,5 +4,4 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   base: "/lagrange-lab-1/",
   plugins: [react()],
-  base: "/lagrange-lab-1/",
 });
