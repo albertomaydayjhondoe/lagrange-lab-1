@@ -26,23 +26,35 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    let isMounted = true;
+    
     // Check if already logged in
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate('/admin');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (isMounted && session) {
+          navigate('/admin');
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
       }
     };
-    checkSession();
+    
+    // Small delay to prevent flash of auth page
+    const timer = setTimeout(checkSession, 100);
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+      if (isMounted && session) {
         navigate('/admin');
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const validateForm = () => {
