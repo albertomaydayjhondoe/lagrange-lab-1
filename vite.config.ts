@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { copyFileSync, mkdirSync, existsSync } from "fs";
+import { copyFileSync, mkdirSync, existsSync, readdirSync } from "fs";
 
 const repoName = "lagrange-lab-1";
 
@@ -15,18 +15,24 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     {
-      name: "copy-redirects",
+      name: "copy-static-files",
       closeBundle() {
-        // Copy _redirects from static/ to dist/ for GitHub Pages SPA support
-        const staticRedirects = path.resolve(__dirname, "static/_redirects");
-        const distRedirects = path.resolve(__dirname, "dist/_redirects");
+        // Copy all files from static/ to dist/ for GitHub Pages support
+        const staticDir = path.resolve(__dirname, "static");
+        const distDir = path.resolve(__dirname, "dist");
         
-        if (existsSync(staticRedirects)) {
-          if (!existsSync(path.resolve(__dirname, "dist"))) {
-            mkdirSync(path.resolve(__dirname, "dist"), { recursive: true });
+        if (!existsSync(distDir)) {
+          mkdirSync(distDir, { recursive: true });
+        }
+        
+        if (existsSync(staticDir)) {
+          const files = readdirSync(staticDir);
+          for (const file of files) {
+            const src = path.join(staticDir, file);
+            const dest = path.join(distDir, file);
+            copyFileSync(src, dest);
+            console.log(`✓ Copied static/${file} to dist/${file}`);
           }
-          copyFileSync(staticRedirects, distRedirects);
-          console.log("✓ Copied static/_redirects to dist/_redirects");
         }
       },
     },
