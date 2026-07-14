@@ -524,7 +524,7 @@ const Admin = () => {
                     <p className="text-sm text-muted-foreground mb-6">
                       Genera audio de las preguntas socráticas usando ElevenLabs TTS.
                     </p>
-                    <AudioGenerator questions={questions} />
+                    <AudioGenerator questions={questions} academyId={academyId || ''} />
                   </motion.div>
                 </TabsContent>
 

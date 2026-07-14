@@ -14,6 +14,7 @@ import { uploadPodcastEpisode, blobToBase64 } from '@/utils/podcastService';
 
 interface AudioGeneratorProps {
   questions: SocraticQuestion[];
+  academyId: string;
 }
 
 const VOICES = [
@@ -24,7 +25,7 @@ const VOICES = [
   { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily (Soft)' },
 ];
 
-export function AudioGenerator({ questions }: AudioGeneratorProps) {
+export function AudioGenerator({ questions, academyId }: AudioGeneratorProps) {
   const [selectedAxis, setSelectedAxis] = useState<string>('all');
   const [selectedVoice, setSelectedVoice] = useState(VOICES[0].id);
   const [generating, setGenerating] = useState(false);
@@ -124,7 +125,7 @@ export function AudioGenerator({ questions }: AudioGeneratorProps) {
         eje: selectedQuestion.eje,
         questionIds: [selectedQuestion.id],
         published: publishNow,
-      });
+      }, academyId);
 
       if (!result.success) {
         throw new Error(result.error || 'Upload failed');

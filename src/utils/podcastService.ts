@@ -47,12 +47,14 @@ export interface PodcastEpisode {
 export async function uploadPodcastEpisode(
   audioBase64: string,
   fileName: string,
-  episodeData: EpisodeData
+  episodeData: EpisodeData,
+  academyId: string
 ): Promise<StorageResult> {
   try {
     const { data, error } = await supabase.functions.invoke('podcast-storage', {
       body: {
         action: 'upload',
+        academyId,
         audioBase64,
         fileName,
         episodeData,
@@ -121,7 +123,8 @@ export async function listPublishedEpisodes(): Promise<PodcastEpisode[]> {
  */
 export async function deletePodcastEpisode(
   episodeId: string,
-  fileName?: string
+  fileName: string | undefined,
+  academyId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { data, error } = await supabase.functions.invoke('podcast-storage', {
@@ -129,6 +132,7 @@ export async function deletePodcastEpisode(
         action: 'delete',
         episodeId,
         fileName,
+        academyId,
       },
     });
 
