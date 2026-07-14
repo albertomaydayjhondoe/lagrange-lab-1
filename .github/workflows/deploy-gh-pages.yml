@@ -38,11 +38,6 @@ jobs:
           echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID }}" >> $GITHUB_ENV
           npm run build
 
-      - name: Verify build output
-        run: |
-          echo "=== index.html ===" && head -25 dist/index.html
-          echo "=== dist files ===" && ls -la dist/ && ls -la dist/assets/
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
