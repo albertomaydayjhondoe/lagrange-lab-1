@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/compartido/ui/card';
@@ -11,8 +11,7 @@ import { Loader2, MessageSquare, User, LogOut, Calendar, BookOpen, Eye, EyeOff }
 import { toast } from 'sonner';
 import { supabase } from '@/compartido/lib/supabaseClient';
 import { Json } from '@/integrations/supabase/types';
-
-const ADMIN_EMAIL = 'sampayo@gmail.com';
+import { useAcademyRole } from '@/caracteristicas/academia/hooks/useAcademyRole';
 
 interface DialogueEntry {
   type: 'oracle' | 'user';
@@ -46,12 +45,35 @@ const ejeColors: Record<string, string> = {
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { slug } = useParams();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ email: string } | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [dialogues, setDialogues] = useState<SavedDialogue[]>([]);
   const [selectedDialogue, setSelectedDialogue] = useState<SavedDialogue | null>(null);
   const [showDialogueModal, setShowDialogueModal] = useState(false);
+
+  // Obtener ID de academia activa desde el slug
+  const [academyId, setAcademyId] = useState<string | null>(null);
+
+  // Usar rol de la academia activa para determinar si es admin
+  const { isAdmin } = useAcademyRole(academyId);
+
+  useEffect(() => {
+    // Resolver academyId desde el slug
+    const resolveAcademyId = async () => {
+      if (slug) {
+        const { data } = await supabase
+          .from('academies')
+          .select('id')
+          .eq('slug', slug)
+          .single();
+        if (data) {
+          setAcademyId(data.id);
+        }
+      }
+    };
+    resolveAcademyId();
+  }, [slug]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -62,15 +84,25 @@ const Profile = () => {
         return;
       }
 
-      const userEmail = session.user.email || '';
-      setUser({ email: userEmail });
-      setIsAdmin(userEmail === ADMIN_EMAIL);
+      setUser({ email: session.user.email || '' });
       
-      // Fetch dialogues - admin sees all, users see their own
-      const { data, error } = await supabase
+      // Fetch dialogues - admin sees all, users see their own (filtered by academy)
+      let query = supabase
         .from('saved_dialogues')
         .select('id, title, eje, summary, created_at, dialogue_content')
         .order('created_at', { ascending: false });
+
+      // Non-admins only see their own dialogues
+      if (!isAdmin && session.user.id) {
+        query = query.eq('user_id', session.user.id);
+      }
+
+      // Filter by academy if we have one
+      if (academyId) {
+        query = query.eq('academy_id', academyId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching dialogues:', error);
@@ -91,7 +123,7 @@ const Profile = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, isAdmin, academyId]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

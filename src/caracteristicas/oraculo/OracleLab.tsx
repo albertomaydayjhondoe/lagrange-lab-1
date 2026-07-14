@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { useOutletContext } from 'react-router-dom';
 import { LagrangeNav } from '@/components/LagrangeNav';
 import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { FogOverlay } from '@/caracteristicas/topologia/FogOverlay';
@@ -9,8 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/compartido/ui/tabs';
 import { MessageSquare, PenTool, HelpCircle } from 'lucide-react';
 import { supabase } from '@/compartido/lib/supabaseClient';
 import { toast } from 'sonner';
-
-const ADMIN_EMAIL = 'sampayo@gmail.com';
+import { useAcademyRole } from '@/caracteristicas/academia/hooks/useAcademyRole';
 
 interface LabProps {
   academyId?: string;
@@ -19,24 +19,24 @@ interface LabProps {
 const Lab = ({ academyId }: LabProps) => {
   const [activeTab, setActiveTab] = useState('dialogue');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [transferredContent, setTransferredContent] = useState<{
     question: string;
     generatedText: string;
     eje: string;
   } | null>(null);
 
+  // Usar rol de la academia activa para determinar si es admin
+  const { isAdmin } = useAcademyRole(academyId || null);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setIsAuthenticated(!!session);
-        setIsAdmin(session?.user?.email === ADMIN_EMAIL);
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
-      setIsAdmin(session?.user?.email === ADMIN_EMAIL);
     });
 
     return () => subscription.unsubscribe();
@@ -121,6 +121,7 @@ const Lab = ({ academyId }: LabProps) => {
                 >
                   <QuestionPromptEditor 
                     isAuthenticated={isAuthenticated}
+                    isAdmin={isAdmin}
                     onTransferToDialogue={handleTransferToDialogue}
                   />
                 </motion.div>

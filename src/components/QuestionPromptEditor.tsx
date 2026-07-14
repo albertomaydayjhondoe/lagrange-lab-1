@@ -15,10 +15,9 @@ import { fetchAxes, ThematicAxis } from '@/compartido/lib/dataService';
 import { generateContextualQuestion, AIQuestion } from '@/utils/aiService';
 import jsPDF from 'jspdf';
 
-const ADMIN_EMAIL = 'sampayo@gmail.com';
-
 interface QuestionPromptEditorProps {
   isAuthenticated: boolean;
+  isAdmin?: boolean; // Recibido desde el componente padre
   onTransferToDialogue?: (content: { question: string; generatedText: string; eje: string }) => void;
 }
 
@@ -36,7 +35,7 @@ interface QuestionHistoryItem {
   timestamp: Date;
 }
 
-export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: QuestionPromptEditorProps) {
+export function QuestionPromptEditor({ isAuthenticated, isAdmin = false, onTransferToDialogue }: QuestionPromptEditorProps) {
   const [userQuestion, setUserQuestion] = useState('');
   const [selectedEje, setSelectedEje] = useState<string>('');
   const [axes, setAxes] = useState<ThematicAxis[]>([]);
@@ -46,7 +45,6 @@ export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: 
   const [saveTitle, setSaveTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [questionHistory, setQuestionHistory] = useState<QuestionHistoryItem[]>([]);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -60,12 +58,8 @@ export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: 
           setSelectedEje(axesData[0].id);
         }
 
-        // Check admin status
-        const { data: { session } } = await supabase.auth.getSession();
-        setIsAdmin(session?.user?.email === ADMIN_EMAIL);
-
         // Load history from localStorage for admin
-        if (session?.user?.email === ADMIN_EMAIL) {
+        if (isAdmin) {
           const savedHistory = localStorage.getItem('questionHistory');
           if (savedHistory) {
             const parsed = JSON.parse(savedHistory);
@@ -82,7 +76,7 @@ export function QuestionPromptEditor({ isAuthenticated, onTransferToDialogue }: 
       }
     };
     loadData();
-  }, []);
+  }, [isAdmin]);
 
   // Persist history to localStorage
   useEffect(() => {

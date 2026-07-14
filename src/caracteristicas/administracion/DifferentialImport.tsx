@@ -26,9 +26,10 @@ interface ImportData {
 interface DifferentialImportProps {
   onRefresh: () => void;
   disabled?: boolean;
+  academyId: string; // Requerido para scoped operations
 }
 
-export function DifferentialImport({ onRefresh, disabled }: DifferentialImportProps) {
+export function DifferentialImport({ onRefresh, disabled, academyId }: DifferentialImportProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fileData, setFileData] = useState<ImportData | null>(null);
@@ -77,7 +78,7 @@ export function DifferentialImport({ onRefresh, disabled }: DifferentialImportPr
   };
 
   const handleImport = async () => {
-    if (!fileData) return;
+    if (!fileData || !academyId) return;
 
     const counts = getEntityCounts();
     if (!counts) return;
@@ -96,35 +97,39 @@ export function DifferentialImport({ onRefresh, disabled }: DifferentialImportPr
     setLoading(true);
 
     try {
-      // Import axes with upsert
+      // Import axes with upsert (add academy_id)
       if (selection.axes && fileData.thematic_axes?.length) {
+        const axesWithAcademy = fileData.thematic_axes.map(a => ({ ...a, academy_id: academyId }));
         const { error } = await supabase
           .from('thematic_axes')
-          .upsert(fileData.thematic_axes, { onConflict: 'id' });
+          .upsert(axesWithAcademy, { onConflict: 'id' });
         if (error) throw new Error(`Ejes: ${error.message}`);
       }
 
-      // Import nodes with upsert
+      // Import nodes with upsert (add academy_id)
       if (selection.nodes && fileData.topology_nodes?.length) {
+        const nodesWithAcademy = fileData.topology_nodes.map(n => ({ ...n, academy_id: academyId }));
         const { error } = await supabase
           .from('topology_nodes')
-          .upsert(fileData.topology_nodes, { onConflict: 'id' });
+          .upsert(nodesWithAcademy, { onConflict: 'id' });
         if (error) throw new Error(`Nodos: ${error.message}`);
       }
 
-      // Import edges with upsert
+      // Import edges with upsert (add academy_id)
       if (selection.edges && fileData.topology_edges?.length) {
+        const edgesWithAcademy = fileData.topology_edges.map(e => ({ ...e, academy_id: academyId }));
         const { error } = await supabase
           .from('topology_edges')
-          .upsert(fileData.topology_edges, { onConflict: 'id' });
+          .upsert(edgesWithAcademy, { onConflict: 'id' });
         if (error) throw new Error(`Tensiones: ${error.message}`);
       }
 
-      // Import questions with upsert
+      // Import questions with upsert (add academy_id)
       if (selection.questions && fileData.socratic_questions?.length) {
+        const questionsWithAcademy = fileData.socratic_questions.map(q => ({ ...q, academy_id: academyId }));
         const { error } = await supabase
           .from('socratic_questions')
-          .upsert(fileData.socratic_questions, { onConflict: 'id' });
+          .upsert(questionsWithAcademy, { onConflict: 'id' });
         if (error) throw new Error(`Preguntas: ${error.message}`);
       }
 

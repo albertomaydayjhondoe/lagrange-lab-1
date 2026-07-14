@@ -40,11 +40,15 @@ export interface LagrangeExportData {
   socratic_questions: SocraticQuestion[];
 }
 
-export async function fetchAllData(): Promise<LagrangeExportData> {
+/**
+ * Fetch all data scoped to a specific academy.
+ * @param academyId - The academy to scope data to
+ */
+export async function fetchAllData(academyId: string): Promise<LagrangeExportData> {
   const [nodesRes, edgesRes, questionsRes] = await Promise.all([
-    supabase.from('topology_nodes').select('*').order('id'),
-    supabase.from('topology_edges').select('*').order('id'),
-    supabase.from('socratic_questions').select('*').order('id')
+    supabase.from('topology_nodes').select('*').eq('academy_id', academyId).order('id'),
+    supabase.from('topology_edges').select('*').eq('academy_id', academyId).order('id'),
+    supabase.from('socratic_questions').select('*').eq('academy_id', academyId).order('id')
   ]);
 
   const nodes: TopologyNode[] = (nodesRes.data || []).map(({ id, label, description, x, y, weight, color, axis, type, corpus_refs, question_count }) => ({
@@ -80,30 +84,45 @@ export function downloadJSON(data: LagrangeExportData, filename?: string): void 
   URL.revokeObjectURL(url);
 }
 
-export async function importData(data: LagrangeExportData): Promise<void> {
-  // Delete existing data (questions and edges first due to FK)
+/**
+ * Import data scoped to a specific academy.
+ * Deletes existing data for that academy and inserts new data.
+ * @param data - The export data to import
+ * @param academyId - The academy to scope the import to (REQUIRED)
+ */
+export async function importData(data: LagrangeExportData, academyId: string): Promise<void> {
+  if (!academyId) {
+    throw new Error('academyId es requerido para importData');
+  }
+
+  // Delete existing data for this academy (questions and edges first due to FK)
   await Promise.all([
-    supabase.from('socratic_questions').delete().neq('id', ''),
-    supabase.from('topology_edges').delete().neq('id', ''),
+    supabase.from('socratic_questions').delete().eq('academy_id', academyId),
+    supabase.from('topology_edges').delete().eq('academy_id', academyId),
   ]);
-  await supabase.from('topology_nodes').delete().neq('id', '');
+  await supabase.from('topology_nodes').delete().eq('academy_id', academyId);
+
+  // Add academy_id to each record before inserting
+  const nodesWithAcademy = data.topology_nodes.map(n => ({ ...n, academy_id: academyId }));
+  const edgesWithAcademy = data.topology_edges.map(e => ({ ...e, academy_id: academyId }));
+  const questionsWithAcademy = data.socratic_questions.map(q => ({ ...q, academy_id: academyId }));
 
   // Insert new data
   const { error: nodesError } = await supabase
     .from('topology_nodes')
-    .insert(data.topology_nodes);
+    .insert(nodesWithAcademy);
   
   if (nodesError) throw nodesError;
 
   const { error: edgesError } = await supabase
     .from('topology_edges')
-    .insert(data.topology_edges);
+    .insert(edgesWithAcademy);
   
   if (edgesError) throw edgesError;
 
   const { error: questionsError } = await supabase
     .from('socratic_questions')
-    .insert(data.socratic_questions);
+    .insert(questionsWithAcademy);
   
   if (questionsError) throw questionsError;
 }

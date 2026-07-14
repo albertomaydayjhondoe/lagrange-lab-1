@@ -22,11 +22,10 @@ interface AcademyInfo {
   slug: string;
 }
 
-const ADMIN_EMAIL = 'sampayo@gmail.com';
-
 /**
  * Header global con selector de academia prominente.
  * Se monta una vez en App.tsx y permanece visible en todas las rutas.
+ * Usa useAcademyRole para determinar permisos de admin en la academia activa.
  */
 export function AcademyHeader() {
   const location = useLocation();
@@ -34,7 +33,6 @@ export function AcademyHeader() {
   const { slug } = useParams();
   const isMobile = useIsMobile();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [academies, setAcademies] = useState<AcademyInfo[]>([]);
   const [loadingAcademies, setLoadingAcademies] = useState(true);
@@ -45,6 +43,9 @@ export function AcademyHeader() {
   const academy = academyContext?.academy ?? null;
   const theme = academyContext?.theme ?? null;
   const { academyId } = academyContext;
+
+  // Usar rol de la academia activa para determinar si es admin
+  const { isAdmin } = useAcademyRole(academyId);
 
   // Determinar el color de acento del header
   const accentColor = theme?.primaryColor ?? 'var(--primary)';
@@ -68,7 +69,6 @@ export function AcademyHeader() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
-      setIsAdmin(session?.user?.email === ADMIN_EMAIL);
       if (session?.user?.email) {
         const parts = session.user.email.split('@')[0].split('.');
         setUserInitials(parts.map((p: string) => p[0]?.toUpperCase() || '').join('').slice(0, 2));
@@ -77,7 +77,6 @@ export function AcademyHeader() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setIsAuthenticated(!!session);
-      setIsAdmin(session?.user?.email === ADMIN_EMAIL);
       if (session?.user?.email) {
         const parts = session.user.email.split('@')[0].split('.');
         setUserInitials(parts.map((p: string) => p[0]?.toUpperCase() || '').join('').slice(0, 2));

@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 
 export interface ThematicAxis {
   id: string;
+  academy_id: string;
   label: string;
   description: string | null;
   color: string;
@@ -23,14 +24,19 @@ interface AxesEditorProps {
   axes: ThematicAxis[];
   onRefresh: () => void;
   isAdmin: boolean;
+  academyId: string; // Requerido para scoped operations
 }
 
-export const AxesEditor = ({ axes, onRefresh, isAdmin }: AxesEditorProps) => {
+export const AxesEditor = ({ axes, onRefresh, isAdmin, academyId }: AxesEditorProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState<Partial<ThematicAxis>>({});
 
   const handleCreate = async () => {
+    if (!academyId) {
+      toast.error('No se puede crear eje: academia no identificada');
+      return;
+    }
     if (!formData.id || !formData.label || !formData.color) {
       toast.error('ID, Label y Color son requeridos');
       return;
@@ -38,6 +44,7 @@ export const AxesEditor = ({ axes, onRefresh, isAdmin }: AxesEditorProps) => {
 
     const insertData = {
       id: formData.id as string,
+      academy_id: academyId,
       label: formData.label as string,
       description: formData.description || null,
       color: formData.color as string,
@@ -75,7 +82,8 @@ export const AxesEditor = ({ axes, onRefresh, isAdmin }: AxesEditorProps) => {
     const { error } = await supabase
       .from('thematic_axes')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('academy_id', academyId);
 
     if (error) {
       toast.error('Error al actualizar: ' + error.message);
@@ -93,7 +101,11 @@ export const AxesEditor = ({ axes, onRefresh, isAdmin }: AxesEditorProps) => {
       return;
     }
 
-    const { error } = await supabase.from('thematic_axes').delete().eq('id', id);
+    const { error } = await supabase
+      .from('thematic_axes')
+      .delete()
+      .eq('id', id)
+      .eq('academy_id', academyId);
 
     if (error) {
       toast.error('Error al eliminar: ' + error.message);

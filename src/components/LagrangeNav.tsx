@@ -7,6 +7,7 @@ import { supabase } from '@/compartido/lib/supabaseClient';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/compartido/ui/sheet';
 import { useAcademy } from '@/caracteristicas/academia/AcademyContext';
+import { useAcademyRole } from '@/caracteristicas/academia/hooks/useAcademyRole';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/compartido/ui/dropdown-menu';
 
 interface AcademyInfo {
@@ -14,8 +15,6 @@ interface AcademyInfo {
   name: string;
   slug: string;
 }
-
-const ADMIN_EMAIL = 'sampayo@gmail.com';
 
 /** Default theme for when not inside an AcademyProvider */
 const DEFAULT_NAV_THEME = {
@@ -52,7 +51,6 @@ export function LagrangeNav() {
   const { slug } = useParams();
   const isMobile = useIsMobile();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [academies, setAcademies] = useState<AcademyInfo[]>([]);
   const [loadingAcademies, setLoadingAcademies] = useState(true);
@@ -61,6 +59,10 @@ export function LagrangeNav() {
   const academyContext = useAcademySafe();
   const academy = academyContext?.academy ?? null;
   const theme = academyContext?.theme ?? DEFAULT_NAV_THEME;
+  const { academyId } = academyContext || { academyId: null };
+
+  // Usar rol de la academia activa para determinar si es admin
+  const { isAdmin } = useAcademyRole(academyId);
 
   // Cargar academias disponibles
   useEffect(() => {
@@ -81,12 +83,10 @@ export function LagrangeNav() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
-      setIsAdmin(session?.user?.email === ADMIN_EMAIL);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setIsAuthenticated(!!session);
-      setIsAdmin(session?.user?.email === ADMIN_EMAIL);
     });
 
     return () => subscription.unsubscribe();
