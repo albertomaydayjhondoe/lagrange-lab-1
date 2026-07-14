@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_platform_admins_email ON public.platform_admins(e
 -- UPDATE is_admin_user() FUNCTION
 -- =============================================================================
 -- Now checks the platform_admins table instead of hardcoded email
-DROP FUNCTION IF EXISTS public.is_admin_user();
+-- Using CREATE OR REPLACE to avoid breaking dependencies
 CREATE OR REPLACE FUNCTION public.is_admin_user()
 RETURNS boolean
 LANGUAGE sql
