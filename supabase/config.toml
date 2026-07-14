@@ -48,5 +48,8 @@ verify_jwt = true
 [functions.list-academies]
 verify_jwt = false
 
+[functions.crear-usuario-prueba]
+verify_jwt = false
+
 [functions.get-academy]
 verify_jwt = false
