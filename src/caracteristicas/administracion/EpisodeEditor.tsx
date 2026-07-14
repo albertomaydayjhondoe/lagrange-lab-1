@@ -53,9 +53,10 @@ interface EpisodeEditorProps {
   episodes: PodcastEpisode[];
   onRefresh: () => void;
   isAdmin: boolean;
+  academyId: string; // Requerido para scoped operations
 }
 
-export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorProps) {
+export function EpisodeEditor({ episodes, onRefresh, isAdmin, academyId }: EpisodeEditorProps) {
   const [editingEpisode, setEditingEpisode] = useState<PodcastEpisode | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [axes, setAxes] = useState<ThematicAxis[]>([]);
@@ -96,6 +97,10 @@ export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorPro
   };
 
   const handleSubmit = async () => {
+    if (!academyId) {
+      toast.error('No se puede crear/editar episodio: academia no identificada');
+      return;
+    }
     if (!formData.title.trim() || !formData.audio_url.trim()) {
       toast.error('Título y URL de audio son requeridos');
       return;
@@ -113,7 +118,8 @@ export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorPro
             published: formData.published,
             published_at: formData.published ? new Date().toISOString() : null,
           })
-          .eq('id', editingEpisode.id);
+          .eq('id', editingEpisode.id)
+          .eq('academy_id', academyId);
 
         if (error) throw error;
         toast.success('Episodio actualizado');
@@ -121,6 +127,7 @@ export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorPro
         const { error } = await supabase
           .from('podcast_episodes')
           .insert({
+            academy_id: academyId,
             title: formData.title,
             description: formData.description || null,
             audio_url: formData.audio_url,
@@ -146,7 +153,8 @@ export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorPro
       const { error } = await supabase
         .from('podcast_episodes')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('academy_id', academyId);
 
       if (error) throw error;
       toast.success('Episodio eliminado');
@@ -166,7 +174,8 @@ export function EpisodeEditor({ episodes, onRefresh, isAdmin }: EpisodeEditorPro
           published: newPublished,
           published_at: newPublished ? new Date().toISOString() : null,
         })
-        .eq('id', episode.id);
+        .eq('id', episode.id)
+        .eq('academy_id', academyId);
 
       if (error) throw error;
       toast.success(newPublished ? 'Episodio publicado' : 'Episodio despublicado');

@@ -27,9 +27,10 @@ interface NodeEditorProps {
   nodes: TopologyNode[];
   onRefresh: () => void;
   isAdmin: boolean;
+  academyId: string; // Requerido para scoped operations
 }
 
-export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
+export const NodeEditor = ({ nodes, onRefresh, isAdmin, academyId }: NodeEditorProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<TopologyNode>>({});
   const [isCreating, setIsCreating] = useState(false);
@@ -104,12 +105,22 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
 
   const confirmImport = async () => {
     if (!pendingImport || pendingImport.length === 0) return;
+    if (!academyId) {
+      toast.error('Academia no identificada para importar');
+      return;
+    }
 
     setImportLoading(true);
     try {
+      const nodesWithAcademy = pendingImport.map(node => ({
+        ...node,
+        academy_id: academyId
+      }));
+      
       const { error } = await supabase
         .from('topology_nodes')
-        .upsert(pendingImport, { onConflict: 'id' });
+        .upsert(nodesWithAcademy, { onConflict: 'id' })
+        .eq('academy_id', academyId);
 
       if (error) throw error;
 
@@ -154,7 +165,8 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
         corpus_refs: editData.corpus_refs,
         question_count: editData.question_count
       })
-      .eq('id', editingId);
+      .eq('id', editingId)
+      .eq('academy_id', academyId);
 
     if (error) {
       toast.error('Error al guardar: ' + error.message);
@@ -171,7 +183,8 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
     const { error } = await supabase
       .from('topology_nodes')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('academy_id', academyId);
 
     if (error) {
       toast.error('Error al eliminar: ' + error.message);
@@ -182,6 +195,10 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
   };
 
   const createNode = async () => {
+    if (!academyId) {
+      toast.error('No se puede crear nodo: academia no identificada');
+      return;
+    }
     if (!newNode.id || !newNode.label || !newNode.axis) {
       toast.error('ID, Label y Axis son requeridos');
       return;
@@ -189,7 +206,7 @@ export const NodeEditor = ({ nodes, onRefresh, isAdmin }: NodeEditorProps) => {
 
     const { error } = await supabase
       .from('topology_nodes')
-      .insert([newNode as TopologyNode]);
+      .insert([{ ...newNode as TopologyNode, academy_id: academyId }]);
 
     if (error) {
       toast.error('Error al crear: ' + error.message);

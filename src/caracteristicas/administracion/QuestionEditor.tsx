@@ -20,9 +20,10 @@ interface QuestionEditorProps {
   questions: SocraticQuestion[];
   onRefresh: () => void;
   isAdmin: boolean;
+  academyId: string; // Requerido para scoped operations
 }
 
-export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditorProps) => {
+export const QuestionEditor = ({ questions, onRefresh, isAdmin, academyId }: QuestionEditorProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<SocraticQuestion>>({});
   const [isCreating, setIsCreating] = useState(false);
@@ -89,12 +90,22 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
 
   const confirmImport = async () => {
     if (!pendingImport || pendingImport.length === 0) return;
+    if (!academyId) {
+      toast.error('Academia no identificada para importar');
+      return;
+    }
 
     setImportLoading(true);
     try {
+      const questionsWithAcademy = pendingImport.map(q => ({
+        ...q,
+        academy_id: academyId
+      }));
+      
       const { error } = await supabase
         .from('socratic_questions')
-        .upsert(pendingImport, { onConflict: 'id' });
+        .upsert(questionsWithAcademy, { onConflict: 'id' })
+        .eq('academy_id', academyId);
 
       if (error) throw error;
 
@@ -138,7 +149,8 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
         texto: editData.texto,
         corpus_ref: editData.corpus_ref
       })
-      .eq('id', editingId);
+      .eq('id', editingId)
+      .eq('academy_id', academyId);
 
     if (error) {
       toast.error('Error al guardar: ' + error.message);
@@ -155,7 +167,8 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
     const { error } = await supabase
       .from('socratic_questions')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('academy_id', academyId);
 
     if (error) {
       toast.error('Error al eliminar: ' + error.message);
@@ -166,6 +179,10 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
   };
 
   const createQuestion = async () => {
+    if (!academyId) {
+      toast.error('No se puede crear pregunta: academia no identificada');
+      return;
+    }
     if (!newQuestion.id || !newQuestion.texto || !newQuestion.eje) {
       toast.error('ID, Texto y Eje son requeridos');
       return;
@@ -173,7 +190,7 @@ export const QuestionEditor = ({ questions, onRefresh, isAdmin }: QuestionEditor
 
     const { error } = await supabase
       .from('socratic_questions')
-      .insert([newQuestion as SocraticQuestion]);
+      .insert([{ ...newQuestion as SocraticQuestion, academy_id: academyId }]);
 
     if (error) {
       toast.error('Error al crear: ' + error.message);

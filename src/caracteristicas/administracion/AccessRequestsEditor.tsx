@@ -18,9 +18,10 @@ interface AccessRequest {
 
 interface AccessRequestsEditorProps {
   isAdmin: boolean;
+  academyId: string; // Requerido para scoped operations
 }
 
-export function AccessRequestsEditor({ isAdmin }: AccessRequestsEditorProps) {
+export function AccessRequestsEditor({ isAdmin, academyId }: AccessRequestsEditorProps) {
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);

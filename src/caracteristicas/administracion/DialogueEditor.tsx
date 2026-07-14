@@ -34,6 +34,7 @@ interface SavedDialogue {
 
 interface DialogueEditorProps {
   isAdmin: boolean;
+  academyId: string; // Requerido para scoped operations
 }
 
 const ejeLabels: Record<string, string> = {
@@ -52,7 +53,7 @@ const ejeColors: Record<string, string> = {
   Responsabilidad: 'bg-blue-500/20 text-blue-400',
 };
 
-export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
+export function DialogueEditor({ isAdmin, academyId }: DialogueEditorProps) {
   const [dialogues, setDialogues] = useState<SavedDialogue[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDialogue, setSelectedDialogue] = useState<SavedDialogue | null>(null);
@@ -246,6 +247,7 @@ export function DialogueEditor({ isAdmin }: DialogueEditorProps) {
       const { error: episodeError } = await supabase
         .from('podcast_episodes')
         .insert({
+          academy_id: academyId,
           title: `Diálogo: ${dialogue.title}`,
           description: dialogue.summary || `Diálogo socrático sobre ${ejeLabels[dialogue.eje || ''] || 'reflexión profunda'}`,
           audio_url: publicUrl,

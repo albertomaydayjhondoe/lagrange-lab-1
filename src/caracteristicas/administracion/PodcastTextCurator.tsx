@@ -61,7 +61,11 @@ const ejeColors: Record<string, string> = {
   Responsabilidad: 'bg-blue-500/20 text-blue-400',
 };
 
-export function PodcastTextCurator() {
+interface PodcastTextCuratorProps {
+  academyId: string; // Requerido para scoped operations
+}
+
+export function PodcastTextCurator({ academyId }: PodcastTextCuratorProps) {
   const [dialogues, setDialogues] = useState<SavedDialogue[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDialogue, setSelectedDialogue] = useState<SavedDialogue | null>(null);
@@ -238,6 +242,7 @@ export function PodcastTextCurator() {
       const { error: episodeError } = await supabase
         .from('podcast_episodes')
         .insert({
+          academy_id: academyId,
           title: `${selectedDialogue.title}`,
           description: selectedDialogue.summary || `Texto curado del diálogo socrático sobre ${ejeLabels[selectedDialogue.eje || ''] || 'reflexión'}`,
           audio_url: publicUrl,

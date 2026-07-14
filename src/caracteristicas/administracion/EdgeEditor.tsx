@@ -21,9 +21,10 @@ interface EdgeEditorProps {
   nodes: { id: string; label: string }[];
   onRefresh: () => void;
   isAdmin: boolean;
+  academyId: string; // Requerido para scoped operations
 }
 
-export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps) => {
+export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin, academyId }: EdgeEditorProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<TopologyEdge>>({});
   const [isCreating, setIsCreating] = useState(false);
@@ -81,12 +82,22 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
 
   const confirmImport = async () => {
     if (!pendingImport || pendingImport.length === 0) return;
+    if (!academyId) {
+      toast.error('Academia no identificada para importar');
+      return;
+    }
 
     setImportLoading(true);
     try {
+      const edgesWithAcademy = pendingImport.map(edge => ({
+        ...edge,
+        academy_id: academyId
+      }));
+      
       const { error } = await supabase
         .from('topology_edges')
-        .upsert(pendingImport, { onConflict: 'id' });
+        .upsert(edgesWithAcademy, { onConflict: 'id' })
+        .eq('academy_id', academyId);
 
       if (error) throw error;
 
@@ -126,7 +137,8 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
         label: editData.label,
         type: editData.type
       })
-      .eq('id', editingId);
+      .eq('id', editingId)
+      .eq('academy_id', academyId);
 
     if (error) {
       toast.error('Error al guardar: ' + error.message);
@@ -143,7 +155,8 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
     const { error } = await supabase
       .from('topology_edges')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('academy_id', academyId);
 
     if (error) {
       toast.error('Error al eliminar: ' + error.message);
@@ -154,6 +167,10 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
   };
 
   const createEdge = async () => {
+    if (!academyId) {
+      toast.error('No se puede crear tensión: academia no identificada');
+      return;
+    }
     if (!newEdge.id || !newEdge.source || !newEdge.target) {
       toast.error('ID, Source y Target son requeridos');
       return;
@@ -161,7 +178,7 @@ export const EdgeEditor = ({ edges, nodes, onRefresh, isAdmin }: EdgeEditorProps
 
     const { error } = await supabase
       .from('topology_edges')
-      .insert([newEdge as TopologyEdge]);
+      .insert([{ ...newEdge as TopologyEdge, academy_id: academyId }]);
 
     if (error) {
       toast.error('Error al crear: ' + error.message);

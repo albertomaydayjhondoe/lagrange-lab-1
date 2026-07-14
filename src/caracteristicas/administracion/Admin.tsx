@@ -482,7 +482,7 @@ const Admin = () => {
                     className="bg-card rounded-xl border border-border p-6"
                   >
                     <h2 className="font-serif text-xl mb-4">Nodos de la Topología</h2>
-                    <NodeEditor nodes={nodes} onRefresh={fetchData} isAdmin={isAdmin} />
+                    <NodeEditor nodes={nodes} onRefresh={fetchData} isAdmin={isAdmin} academyId={academyId || ''} />
                   </motion.div>
                 </TabsContent>
 
@@ -497,7 +497,8 @@ const Admin = () => {
                       edges={edges} 
                       nodes={nodes.map(n => ({ id: n.id, label: n.label }))} 
                       onRefresh={fetchData} 
-                      isAdmin={isAdmin} 
+                      isAdmin={isAdmin}
+                      academyId={academyId || ''} 
                     />
                   </motion.div>
                 </TabsContent>
@@ -509,7 +510,7 @@ const Admin = () => {
                     className="bg-card rounded-xl border border-border p-6"
                   >
                     <h2 className="font-serif text-xl mb-4">Preguntas Socráticas</h2>
-                    <QuestionEditor questions={questions} onRefresh={fetchData} isAdmin={isAdmin} />
+                    <QuestionEditor questions={questions} onRefresh={fetchData} isAdmin={isAdmin} academyId={academyId || ''} />
                   </motion.div>
                 </TabsContent>
 
@@ -537,7 +538,7 @@ const Admin = () => {
                     <p className="text-sm text-muted-foreground mb-6">
                       Gestiona los episodios del podcast. Los episodios publicados aparecen en /podcast.
                     </p>
-                    <EpisodeEditor episodes={episodes} onRefresh={fetchData} isAdmin={isAdmin} />
+                    <EpisodeEditor episodes={episodes} onRefresh={fetchData} isAdmin={isAdmin} academyId={academyId || ''} />
                   </motion.div>
                 </TabsContent>
 
@@ -551,7 +552,7 @@ const Admin = () => {
                     <p className="text-sm text-muted-foreground mb-6">
                       Gestiona los diálogos socráticos guardados por los usuarios. Exporta a TXT o convierte a podcast MP3.
                     </p>
-                    <DialogueEditor isAdmin={isAdmin} />
+                    <DialogueEditor isAdmin={isAdmin} academyId={academyId || ''} />
                   </motion.div>
                 </TabsContent>
 
@@ -580,7 +581,7 @@ const Admin = () => {
                         <p className="text-sm text-muted-foreground mb-6">
                           Procesa diálogos de usuarios Platón con IA para generar textos de ~500 palabras optimizados para TTS o exportación JSON.
                         </p>
-                        <PodcastTextCurator />
+                        <PodcastTextCurator academyId={academyId || ''} />
                       </motion.div>
                     </TabsContent>
                     <TabsContent value="requests">
@@ -593,7 +594,7 @@ const Admin = () => {
                         <p className="text-sm text-muted-foreground mb-6">
                           Revisa y aprueba solicitudes de acceso Platón. Al aprobar, se asigna automáticamente el rol.
                         </p>
-                        <AccessRequestsEditor isAdmin={isAdmin} />
+                        <AccessRequestsEditor isAdmin={isAdmin} academyId={academyId || ''} />
                       </motion.div>
                     </TabsContent>
                     <TabsContent value="roles">
@@ -606,7 +607,7 @@ const Admin = () => {
                         <p className="text-sm text-muted-foreground mb-6">
                           Asigna roles Platón a usuarios para darles acceso completo sin neblina.
                         </p>
-                        <RolesEditor isAdmin={isAdmin} />
+                        <RolesEditor isAdmin={isAdmin} academyId={academyId || ''} />
                       </motion.div>
                     </TabsContent>
                   </>

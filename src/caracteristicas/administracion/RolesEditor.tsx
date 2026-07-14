@@ -20,6 +20,7 @@ interface UserRole {
 
 interface RolesEditorProps {
   isAdmin: boolean;
+  academyId: string; // Requerido para scoped operations
 }
 
 const roleConfig: Record<AppRole, { label: string; icon: typeof Crown; color: string }> = {
@@ -28,7 +29,7 @@ const roleConfig: Record<AppRole, { label: string; icon: typeof Crown; color: st
   user: { label: 'Usuario', icon: User, color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
 };
 
-export function RolesEditor({ isAdmin }: RolesEditorProps) {
+export function RolesEditor({ isAdmin, academyId }: RolesEditorProps) {
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [newEmail, setNewEmail] = useState('');
