@@ -7,8 +7,8 @@ import {
   validarPregunta, 
   getRefuerzoPrompt,
   checkRateLimit
-} from "../../_shared/architectPrompt.ts";
-import { fetchCorpusFragments, formatCorpusContext } from "../../_shared/corpusRetrieval.ts";
+} from "../_shared/architectPrompt.ts";
+import { fetchCorpusFragments, formatCorpusContext } from "../_shared/corpusRetrieval.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
