@@ -19,10 +19,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-      VITE_SUPABASE_PROJECT_ID: ${{ vars.VITE_SUPABASE_PROJECT_ID || secrets.VITE_SUPABASE_PROJECT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +31,14 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Create .env.production
+        run: |
+          cat > .env.production << 'EOF'
+          VITE_SUPABASE_URL=https://rwfqswiwalygzfojyeqk.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3ZnFzd2l3YWx5Z3pmb2p5ZXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2ODE0NTEsImV4cCI6MjA4MjI1NzQ1MX0.qQ5AqWm-peTqZYXNFMAO2qOLUDkW5Dv2zb6jdwCfmSM
+          VITE_SUPABASE_PROJECT_ID=rwfqswiwalygzfojyeqk
+          EOF
 
       - name: Build
         run: npm run build
