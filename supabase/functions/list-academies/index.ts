@@ -41,7 +41,6 @@ serve(async (req) => {
         owner_user_id
       `)
       .eq('is_public', true)
-      .eq('is_active', true)
       .order('created_at', { ascending: false });
 
     if (publicError) {
