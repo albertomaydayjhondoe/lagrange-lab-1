@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { encode as base64Encode, decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { getAcademyContext } from "../_shared/academyContext.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,7 @@ const corsHeaders = {
 
 interface StorageRequest {
   action: 'upload' | 'list' | 'delete';
+  academyId?: string;
   audioBase64?: string;
   fileName?: string;
   episodeData?: {
@@ -21,10 +23,10 @@ interface StorageRequest {
   episodeId?: string;
 }
 
-async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; error?: string }> {
+async function verifyAuth(req: Request): Promise<{ user: any; supabase: any; isPlatformAdmin: boolean; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
-    return { user: null, isAdmin: false, error: 'Authentication required' };
+    return { user: null, supabase: null, isPlatformAdmin: false, error: 'Authentication required' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -36,14 +38,14 @@ async function verifyAuth(req: Request): Promise<{ user: any; isAdmin: boolean; 
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();
   if (error || !user) {
-    return { user: null, isAdmin: false, error: 'Invalid or expired token' };
+    return { user: null, supabase: null, isPlatformAdmin: false, error: 'Invalid or expired token' };
   }
 
-  // Check if user is admin
+  // Check if user is platform admin
   const { data: isAdminData } = await supabaseClient.rpc('is_admin_user');
-  const isAdmin = isAdminData === true;
+  const isPlatformAdmin = isAdminData === true;
 
-  return { user, isAdmin };
+  return { user, supabase: supabaseClient, isPlatformAdmin };
 }
 
 async function uploadToGitHub(
@@ -223,7 +225,7 @@ serve(async (req) => {
 
   try {
     // Verify authentication
-    const { user, isAdmin, error: authError } = await verifyAuth(req);
+    const { user, supabase: authSupabase, isPlatformAdmin, error: authError } = await verifyAuth(req);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: authError || 'Authentication required' }),
@@ -232,7 +234,26 @@ serve(async (req) => {
     }
 
     const body: StorageRequest = await req.json();
-    const { action } = body;
+    const { action, academyId: requestedAcademyId } = body;
+
+    // Platform admins have full access, otherwise validate academy membership
+    let academyId: string;
+    let isAcademyAdmin = false;
+    if (!isPlatformAdmin) {
+      const academyContext = await getAcademyContext(authSupabase, user.id, requestedAcademyId);
+      academyId = academyContext.academyId;
+      isAcademyAdmin = academyContext.role === 'owner' || academyContext.role === 'admin' || academyContext.role === 'platon';
+      if (!isAcademyAdmin) {
+        return new Response(
+          JSON.stringify({ error: 'Academy member access required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // Platform admin: use requested academy or genesis
+      academyId = requestedAcademyId || '00000000-0000-0000-0000-000000000001';
+      isAcademyAdmin = true;
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -244,10 +265,10 @@ serve(async (req) => {
     const hasGitHub = githubToken && githubRepoOwner && githubRepoName;
 
     if (action === 'upload') {
-      // Admin only for upload
-      if (!isAdmin) {
+      // Academy admin only for upload
+      if (!isAcademyAdmin) {
         return new Response(
-          JSON.stringify({ error: 'Admin access required' }),
+          JSON.stringify({ error: 'Academy admin access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -261,7 +282,7 @@ serve(async (req) => {
         );
       }
 
-      console.log(`Admin ${user.id} uploading episode: ${fileName}`);
+      console.log(`User ${user.id} (academy: ${academyId}) uploading episode: ${fileName}`);
 
       // Upload to Supabase Storage (primary)
       const supabaseResult = await uploadToSupabaseStorage(supabase, audioBase64, fileName);
@@ -290,7 +311,7 @@ serve(async (req) => {
         }
       }
 
-      // Create episode record in database
+      // Create episode record in database (with academy_id)
       const { data: episode, error: insertError } = await supabase
         .from('podcast_episodes')
         .insert({
@@ -301,6 +322,7 @@ serve(async (req) => {
           eje: episodeData.eje,
           published: episodeData.published ?? false,
           published_at: episodeData.published ? new Date().toISOString() : null,
+          academy_id: academyId,
         })
         .select()
         .single();
@@ -348,10 +370,11 @@ serve(async (req) => {
     }
 
     if (action === 'list') {
-      // All authenticated users can list
+      // All authenticated users can list (filtered by academy)
       const { data: episodes, error } = await supabase
         .from('podcast_episodes')
         .select('*')
+        .eq('academy_id', academyId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -368,10 +391,10 @@ serve(async (req) => {
     }
 
     if (action === 'delete') {
-      // Admin only for delete
-      if (!isAdmin) {
+      // Academy admin only for delete
+      if (!isAcademyAdmin) {
         return new Response(
-          JSON.stringify({ error: 'Admin access required' }),
+          JSON.stringify({ error: 'Academy admin access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -385,13 +408,14 @@ serve(async (req) => {
         );
       }
 
-      console.log(`Admin ${user.id} deleting episode: ${episodeId}`);
+      console.log(`User ${user.id} (academy: ${academyId}) deleting episode: ${episodeId}`);
 
-      // Delete from database
+      // Delete from database (filtered by academy)
       const { error: deleteError } = await supabase
         .from('podcast_episodes')
         .delete()
-        .eq('id', episodeId);
+        .eq('id', episodeId)
+        .eq('academy_id', academyId);
 
       if (deleteError) {
         return new Response(

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
+import { getAcademyContext } from "../_shared/academyContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,10 +14,10 @@ const AI_CHAT_MODEL = Deno.env.get("AI_CHAT_MODEL") ?? "gpt-4o-mini";
 // Cache ambient narratives for a day
 const AMBIENT_CACHE_MINUTES = 60 * 24; // 24 hours
 
-async function verifyAuth(req: Request): Promise<{ user: any; error: string }> {
+async function verifyAuth(req: Request): Promise<{ user: any; supabase: any; isPlatformAdmin: boolean; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
-    return { user: null, error: 'Authentication required' };
+    return { user: null, supabase: null, isPlatformAdmin: false, error: 'Authentication required' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -28,10 +29,14 @@ async function verifyAuth(req: Request): Promise<{ user: any; error: string }> {
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();
   if (error || !user) {
-    return { user: null, error: 'Invalid or expired token' };
+    return { user: null, supabase: null, isPlatformAdmin: false, error: 'Invalid or expired token' };
   }
 
-  return { user };
+  // Check if user is platform admin
+  const { data: isAdminData } = await supabaseClient.rpc('is_admin_user');
+  const isPlatformAdmin = isAdminData === true;
+
+  return { user, supabase: supabaseClient, isPlatformAdmin };
 }
 
 serve(async (req) => {
@@ -40,7 +45,8 @@ serve(async (req) => {
   }
 
   try {
-    const { user, error: authError } = await verifyAuth(req);
+    // Verify authentication and get context
+    const { user, supabase: authSupabase, isPlatformAdmin, error: authError } = await verifyAuth(req);
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: authError || 'Authentication required' }),
@@ -60,6 +66,17 @@ serve(async (req) => {
 
     const input = body as Record<string, unknown>;
     const activeAxis = input.activeAxis as string | undefined;
+    const requestedAcademyId = input.academyId as string | undefined;
+
+    // Platform admins have full access, otherwise validate academy membership
+    let academyId: string;
+    if (!isPlatformAdmin) {
+      const academyContext = await getAcademyContext(authSupabase, user.id, requestedAcademyId);
+      academyId = academyContext.academyId;
+    } else {
+      // Platform admin: use requested academy or genesis
+      academyId = requestedAcademyId || '00000000-0000-0000-0000-000000000001';
+    }
 
     const AI_API_KEY = Deno.env.get("AI_API_KEY");
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
@@ -76,15 +93,16 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Check for cached ambient audio
+    // Check for cached ambient audio (filtered by academy)
     const today = new Date().toISOString().split('T')[0];
-    const cacheKey = `ambient_${activeAxis || 'general'}_${today}`;
+    const cacheKey = `ambient_${academyId}_${activeAxis || 'general'}_${today}`;
     
     const { data: cachedAmbient } = await supabase
       .from('podcast_episodes')
       .select('id, audio_url, description')
       .eq('title', cacheKey)
       .eq('is_ambient', true)
+      .eq('academy_id', academyId)
       .single();
 
     if (cachedAmbient && cachedAmbient.audio_url) {
@@ -105,7 +123,7 @@ serve(async (req) => {
       userPrompt += ` inspirado en el eje de ${activeAxis}`;
     }
 
-    console.log(`Generating ambient narrative for user ${user.id}, axis: ${activeAxis || 'general'}`);
+    console.log(`Generating ambient narrative for user ${user.id}, academy: ${academyId}, axis: ${activeAxis || 'general'}`);
 
     const narrativeResponse = await fetch(`${AI_GATEWAY_URL}/chat/completions`, {
       method: "POST",
@@ -182,7 +200,7 @@ serve(async (req) => {
       }
     }
 
-    // Cache the ambient narrative
+    // Cache the ambient narrative (with academy_id)
     await supabase
       .from('podcast_episodes')
       .insert({
@@ -192,6 +210,7 @@ serve(async (req) => {
         eje: activeAxis || 'general',
         published: false,
         is_ambient: true,
+        academy_id: academyId,
       });
 
     return new Response(JSON.stringify({
