@@ -31,6 +31,7 @@ export function AccessRequestsEditor({ isAdmin, academyId }: AccessRequestsEdito
       const { data, error } = await supabase
         .from('access_requests')
         .select('*')
+        .eq('academy_id', academyId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -47,7 +48,7 @@ export function AccessRequestsEditor({ isAdmin, academyId }: AccessRequestsEdito
     if (isAdmin) {
       fetchRequests();
     }
-  }, [isAdmin]);
+  }, [isAdmin, academyId]);
 
   const handleApprove = async (request: AccessRequest) => {
     if (!request.user_id) {
@@ -58,15 +59,16 @@ export function AccessRequestsEditor({ isAdmin, academyId }: AccessRequestsEdito
     setProcessing(request.id);
     
     try {
-      // Add platon role to user
+      // Add member to academy_members
       const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
+        .from('academy_members')
+        .upsert({
+          academy_id: academyId,
           user_id: request.user_id,
           role: 'platon'
-        });
+        }, { onConflict: 'academy_id,user_id' });
 
-      if (roleError && !roleError.message.includes('duplicate')) {
+      if (roleError) {
         throw roleError;
       }
 
@@ -77,11 +79,12 @@ export function AccessRequestsEditor({ isAdmin, academyId }: AccessRequestsEdito
           status: 'approved',
           processed_at: new Date().toISOString()
         })
-        .eq('id', request.id);
+        .eq('id', request.id)
+        .eq('academy_id', academyId);
 
       if (updateError) throw updateError;
 
-      toast.success(`Rol Platón asignado a ${request.email}`);
+      toast.success(`Acceso concedido a ${request.email}`);
       fetchRequests();
     } catch (error: any) {
       console.error('Error approving request:', error);
@@ -101,7 +104,8 @@ export function AccessRequestsEditor({ isAdmin, academyId }: AccessRequestsEdito
           status: 'rejected',
           processed_at: new Date().toISOString()
         })
-        .eq('id', request.id);
+        .eq('id', request.id)
+        .eq('academy_id', academyId);
 
       if (error) throw error;
 
@@ -120,7 +124,8 @@ export function AccessRequestsEditor({ isAdmin, academyId }: AccessRequestsEdito
       const { error } = await supabase
         .from('access_requests')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('academy_id', academyId);
 
       if (error) throw error;
       toast.success('Solicitud eliminada');
