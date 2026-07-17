@@ -20,9 +20,17 @@ export default defineConfig({
   build: {
     // Carpeta de salida
     outDir: "dist",
-    // Generar sourcemaps para debugging
-    sourcemap: !isVercel,
-    // Tamaño máximo de chunk
-    chunkSizeWarningLimit: 1000,
+    // Desactivar sourcemaps en producción
+    sourcemap: false,
+    // Tamaño máximo de chunk antes de warning
+    chunkSizeWarningLimit: 1500,
+    // Minificar con esbuild (default, más rápido)
+    minify: 'esbuild',
+    // CSS code splitting
+    cssCodeSplit: true,
+    // Target moderno
+    target: 'esnext',
   },
+  // Optimizaciones de assets
+  assetsInclude: ['**/*.svg', '**/*.png', '**/*.jpg'],
 });
