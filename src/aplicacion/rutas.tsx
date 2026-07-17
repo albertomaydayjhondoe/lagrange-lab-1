@@ -11,13 +11,20 @@ import AcademyProfile from "@/caracteristicas/autenticacion/Perfil";
 import Admin from "@/caracteristicas/administracion/Admin";
 import NotFound from "@/pages/NotFound";
 
+// Tutorías
+import ListaMaterias from "@/caracteristicas/tutorias/ListaMaterias";
+import DetalleMateria from "@/caracteristicas/tutorias/DetalleMateria";
+import DashboardTutor from "@/caracteristicas/tutorias/DashboardTutor";
+import DashboardEstudiante from "@/caracteristicas/tutorias/DashboardEstudiante";
+import CrearSesion from "@/caracteristicas/tutorias/CrearSesion";
+
 /**
- * Rutas de la aplicación Lagrange Lab.
+ * Rutas de la aplicación Lagrange Lab + Sistema de Tutorías
  * 
- * FILOSOFÍA:
- * - El Oráculo es la entrada principal de cada academia (no Map ni Podcast)
- * - Cada academia tiene su propio tema visual definido por oracle_persona_prompt
- * - El selector de academia en el header cambia todo el contexto visual
+ * ESTRUCTURA:
+ * - /tutorias/* → Sistema de tutorías con IA
+ * - /tutor/* → Dashboard de tutores
+ * - /academia/* → Sistema multi-tenant legacy (Lagrange)
  */
 export function Rutas() {
   return (
@@ -28,21 +35,36 @@ export function Rutas() {
       <Route path="/academies" element={<AcademiesList />} />
       <Route path="/academies/create" element={<CreateAcademy />} />
       
-      {/* Legacy routes - redirect to genesis, Oráculo is the entry point */}
+      {/* ============================================
+          SISTEMA DE TUTORÍAS CON IA + RAG
+          ============================================ */}
+      
+      {/* Tutorías públicas */}
+      <Route path="/tutorias" element={<ListaMaterias />} />
+      <Route path="/tutorias/:slug" element={<DetalleMateria />} />
+      
+      {/* Dashboard de estudiante */}
+      <Route path="/estudiante" element={<DashboardEstudiante />} />
+      
+      {/* Dashboard de tutor */}
+      <Route path="/tutor/dashboard" element={<DashboardTutor />} />
+      <Route path="/tutorias/crear-sesion" element={<CrearSesion />} />
+      
+      {/* Rutas alias */}
+      <Route path="/mis-tutorias" element={<Navigate to="/estudiante" replace />} />
+      <Route path="/mi-aprendizaje" element={<Navigate to="/estudiante" replace />} />
+      
+      {/* Legacy routes - redirect to genesis */}
       <Route path="/map" element={<Navigate to="/academia/genesis/lab" replace />} />
       <Route path="/lab" element={<Navigate to="/academia/genesis/lab" replace />} />
       <Route path="/podcast" element={<Navigate to="/academia/genesis/lab" replace />} />
       <Route path="/profile" element={<Navigate to="/academia/genesis/profile" replace />} />
       <Route path="/admin" element={<Navigate to="/academia/genesis/admin" replace />} />
       
-      {/* Academy routes - multi-tenant
-          ORÁCULO es la entrada principal, otras secciones son tabs secundarios */}
+      {/* Academy routes - legacy multi-tenant */}
       <Route path="/academia/:slug" element={<AcademyLayout />}>
-        {/* Oráculo como pantalla principal - el corazón del producto */}
         <Route index element={<OracleLab />} />
         <Route path="lab" element={<OracleLab />} />
-        
-        {/* Secciones secundarias */}
         <Route path="map" element={<AcademyMap />} />
         <Route path="podcast" element={<AcademyPodcast />} />
         <Route path="profile" element={<AcademyProfile />} />

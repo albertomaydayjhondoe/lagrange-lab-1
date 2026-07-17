@@ -651,3 +651,159 @@ export const Constants = {
     },
   },
 } as const
+
+// ============================================================
+// TUTORING TYPES (Agregados manualmente)
+// ============================================================
+
+export type TutoringRole = 'admin' | 'tutor' | 'estudiante';
+
+export type SessionStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type BookingStatus = 'pending' | 'confirmed' | 'attended' | 'completed' | 'no_show' | 'cancelled';
+export type PaymentStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'refunded' | 'cancelled';
+export type ContentType = 'text' | 'pdf' | 'video' | 'link' | 'quiz';
+
+export interface Subject {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  icon: string;
+  color: string;
+  cover_image_url: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Topic {
+  id: string;
+  subject_id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  order_index: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Material {
+  id: string;
+  topic_id: string | null;
+  subject_id: string | null;
+  title: string;
+  content: string;
+  content_type: ContentType;
+  source_url: string | null;
+  embedding: string | null;
+  keywords: string[];
+  is_rag_enabled: boolean;
+  created_by: string | null;
+  status: 'draft' | 'active' | 'archived';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TutoringSession {
+  id: string;
+  subject_id: string;
+  tutor_id: string;
+  title: string;
+  description: string | null;
+  duration_minutes: number;
+  scheduled_at: string;
+  status: SessionStatus;
+  meeting_link: string | null;
+  is_rag_enabled: boolean;
+  ai_model: string;
+  price_cents: number;
+  currency: string;
+  max_students: number;
+  current_students: number;
+  location: string;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  subject?: Subject;
+  tutor?: Profile;
+}
+
+export interface SessionBooking {
+  id: string;
+  session_id: string;
+  student_id: string;
+  status: BookingStatus;
+  notes: string | null;
+  booking_type: 'individual' | 'group';
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  session?: TutoringSession;
+  student?: Profile;
+}
+
+export interface Payment {
+  id: string;
+  booking_id: string | null;
+  session_id: string | null;
+  student_id: string;
+  tutor_id: string | null;
+  amount_cents: number;
+  currency: string;
+  status: PaymentStatus;
+  payment_method: string;
+  stripe_payment_intent_id: string | null;
+  description: string | null;
+  paid_at: string | null;
+  refunded_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TutoringHistory {
+  id: string;
+  session_id: string | null;
+  subject_id: string | null;
+  student_id: string | null;
+  tutor_id: string | null;
+  topic_id: string | null;
+  question: string;
+  ai_response: string | null;
+  materials_used: any[];
+  rag_context_used: boolean;
+  token_usage: number;
+  response_time_ms: number;
+  rating: number | null;
+  feedback: string | null;
+  created_at: string;
+}
+
+export interface Profile extends Tables<'profiles'>['Row'] {
+  role?: TutoringRole | null;
+  bio?: string | null;
+  hourly_rate_cents?: number;
+  specialties?: string[];
+  is_available?: boolean;
+}
+
+// API Response types
+export interface SessionWithDetails extends TutoringSession {
+  subject: Subject;
+  tutor: Profile;
+  spotsRemaining: number;
+  isFull: boolean;
+  userBooking: SessionBooking | null;
+  isBooked: boolean;
+}
+
+export interface TutoringResponse {
+  response: string;
+  subject: string;
+  topic: string | null;
+  materials_used: number;
+  rag_context_used: boolean;
+  model: string;
+  response_time_ms: number;
+  tokens_used: number;
+}

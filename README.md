@@ -1,8 +1,97 @@
-# Sistema Lagrange
+# Sistema Lagrange + Tutorías IA
+
+Sistema de tutorías multi-materia con IA generativa y RAG. Deployable en **Vercel + Supabase**.
+
+## 🚀 Quick Start
+
+### 1. Configurar Supabase
+
+```bash
+# 1. Crear proyecto en https://supabase.com
+
+# 2. Aplicar migraciones
+npx supabase db push
+
+# 3. Configurar API Key de IA en Supabase
+# Ir a: https://app.supabase.com/project/_/functions/secrets
+# Agregar: AI_API_KEY=sk-your-openai-key
+```
+
+### 2. Deploy en Vercel
+
+```bash
+# 1. Conectar repositorio a Vercel
+
+# 2. Configurar variables de entorno:
+#    VITE_SUPABASE_URL=https://xxx.supabase.co
+#    VITE_SUPABASE_PUBLISHABLE_KEY=eyJ...
+
+# 3. Deploy
+```
+
+### 3. Deploy Edge Functions
+
+```bash
+# Todas las funciones de tutorías
+npx supabase functions deploy tutoring-oracle
+npx supabase functions deploy create-session
+npx supabase functions deploy book-session
+npx supabase functions deploy process-payment
+npx supabase functions deploy list-sessions
+npx supabase functions deploy cancel-booking
+```
+
+## 📚 Sistema de Tutorías
+
+### Rutas
+
+| Ruta | Descripción |
+|------|-------------|
+| `/tutorias` | Lista de materias |
+| `/tutorias/:slug` | Chat IA + sesiones de una materia |
+| `/estudiante` | Dashboard del estudiante |
+| `/tutor/dashboard` | Dashboard del tutor |
+| `/tutorias/crear-sesion` | Crear sesión (solo tutores) |
+
+### Modelo de Datos
+
+```
+profiles ─────┬── tutor_availability
+              ├── subscriptions
+              │
+subjects ─────┬── topics ─── materials (RAG/embeddings)
+              │
+tutoring_sessions ─── session_bookings ─── payments (mock)
+              │
+tutoring_history
+```
+
+### Edge Functions
+
+| Función | Propósito |
+|---------|-----------|
+| `tutoring-oracle` | Chat IA con RAG (requiere AI_API_KEY) |
+| `create-session` | Crear sesión de tutoría |
+| `book-session` | Reservar sesión + crear pago mock |
+| `process-payment` | Procesar pago (pay/refund/cancel) |
+| `list-sessions` | Listar sesiones disponibles |
+| `cancel-booking` | Cancelar reserva |
+
+### Roles
+
+| Rol | Descripción |
+|-----|-------------|
+| `admin` | Acceso total |
+| `tutor` | Puede crear sesiones y ver dashboard |
+| `estudiante` | Puede reservar y chatear con IA |
+
+---
+
+## Arquitectura Original (Lagrange Lab)
 
 Sistema vivo de fricción cognitiva. Genera, muta y reacciona en tiempo real usando IA generativa.
 
-## Arquitectura
+### Arquitectura
 
 ```
 Frontend (React + Vite)
