@@ -81,24 +81,26 @@ export async function fetchCorpusFragmentsWithRAG(
   limit: number = 3
 ): Promise<CorpusFragment[]> {
   try {
-    // If we have an embedding, use vector similarity
+    // If we have an embedding, use vector similarity via RPC
     if (queryEmbedding && queryEmbedding.length === 1536) {
-      const embeddingStr = `[${queryEmbedding.join(',')}]`;
-      
-      const query = supabase
-        .from('corpus_fragments')
-        .select('*')
-        .or(`academy_id.eq.${academyId},academy_id.is.null`)
-        .not('embedding', 'is', null)
-        .order('embedding', { ascending: false, params: { useCosineDistance: true } })
-        .limit(limit);
+      try {
+        const { data, error } = await supabase.rpc('match_corpus_fragments', {
+          query_embedding: queryEmbedding,
+          match_academy_id: academyId,
+          match_count: limit,
+          match_threshold: 0.6
+        });
 
-      // For now, use simple filtering - full vector search requires raw SQL
-      const { data, error } = await query;
-      
-      if (!error && data && data.length > 0) {
-        console.log(`RAG: Using ${data.length} fragments from vector search`);
-        return data.slice(0, limit);
+        if (!error && data && data.length > 0) {
+          console.log(`RAG: Using ${data.length} fragments from vector search via RPC`);
+          return data;
+        }
+        
+        if (error) {
+          console.warn('RAG RPC error, falling back to basic fetch:', error.message);
+        }
+      } catch (rpcError) {
+        console.warn('RAG RPC call failed, falling back to basic fetch:', rpcError);
       }
     }
 

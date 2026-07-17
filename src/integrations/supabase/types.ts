@@ -779,7 +779,13 @@ export interface TutoringHistory {
   created_at: string;
 }
 
-export interface Profile extends Tables<'profiles'>['Row'] {
+export interface Profile {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string | null;
   role?: TutoringRole | null;
   bio?: string | null;
   hourly_rate_cents?: number;

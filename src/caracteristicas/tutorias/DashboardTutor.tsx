@@ -148,6 +148,20 @@ export default function DashboardTutor() {
 
       {/* Stats Grid */}
       <div className="container mx-auto px-4 py-8">
+        {/* Simulated Payment Notice */}
+        <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-3">
+          <div className="text-amber-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div>
+            <p className="font-medium text-amber-500">Modo Simulación</p>
+            <p className="text-sm text-amber-500/80">
+              Los cobros son simulados — no se genera dinero real. 
+              Los pagos mostrados son datos de prueba para demostración del sistema.
+            </p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

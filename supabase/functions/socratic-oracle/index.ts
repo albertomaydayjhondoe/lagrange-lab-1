@@ -8,7 +8,8 @@ import {
   getRefuerzoPrompt,
   checkRateLimit
 } from "../_shared/architectPrompt.ts";
-import { fetchCorpusFragments, formatCorpusContext } from "../_shared/corpusRetrieval.ts";
+import { fetchCorpusFragments, fetchCorpusFragmentsWithRAG, formatCorpusContext } from "../_shared/corpusRetrieval.ts";
+import { getEmbedding } from "../_shared/embeddings.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -333,13 +334,44 @@ serve(async (req) => {
       );
     }
     
-    // Fetch corpus fragments for context (filtered by academy)
+    // Fetch corpus fragments for context (filtered by academy) with RAG
     let corpusContext = '';
     if (includeCorpus) {
-      const fragments = await fetchCorpusFragments(supabaseClient, academyId, eje);
-      if (fragments.length > 0) {
-        corpusContext = formatCorpusContext(fragments);
-        console.log(`Socratic Oracle - Using ${fragments.length} corpus fragments`);
+      try {
+        // Generate embedding for semantic search
+        const contextText = [context, eje, nivel].filter(Boolean).join(' ');
+        const queryEmbedding = await getEmbedding(
+          contextText || "Genera una pregunta socrática sobre el eje especificado",
+          AI_API_KEY
+        );
+        
+        // Use RAG with vector similarity
+        const fragments = await fetchCorpusFragmentsWithRAG(
+          supabaseClient, 
+          academyId, 
+          queryEmbedding,
+          eje
+        );
+        
+        if (fragments.length > 0) {
+          corpusContext = formatCorpusContext(fragments);
+          console.log(`Socratic Oracle - Using ${fragments.length} corpus fragments with RAG`);
+        } else {
+          // Fallback to basic fetch if no RAG results
+          const fallbackFragments = await fetchCorpusFragments(supabaseClient, academyId, eje);
+          if (fallbackFragments.length > 0) {
+            corpusContext = formatCorpusContext(fallbackFragments);
+            console.log(`Socratic Oracle - Using ${fallbackFragments.length} corpus fragments (fallback)`);
+          }
+        }
+      } catch (ragError) {
+        console.warn('RAG fetch failed, using basic corpus:', ragError);
+        // Fallback to basic fetch
+        const fragments = await fetchCorpusFragments(supabaseClient, academyId, eje);
+        if (fragments.length > 0) {
+          corpusContext = formatCorpusContext(fragments);
+          console.log(`Socratic Oracle - Using ${fragments.length} corpus fragments (basic)`);
+        }
       }
     }
 

@@ -169,11 +169,33 @@ export default function AcademyDetail() {
           <div className="p-8 bg-lagrange-surface rounded-lg border border-lagrange-border text-center">
             <h2 className="text-2xl font-semibold mb-4">¿Quieres unirte?</h2>
             <p className="text-gray-400 mb-6">
-              Solicita acceso para participar en esta academia
+              {academy.is_public 
+                ? "Únete a esta academia pública con un clic" 
+                : "Solicita acceso para participar en esta academia"
+              }
             </p>
-            <button className="px-6 py-3 bg-lagrange-accent hover:bg-lagrange-accent/80 rounded-lg transition-colors">
-              Solicitar Acceso
-            </button>
+            {academy.is_public ? (
+              <button 
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase.rpc('join_public_academy', {
+                      p_academy_id: academy.id
+                    });
+                    if (error) throw error;
+                    window.location.reload();
+                  } catch (err: any) {
+                    alert(err.message || 'Error al unirse a la academia');
+                  }
+                }}
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+              >
+                Unirme a la Academia
+              </button>
+            ) : (
+              <button className="px-6 py-3 bg-lagrange-accent hover:bg-lagrange-accent/80 rounded-lg transition-colors">
+                Solicitar Acceso
+              </button>
+            )}
           </div>
         )}
 
