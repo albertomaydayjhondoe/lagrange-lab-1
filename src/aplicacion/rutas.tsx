@@ -10,6 +10,7 @@ import AcademyPodcast from "@/caracteristicas/podcast/AcademyPodcast";
 import AcademyProfile from "@/caracteristicas/autenticacion/Perfil";
 import Admin from "@/caracteristicas/administracion/Admin";
 import NotFound from "@/pages/NotFound";
+import Configuracion from "@/pages/Configuracion";
 
 // Tutorías
 import ListaMaterias from "@/caracteristicas/tutorias/ListaMaterias";
@@ -32,6 +33,7 @@ export function Rutas() {
       {/* Global routes */}
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/config" element={<Configuracion />} />
       <Route path="/academies" element={<AcademiesList />} />
       <Route path="/academies/create" element={<CreateAcademy />} />
       
