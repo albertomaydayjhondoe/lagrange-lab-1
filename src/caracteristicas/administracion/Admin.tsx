@@ -5,23 +5,24 @@ import { supabase } from '@/compartido/lib/supabaseClient';
 import { LagrangeFooter } from '@/components/LagrangeFooter';
 import { Button } from '@/compartido/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/compartido/ui/tabs';
-import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users, UserPlus, BookOpen, Archive, FileText } from 'lucide-react';
+import { Lock, Database, Network, MessageSquare, LogOut, Loader2, RefreshCw, Download, Upload, Volume2, Radio, Palette, MessagesSquare, Users, UserPlus, BookOpen, Archive, FileText, Folder } from 'lucide-react';
 import { createGlobalBackup, downloadZip } from '@/utils/globalBackup';
 import { NodeEditor } from '@/caracteristicas/administracion/NodeEditor';
 import { EdgeEditor } from '@/caracteristicas/administracion/EdgeEditor';
 import { QuestionEditor } from '@/caracteristicas/administracion/QuestionEditor';
 import { AudioGenerator } from '@/caracteristicas/administracion/AudioGenerator';
 import { EpisodeEditor } from '@/caracteristicas/administracion/EpisodeEditor';
-import { AxesEditor, ThematicAxis } from '@/caracteristicas/administracion/AxesEditor';
 import { DialogueEditor } from '@/caracteristicas/administracion/DialogueEditor';
 import { RolesEditor } from '@/caracteristicas/administracion/RolesEditor';
 import { AccessRequestsEditor } from '@/caracteristicas/administracion/AccessRequestsEditor';
 import { PodcastTextCurator } from '@/caracteristicas/administracion/PodcastTextCurator';
 import { DifferentialImport } from '@/caracteristicas/administracion/DifferentialImport';
 import { RAGSourcesEditor } from '@/caracteristicas/administracion/RAGSourcesEditor';
+import { SpacesEditor } from '@/caracteristicas/administracion/SpacesEditor';
 import { useAcademyRole } from '@/caracteristicas/academia/hooks/useAcademyRole';
 import { toast } from 'sonner';
 import type { User, Session } from '@supabase/supabase-js';
+import type { AcademySpace } from '@/compartido/lib/academySpacesService';
 
 interface AcademyOutletContext {
   academy: { id: string; name: string; slug: string } | null;
@@ -83,7 +84,7 @@ const Admin = () => {
   const [edges, setEdges] = useState<TopologyEdge[]>([]);
   const [questions, setQuestions] = useState<SocraticQuestion[]>([]);
   const [episodes, setEpisodes] = useState<PodcastEpisode[]>([]);
-  const [axes, setAxes] = useState<ThematicAxis[]>([]);
+  const [spaces, setSpaces] = useState<AcademySpace[]>([]);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const navigate = useNavigate();
 
@@ -109,19 +110,19 @@ const Admin = () => {
     if (!academyId) return;
     setDataLoading(true);
     
-    const [nodesRes, edgesRes, questionsRes, episodesRes, axesRes] = await Promise.all([
+    const [nodesRes, edgesRes, questionsRes, episodesRes, spacesRes] = await Promise.all([
       supabase.from('topology_nodes').select('*').eq('academy_id', academyId).order('id'),
       supabase.from('topology_edges').select('*').eq('academy_id', academyId).order('id'),
       supabase.from('socratic_questions').select('*').eq('academy_id', academyId).order('id'),
       supabase.from('podcast_episodes').select('*').eq('academy_id', academyId).order('created_at', { ascending: false }),
-      supabase.from('thematic_axes').select('*').eq('academy_id', academyId).order('order_index')
+      supabase.from('academy_spaces').select('*').eq('academy_id', academyId).order('order_index')
     ]);
 
     if (nodesRes.data) setNodes(nodesRes.data);
     if (edgesRes.data) setEdges(edgesRes.data);
     if (questionsRes.data) setQuestions(questionsRes.data);
     if (episodesRes.data) setEpisodes(episodesRes.data);
-    if (axesRes.data) setAxes(axesRes.data as ThematicAxis[]);
+    if (spacesRes.data) setSpaces(spacesRes.data as AcademySpace[]);
     
     setDataLoading(false);
   }, [academyId]);
@@ -411,7 +412,7 @@ const Admin = () => {
                   5. Admin (Solicitudes, Roles)
                 */}
                 <TabsList className="bg-card border border-border flex-wrap h-auto">
-                  <TabsTrigger value="axes" className="font-mono text-sm gap-2">
+                  <TabsTrigger value="spaces" className="font-mono text-sm gap-2">
                     <Palette className="w-4 h-4" />
                     Ejes
                   </TabsTrigger>
@@ -461,7 +462,7 @@ const Admin = () => {
                   )}
                 </TabsList>
 
-                <TabsContent value="axes">
+                <TabsContent value="spaces">
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -469,9 +470,9 @@ const Admin = () => {
                   >
                     <h2 className="font-serif text-xl mb-4">Ejes Temáticos</h2>
                     <p className="text-sm text-muted-foreground mb-6">
-                      Configura los ejes temáticos del sistema. Los ejes definen las categorías de nodos y preguntas.
+                      Gestiona los espacios de contenido. Unifican ejes socráticos y materias de tutorías.
                     </p>
-                    <AxesEditor axes={axes} onRefresh={fetchData} isAdmin={isAdmin} academyId={academyId || ''} />
+                    <SpacesEditor spaces={spaces} onRefresh={fetchData} isAdmin={isAdmin} academyId={academyId || ''} />
                   </motion.div>
                 </TabsContent>
 
@@ -621,8 +622,8 @@ const Admin = () => {
                 className="mt-8 grid md:grid-cols-5 gap-4"
               >
                 <div className="p-4 rounded-lg bg-card border border-border">
-                  <span className="text-3xl font-mono text-lagrange-tension">{axes.length}</span>
-                  <p className="text-sm text-muted-foreground">Ejes temáticos</p>
+                  <span className="text-3xl font-mono text-lagrange-tension">{spaces.length}</span>
+                  <p className="text-sm text-muted-foreground">Espacios</p>
                 </div>
                 <div className="p-4 rounded-lg bg-card border border-border">
                   <span className="text-3xl font-mono text-primary">{nodes.length}</span>

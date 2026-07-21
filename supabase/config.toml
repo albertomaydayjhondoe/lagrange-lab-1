@@ -109,3 +109,6 @@ verify_jwt = true
 
 [functions.list-sessions]
 verify_jwt = false
+
+[functions.seed-platform-owner]
+verify_jwt = false
