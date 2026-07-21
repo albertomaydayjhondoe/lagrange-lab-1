@@ -14,9 +14,28 @@
 -- ================================================================
 
 -- =================================================================
+-- 0. CREAR FUNCIÓN is_member_of_academy SI NO EXISTE
+-- =================================================================
+CREATE OR REPLACE FUNCTION public.is_member_of_academy(p_academy_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS(
+    SELECT 1 FROM public.academy_members
+    WHERE academy_id = p_academy_id AND user_id = auth.uid()
+  );
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_member_of_academy(UUID) TO authenticated, anon, service_role;
+
+-- =================================================================
 -- 1. ACADEMIES SELECT: Corregir USING (true) → lógica correcta
 -- =================================================================
 DROP POLICY IF EXISTS "Anyone can view academies" ON public.academies;
+DROP POLICY IF EXISTS "Academies are viewable by members and owners" ON public.academies;
 
 CREATE POLICY "Academies are viewable by members and owners"
 ON public.academies
@@ -56,30 +75,43 @@ WITH CHECK (
 );
 
 -- =================================================================
--- 4. CORREGIR TUTORÍAS: Revisar 9 tablas
+-- 4. CORREGIR TUTORÍAS: Revisar 9 tablas (opcional, si existen)
 -- =================================================================
--- Las tablas de Tutorías (subjects, topics, materials, tutoring_sessions,
--- session_bookings, payments, tutoring_history, tutor_availability,
--- subscriptions) NO tienen relación directa con academies en el esquema.
--- Las materias son globales. Las políticas deben:
---   - Mantener acceso público para contenido de solo lectura (materias activas)
---   - Restringir modificaciones al dueño/tutor/admin
---   - Añadir academy_id a tutoring_sessions para futuro aislamiento multi-tenant
+-- Las tablas de Tutorías pueden no existir aún. Hacerlas opcionales:
+DO $$
+BEGIN
+  -- 4a. tutoring_sessions: Añadir academy_id si la tabla existe
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tutoring_sessions') THEN
+    ALTER TABLE public.tutoring_sessions ADD COLUMN IF NOT EXISTS academy_id UUID REFERENCES public.academies(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS idx_tutoring_sessions_academy ON public.tutoring_sessions(academy_id);
+  END IF;
 
--- 4a. tutoring_sessions: Añadir academy_id si no existe
-ALTER TABLE public.tutoring_sessions ADD COLUMN IF NOT EXISTS academy_id UUID REFERENCES public.academies(id) ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS idx_tutoring_sessions_academy ON public.tutoring_sessions(academy_id);
-
--- Las políticas existentes ya son razonables, pero verificamos que estén activas
-ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.topics ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.materials ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tutoring_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.session_bookings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tutoring_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tutor_availability ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+  -- Habilitar RLS en tablas de tutoring si existen
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'subjects') THEN
+    ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'topics') THEN
+    ALTER TABLE public.topics ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'materials') THEN
+    ALTER TABLE public.materials ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'session_bookings') THEN
+    ALTER TABLE public.session_bookings ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payments') THEN
+    ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tutoring_history') THEN
+    ALTER TABLE public.tutoring_history ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tutor_availability') THEN
+    ALTER TABLE public.tutor_availability ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'subscriptions') THEN
+    ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 
 -- =================================================================
 -- 5. VERIFICACIÓN: Mostrar políticas aplicadas
