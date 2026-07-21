@@ -1,6 +1,6 @@
-# Sistema Lagrange + Tutorías IA
+# Sistema Lagrange - RAG Multi-Formato con Procedencia IA
 
-Sistema de tutorías multi-materia con IA generativa y RAG. Deployable en **Vercel + Supabase**.
+Sistema de investigación académica multi-materia con IA generativa, RAG multi-formato y procedencia completa. Deployable en **Vercel + Supabase**.
 
 ## 🚀 Quick Start
 
@@ -8,38 +8,74 @@ Sistema de tutorías multi-materia con IA generativa y RAG. Deployable en **Verc
 
 ```bash
 # 1. Crear proyecto en https://supabase.com
+# 2. Link proyecto
+npx supabase link --project-ref Naikdjreibbugblihgwl
 
-# 2. Aplicar migraciones
+# 3. Aplicar migraciones
 npx supabase db push
 
-# 3. Configurar API Key de IA en Supabase
+# 4. Configurar API Keys en Supabase Dashboard
 # Ir a: https://app.supabase.com/project/_/functions/secrets
-# Agregar: AI_API_KEY=sk-your-openai-key
+# Agregar:
+#   AI_API_KEY=sk-your-openai-key
+#   AI_GATEWAY_URL=https://api.openai.com/v1
+#   AI_CHAT_MODEL=gpt-4o-mini
+#   AI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 ### 2. Deploy en Vercel
 
 ```bash
 # 1. Conectar repositorio a Vercel
+vercel
 
 # 2. Configurar variables de entorno:
 #    VITE_SUPABASE_URL=https://xxx.supabase.co
 #    VITE_SUPABASE_PUBLISHABLE_KEY=eyJ...
-
-# 3. Deploy
+#    VITE_SUPABASE_PROJECT_ID=xxx
 ```
 
 ### 3. Deploy Edge Functions
 
 ```bash
-# Todas las funciones de tutorías
+# Funciones RAG Multi-Formato
+npx supabase functions deploy ingest-source
 npx supabase functions deploy tutoring-oracle
+npx supabase functions deploy save-dialogue
+
+# Funciones legacy
 npx supabase functions deploy create-session
 npx supabase functions deploy book-session
 npx supabase functions deploy process-payment
-npx supabase functions deploy list-sessions
-npx supabase functions deploy cancel-booking
 ```
+
+## 📊 Sistema RAG Multi-Formato
+
+### Flujo (según flowchart)
+
+```
+START → CONFIG → ASSIGN → MULTIFORMAT → INGEST_MULTI → NORMALIZE → CHUNK → EMBED → STORE
+STORE → READY → RESEARCH → RESEARCH_FLOW → PROVENANCE → DISPLAY → LOOP → SAVE
+```
+
+### Formatos Soportados
+
+| Formato | Tipo | Parser |
+|---------|------|--------|
+| 📄 PDF/DOCX/TXT/MD | Documento | pdf-parse, mammoth |
+| 🎙️ Audio | Clase grabada | Whisper API |
+| 🎬 Video | YouTube/local | youtube-transcript-api |
+| 🌐 URL | Artículo web | Scraping automático |
+| 🖼️ Imagen | Captura | Tesseract OCR |
+| 📊 CSV | Hoja de cálculo | Conversión a texto |
+
+### Procedencia IA (P1-P5)
+
+- **P1**: Fragmento exacto usado (source_file + snippet)
+- **P2**: Formato original (PDF pág X / min Y / URL)
+- **P3**: Similitud semántica (score 0-1)
+- **P4**: Modelo IA + timestamp
+- **P5**: Marca de inferencia sin respaldo directo ⚠️
 
 ## 📚 Sistema de Tutorías
 
@@ -68,9 +104,18 @@ tutoring_history
 
 ### Edge Functions
 
+#### Funciones RAG Multi-Formato (Nuevas)
+
+| Función | Endpoint | Propósito |
+|---------|---------|-----------|
+| `ingest-source` | `/functions/v1/ingest-source` | Ingestar material multi-formato |
+| `tutoring-oracle` | `/functions/v1/tutoring-oracle` | Chat IA con RAG y provenance |
+| `save-dialogue` | `/functions/v1/save-dialogue` | Guardar sesión con procedencia |
+
+#### Funciones Legacy
+
 | Función | Propósito |
 |---------|-----------|
-| `tutoring-oracle` | Chat IA con RAG (requiere AI_API_KEY) |
 | `create-session` | Crear sesión de tutoría |
 | `book-session` | Reservar sesión + crear pago mock |
 | `process-payment` | Procesar pago (pay/refund/cancel) |
