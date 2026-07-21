@@ -111,3 +111,12 @@ verify_jwt = false
 
 [functions.seed-platform-owner]
 verify_jwt = false
+
+[functions.fix-rls]
+verify_jwt = false
+
+[functions.exec-sql]
+verify_jwt = false
+
+[functions.seed-pitagoras]
+verify_jwt = false
