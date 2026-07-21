@@ -1,4 +1,4 @@
-name: Deploy to Vercel
+name: Deploy to Vercel + Supabase
 
 on:
   push:
@@ -7,13 +7,14 @@ on:
   workflow_dispatch:
 
 env:
-  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-  VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-  VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+  VITE_SUPABASE_URL: https://naikdjreibbugblihgwl.supabase.co
+  VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
+  VITE_SUPABASE_PROJECT_ID: Naikdjreibbugblihgwl
 
 jobs:
   deploy-vercel:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,21 +31,20 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+          VITE_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PROJECT_ID: ${{ env.VITE_SUPABASE_PROJECT_ID }}
 
       - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: ./
+        run: |
+          npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
   deploy-supabase-functions:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,15 +53,15 @@ jobs:
         run: npm install -g supabase
 
       - name: Link Supabase Project
-        run: supabase link --project-ref Naikdjreibbugblihgwl
+        run: npx supabase link --project-ref Naikdjreibbugblihgwl
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Deploy Edge Functions
         run: |
-          supabase functions deploy ingest-source
-          supabase functions deploy tutoring-oracle
-          supabase functions deploy save-dialogue
+          npx supabase functions deploy ingest-source --no-verify-jwt
+          npx supabase functions deploy tutoring-oracle --no-verify-jwt
+          npx supabase functions deploy save-dialogue --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
@@ -70,6 +70,6 @@ jobs:
           AI_EMBEDDING_MODEL: ${{ secrets.AI_EMBEDDING_MODEL }}
 
       - name: Push Migrations
-        run: supabase db push
+        run: npx supabase db push
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
