@@ -1,0 +1,115 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#534AB7', 'primaryTextColor': '#fff', 'primaryBorderColor': '#333' }}}%%
+flowchart TD
+    START(["👤 Owner/Admin configura academia<br/>NUEVA (cualquier materia)"])
+    
+    %% Configuración inicial
+    CONFIG["📦 Crea espacio dinámico:<br/>nombre libre (ej. 'Derecho Constitucional',<br/>'Bioquímica', 'Historia del Arte'...)<br/>— sin lista fija de ejes"]
+    
+    ASSIGN["👨‍🏫 Asigna tutor(es) IA al espacio<br/>+ define system prompt del tutor<br/>(persona/tono configurable por academia)"]
+    
+    UPLOAD["📤 Estudiante o tutor sube material<br/>de investigación — CUALQUIER formato"]
+    
+    %% Subgraph: Ingesta multi-formato
+    subgraph INGEST["🔄 Ingesta RAG multi-formato"]
+        direction TB
+        F1["📄 PDF / DOCX / TXT / MD"]
+        F2["🎙️ Audio (clase grabada)<br/>→ transcripción previa"]
+        F3["🎬 Video (YouTube/local)<br/>→ extracción subtítulos/transcript"]
+        F4["🌐 URL / artículo web<br/>→ scraping + limpieza HTML"]
+        F5["🖼️ Imagen / captura<br/>→ OCR si contiene texto"]
+        F6["📊 Hoja de cálculo / CSV<br/>→ estructurado a texto narrativo"]
+        
+        NORM["⚙️ Normalizador común:<br/>todo formato converge a texto plano<br/>ANTES de entrar al pipeline RAG"]
+        
+        F1 & F2 & F3 & F4 & F5 & F6 --> NORM
+    end
+    
+    %% Procesamiento RAG
+    CHUNK["✂️ Chunking + metadata:<br/>• source_type (pdf/audio/video/url/imagen/csv)<br/>• source_file (nombre/URL original)<br/>• uploaded_by (usuario)<br/>• ingested_at (timestamp)"]
+    
+    EMBED["🔢 getEmbedding() por fragmento<br/>+ registro del modelo usado<br/>(AI_EMBEDDING_MODEL)"]
+    
+    STORE["💾 corpus_fragments:<br/>academy_id · space_id (dinámico)<br/>+ TODA metadata de procedencia<br/>+ embedding vector"]
+    
+    READY["✅ Material listo para investigación<br/>dentro de ESE espacio, ESA academia"]
+    
+    %% Investigación
+    RESEARCH["🔍 Estudiante inicia modo<br/>'Investigar sobre [tema]'<br/>con el tutor IA"]
+    
+    %% Subgraph: Sesión de investigación
+    subgraph SESSION["💬 Sesión de investigación con tutor IA"]
+        direction TB
+        R1["📝 Estudiante pregunta:<br/>'¿qué dicen mis fuentes sobre X?'"]
+        R2["🔢 Genera embedding de la pregunta"]
+        R3["🎯 match_corpus_fragments filtrado por<br/>academy_id + space_id dinámico<br/>→ N fragmentos más relevantes<br/>DE ENTRE TODOS LOS FORMATOS"]
+        R4["🤖 Tutor IA compone respuesta<br/>usando SOLO esos fragmentos<br/>como contexto (no memoria genérica)"]
+        R5["📤 Respuesta con<br/>procedencia adjunta por afirmación"]
+        
+        R1 --> R2 --> R3 --> R4 --> R5
+    end
+    
+    %% Subgraph: Procedencia
+    subgraph PROVENANCE["📋 Procedencia IA (adjunta a cada respuesta)"]
+        direction TB
+        P1["📄 Fragmento(s) exacto(s) usado(s)<br/>(source_file + snippet)"]
+        P2["📌 Formato original<br/>(PDF pág. X / min Y del video / URL)"]
+        P3["📊 Similitud semántica (score 0-1)<br/>de cada fuente citada"]
+        P4["🧠 Modelo IA + timestamp<br/>de la generación"]
+        P5["⚠️ Marca si IA completó algo<br/>SIN fuente propia<br/>('inferencia sin respaldo directo')"]
+    end
+    
+    %% UI y cierre
+    DISPLAY["🖥️ UI: respuesta + panel<br/>'Fuentes usadas' expandable<br/>→ cada cita trazable al material original"]
+    
+    LOOP{"¿Estudiante quiere<br/>profundizar más?"}
+    
+    SAVE["💾 saved_dialogues:<br/>incluye procedencia usada<br/>en cada respuesta guardada"]
+    
+    %% Conexiones principales
+    START --> CONFIG --> ASSIGN --> UPLOAD
+    UPLOAD --> INGEST
+    INGEST --> CHUNK --> EMBED --> STORE --> READY
+    READY --> RESEARCH
+    RESEARCH --> SESSION
+    SESSION --> PROVENANCE --> DISPLAY --> LOOP
+    
+    LOOP -->|"Sí, nueva pregunta"| RESEARCH
+    LOOP -->|"No, guarda sesión"| SAVE
+    
+    %% Estilos
+    style START fill:#2E7D32,color:#fff,stroke:#1B5E20
+    style CONFIG fill:#1565C0,color:#fff,stroke:#0D47A1
+    style ASSIGN fill:#1565C0,color:#fff,stroke:#0D47A1
+    style UPLOAD fill:#1565C0,color:#fff,stroke:#0D47A1
+    style READY fill:#2E7D32,color:#fff,stroke:#1B5E20
+    style RESEARCH fill:#7B1FA2,color:#fff,stroke:#6A1B9A
+    style DISPLAY fill:#E65100,color:#fff,stroke:#BF360C
+    style LOOP fill:#F57C00,color:#fff,stroke:#E65100
+    style SAVE fill:#2E7D32,color:#fff,stroke:#1B5E20
+    
+    style INGEST fill:#534AB7,color:#fff,stroke:#3F3A8F
+    style F1 fill:#7986CB,color:#fff
+    style F2 fill:#7986CB,color:#fff
+    style F3 fill:#7986CB,color:#fff
+    style F4 fill:#7986CB,color:#fff
+    style F5 fill:#7986CB,color:#fff
+    style F6 fill:#7986CB,color:#fff
+    style NORM fill:#1D9E75,color:#fff,stroke:#15695E
+    
+    style CHUNK fill:#5C6BC0,color:#fff,stroke:#3949AB
+    style EMBED fill:#5C6BC0,color:#fff,stroke:#3949AB
+    style STORE fill:#5C6BC0,color:#fff,stroke:#3949AB
+    
+    style SESSION fill:#00897B,color:#fff,stroke:#00695C
+    style R1 fill:#4DB6AC,color:#fff
+    style R2 fill:#4DB6AC,color:#fff
+    style R3 fill:#4DB6AC,color:#fff
+    style R4 fill:#4DB6AC,color:#fff
+    style R5 fill:#4DB6AC,color:#fff
+    
+    style PROVENANCE fill:#B7541D,color:#fff,stroke:#8B3D14
+    style P1 fill:#D87C4E,color:#fff
+    style P2 fill:#D87C4E,color:#fff
+    style P3 fill:#D87C4E,color:#fff
+    style P4 fill:#D87C4E,color:#fff
+    style P5 fill:#B7541D,color:#fff,stroke:#8B3D14

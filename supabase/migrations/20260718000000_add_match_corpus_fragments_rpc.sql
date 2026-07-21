@@ -1,14 +1,17 @@
 -- ================================================================
 -- RPC: match_corpus_fragments - Vector similarity search for RAG
+-- Con provenance completa para el flowchart
 -- ================================================================
 
 CREATE OR REPLACE FUNCTION public.match_corpus_fragments(
   query_embedding vector(1536),
   match_academy_id uuid DEFAULT NULL,
+  match_space_id uuid DEFAULT NULL,  -- Espacio dinámico (flowchart CONFIG)
   match_count int DEFAULT 5,
   match_threshold float DEFAULT 0.7
 )
 RETURNS TABLE (
+  -- Fragmento básico
   id uuid,
   source_file text,
   source_section text,
@@ -18,9 +21,16 @@ RETURNS TABLE (
   keywords text[],
   weight float,
   academy_id uuid,
+  space_id uuid,
   source_type text,
   title text,
-  similarity float
+  -- Provenance fields (flowchart PROVENANCE)
+  similarity float,                    -- P3: Similitud semántica (score 0-1)
+  ingested_at timestamptz,              -- Timestamp de ingestión
+  uploaded_by uuid,                    -- Quién subió el material
+  embedding_model text,                -- Modelo de embedding usado
+  original_url text,                   -- URL original si vino de web
+  page_reference text                  -- Referencia página/minuto
 )
 LANGUAGE plpgsql
 STABLE
@@ -39,13 +49,27 @@ BEGIN
     cf.keywords,
     cf.weight,
     cf.academy_id,
+    cf.space_id,                       -- Nuevo: espacio dinámico
     cf.source_type,
     cf.title,
-    1 - (cf.embedding <=> query_embedding) as similarity
+    -- P3: Similitud semántica (score 0-1)
+    (1 - (cf.embedding <=> query_embedding))::float as similarity,
+    -- P4: Timestamp de ingestión
+    cf.ingested_at,
+    -- P1: Quién subió
+    cf.uploaded_by,
+    -- Embedding model usado
+    cf.embedding_model,
+    -- P2: URL original para provenance
+    cf.original_url,
+    -- P2: Referencia página/minuto
+    cf.page_reference
   FROM public.corpus_fragments cf
   WHERE
     -- Filter by academy or global corpus (NULL academy_id)
     (match_academy_id IS NULL OR cf.academy_id = match_academy_id OR cf.academy_id IS NULL)
+    -- Filter by space_id dynamically (flowchart: CONFIG → ASSIGN → espacio dinámico)
+    AND (match_space_id IS NULL OR cf.space_id = match_space_id)
     -- Only fragments with embeddings
     AND cf.embedding IS NOT NULL
     -- Only active fragments (status = 'completed' or 'seed')
@@ -57,8 +81,10 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.match_corpus_fragments(vector, uuid, int, float) FROM public;
-GRANT EXECUTE ON FUNCTION public.match_corpus_fragments(vector, uuid, int, float) TO authenticated, service_role;
+-- Drop old signature and recreate with new one
+DROP FUNCTION IF EXISTS public.match_corpus_fragments(vector, uuid, int, float);
+REVOKE ALL ON FUNCTION public.match_corpus_fragments(vector, uuid, uuid, int, float) FROM public;
+GRANT EXECUTE ON FUNCTION public.match_corpus_fragments(vector, uuid, uuid, int, float) TO authenticated, service_role;
 
 -- ================================================================
 -- Auto-join policy for PUBLIC academies

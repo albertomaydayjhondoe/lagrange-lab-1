@@ -1,6 +1,7 @@
 -- ================================================================
 -- LAGRANGE LAB - MIGRACIÓN COMPLETA CONSOLIDADA
 -- Ejecutar TODAS las migraciones en orden desde Supabase SQL Editor
+-- INCLUYE: Flowchart RAG Multi-Formato (Academia Spaces + Provenance)
 -- ================================================================
 
 -- Enable pgvector extension
@@ -884,4 +885,202 @@ ON CONFLICT (slug) DO NOTHING;
 
 -- ================================================================
 -- FIN DE MIGRACIÓN
+-- ================================================================
+
+-- ================================================================
+-- FLOWCHART RAG MULTI-FORMATO: CAMPOS DE PROVENANCE
+-- Migración: 20260722000003_update_corpus_fragments_rag_provenance
+-- ================================================================
+
+-- Agregar space_id para espacios dinámicos
+ALTER TABLE public.corpus_fragments 
+ADD COLUMN IF NOT EXISTS space_id UUID REFERENCES public.academy_spaces(id) ON DELETE SET NULL;
+
+-- Agregar uploaded_by para trazabilidad
+ALTER TABLE public.corpus_fragments 
+ADD COLUMN IF NOT EXISTS uploaded_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+
+-- Agregar ingested_at para timestamp
+ALTER TABLE public.corpus_fragments 
+ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Agregar embedding_model para saber qué modelo generó el embedding
+ALTER TABLE public.corpus_fragments 
+ADD COLUMN IF NOT EXISTS embedding_model TEXT DEFAULT 'text-embedding-3-small';
+
+-- Agregar original_url para provenance de fuentes web
+ALTER TABLE public.corpus_fragments 
+ADD COLUMN IF NOT EXISTS original_url TEXT;
+
+-- Agregar page_reference para provenance (PDF página, minuto de video, etc)
+ALTER TABLE public.corpus_fragments 
+ADD COLUMN IF NOT EXISTS page_reference TEXT;
+
+-- Índices para los nuevos campos
+CREATE INDEX IF NOT EXISTS idx_corpus_fragments_space ON public.corpus_fragments(space_id);
+CREATE INDEX IF NOT EXISTS idx_corpus_fragments_uploaded_by ON public.corpus_fragments(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_corpus_fragments_ingested_at ON public.corpus_fragments(ingested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_corpus_fragments_source_type ON public.corpus_fragments(source_type);
+CREATE INDEX IF NOT EXISTS idx_corpus_fragments_academy_space ON public.corpus_fragments(academy_id, space_id) WHERE embedding IS NOT NULL;
+
+-- ================================================================
+-- FLOWCHART RAG MULTI-FORMATO: TABLA SAVED_DIALOGUES
+-- Migración: 20260722000004_create_saved_dialogues
+-- ================================================================
+
+-- Tabla principal de diálogos guardados
+CREATE TABLE IF NOT EXISTS public.saved_dialogues (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  academy_id UUID REFERENCES public.academies(id) ON DELETE SET NULL,
+  space_id UUID REFERENCES public.academy_spaces(id) ON DELETE SET NULL,
+  title TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  research_topic TEXT,
+  tutor_system_prompt TEXT,
+  tutor_model TEXT,
+  total_messages INTEGER DEFAULT 0,
+  total_sources_used INTEGER DEFAULT 0,
+  user_notes TEXT,
+  is_bookmarked BOOLEAN DEFAULT FALSE,
+  is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- Tabla de mensajes individuales
+CREATE TABLE IF NOT EXISTS public.saved_dialogue_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  dialogue_id UUID NOT NULL REFERENCES public.saved_dialogues(id) ON DELETE CASCADE,
+  message_index INTEGER NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  ai_model TEXT,
+  response_time_ms INTEGER
+);
+
+-- Tabla de procedencia por mensaje (CRÍTICO para el flowchart - P5)
+CREATE TABLE IF NOT EXISTS public.saved_dialogue_provenance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id UUID NOT NULL REFERENCES public.saved_dialogue_messages(id) ON DELETE CASCADE,
+  fragment_id UUID REFERENCES public.corpus_fragments(id) ON DELETE SET NULL,
+  source_file TEXT,
+  source_type TEXT,
+  source_content TEXT,
+  original_url TEXT,
+  page_reference TEXT,
+  similarity_score FLOAT,
+  citation_order INTEGER,
+  is_inference_only BOOLEAN DEFAULT FALSE,
+  fragment_ingested_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Índices para saved_dialogues
+CREATE INDEX IF NOT EXISTS idx_saved_dialogues_user ON public.saved_dialogues(user_id);
+CREATE INDEX IF NOT EXISTS idx_saved_dialogues_academy ON public.saved_dialogues(academy_id);
+CREATE INDEX IF NOT EXISTS idx_saved_dialogues_space ON public.saved_dialogues(space_id);
+CREATE INDEX IF NOT EXISTS idx_saved_dialogues_created ON public.saved_dialogues(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_saved_dialogues_bookmarked ON public.saved_dialogues(is_bookmarked) WHERE NOT is_deleted;
+
+CREATE INDEX IF NOT EXISTS idx_saved_messages_dialogue ON public.saved_dialogue_messages(dialogue_id);
+CREATE INDEX IF NOT EXISTS idx_saved_messages_index ON public.saved_dialogue_messages(dialogue_id, message_index);
+
+CREATE INDEX IF NOT EXISTS idx_saved_provenance_message ON public.saved_dialogue_provenance(message_id);
+CREATE INDEX IF NOT EXISTS idx_saved_provenance_fragment ON public.saved_dialogue_provenance(fragment_id);
+CREATE INDEX IF NOT EXISTS idx_saved_provenance_similarity ON public.saved_dialogue_provenance(similarity_score DESC);
+
+-- RLS para saved_dialogues
+ALTER TABLE public.saved_dialogues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saved_dialogue_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saved_dialogue_provenance ENABLE ROW LEVEL SECURITY;
+
+-- Políticas RLS básicas (el service_role tiene acceso total)
+DROP POLICY IF EXISTS "Service role can manage dialogues" ON public.saved_dialogues;
+CREATE POLICY "Service role can manage dialogues"
+ON public.saved_dialogues FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role can manage messages" ON public.saved_dialogue_messages;
+CREATE POLICY "Service role can manage messages"
+ON public.saved_dialogue_messages FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role can manage provenance" ON public.saved_dialogue_provenance;
+CREATE POLICY "Service role can manage provenance"
+ON public.saved_dialogue_provenance FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+-- Trigger para updated_at
+CREATE OR REPLACE FUNCTION public.update_saved_dialogues_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS update_saved_dialogues_updated_at ON public.saved_dialogues;
+CREATE TRIGGER update_saved_dialogues_updated_at
+  BEFORE UPDATE ON public.saved_dialogues FOR EACH ROW
+  EXECUTE FUNCTION public.update_saved_dialogues_updated_at();
+
+-- ================================================================
+-- FLOWCHART RAG: match_corpus_fragments CON PROVENANCE
+-- Actualizado: 20260718000000_add_match_corpus_fragments_rpc
+-- ================================================================
+
+CREATE OR REPLACE FUNCTION public.match_corpus_fragments(
+  query_embedding vector(1536),
+  match_academy_id uuid DEFAULT NULL,
+  match_space_id uuid DEFAULT NULL,
+  match_count int DEFAULT 5,
+  match_threshold float DEFAULT 0.7
+)
+RETURNS TABLE (
+  id uuid,
+  source_file text,
+  source_section text,
+  axis text[],
+  tension float,
+  content text,
+  keywords text[],
+  weight float,
+  academy_id uuid,
+  space_id uuid,
+  source_type text,
+  title text,
+  similarity float,
+  ingested_at timestamptz,
+  uploaded_by uuid,
+  embedding_model text,
+  original_url text,
+  page_reference text
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    cf.id, cf.source_file, cf.source_section, cf.axis, cf.tension,
+    cf.content, cf.keywords, cf.weight, cf.academy_id, cf.space_id,
+    cf.source_type, cf.title,
+    (1 - (cf.embedding <=> query_embedding))::float as similarity,
+    cf.ingested_at, cf.uploaded_by, cf.embedding_model,
+    cf.original_url, cf.page_reference
+  FROM public.corpus_fragments cf
+  WHERE
+    (match_academy_id IS NULL OR cf.academy_id = match_academy_id OR cf.academy_id IS NULL)
+    AND (match_space_id IS NULL OR cf.space_id = match_space_id)
+    AND cf.embedding IS NOT NULL
+    AND (cf.upload_status = 'completed' OR cf.upload_status IS NULL OR cf.source_type = 'seed')
+    AND (1 - (cf.embedding <=> query_embedding)) >= match_threshold
+  ORDER BY cf.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.match_corpus_fragments(vector, uuid, int, float);
+REVOKE ALL ON FUNCTION public.match_corpus_fragments(vector, uuid, uuid, int, float) FROM public;
+GRANT EXECUTE ON FUNCTION public.match_corpus_fragments(vector, uuid, uuid, int, float) TO authenticated, service_role;
+
+-- ================================================================
+-- FIN: FLOWCHART RAG MULTI-FORMATO IMPLEMENTADO
 -- ================================================================
