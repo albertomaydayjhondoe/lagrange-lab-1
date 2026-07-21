@@ -11,6 +11,8 @@ import AcademyProfile from "@/caracteristicas/autenticacion/Perfil";
 import Admin from "@/caracteristicas/administracion/Admin";
 import NotFound from "@/pages/NotFound";
 import Configuracion from "@/pages/Configuracion";
+import FlowchartTest from "@/pages/FlowchartTest";
+import PitagorasLab from "@/pages/PitagorasLab";
 
 // Tutorías
 import ListaMaterias from "@/caracteristicas/tutorias/ListaMaterias";
@@ -36,6 +38,8 @@ export function Rutas() {
       <Route path="/config" element={<Configuracion />} />
       <Route path="/academies" element={<AcademiesList />} />
       <Route path="/academies/create" element={<CreateAcademy />} />
+      <Route path="/flowchart-test" element={<FlowchartTest />} />
+      <Route path="/pitagoras" element={<PitagorasLab />} />
       
       {/* ============================================
           SISTEMA DE TUTORÍAS CON IA + RAG
