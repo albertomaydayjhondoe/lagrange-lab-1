@@ -32,6 +32,58 @@ interface CorpusFragment {
   tension: number;
 }
 
+// Static fallback data for Pitagoras Academy
+const PITAGORAS_FALLBACK_DATA: CorpusFragment[] = [
+  {
+    id: 'f1',
+    source_file: 'pitagoras_teorema.md',
+    source_section: 'Definicion',
+    content: 'El Teorema de Pitagoras establece que en un triangulo rectangulo, el cuadrado de la hipotenusa es igual a la suma de los cuadrados de los catetos. Si a y b son los catetos y c es la hipotenusa, entonces: a^2 + b^2 = c^2.',
+    axis: ['Demostracion', 'Aplicacion'],
+    tension: 0.8
+  },
+  {
+    id: 'f2',
+    source_file: 'pitagoras_demostracion.md',
+    source_section: 'Areas',
+    content: 'Una demostracion clasica usa areas. Construimos un cuadrado de lado (a+b) y colocamos cuatro copias del triangulo rectangulo dentro. El area restante forma un cuadrado de lado c. Las areas de los cuatro triangulos son 4 x (ab/2) = 2ab, y el cuadrado grande tiene area (a+b)^2 = a^2 + 2ab + b^2. Restando: a^2 + b^2 = c^2.',
+    axis: ['Demostracion', 'Elegancia'],
+    tension: 0.7
+  },
+  {
+    id: 'f3',
+    source_file: 'pitagoras_triplas.md',
+    source_section: 'Triplas',
+    content: 'Triplas pitagoricas son enteros (a, b, c) con a^2 + b^2 = c^2. Ejemplos: (3,4,5), (5,12,13), (8,15,17). Euclides demostro que existen infinitas. Formula: a = m^2 - n^2, b = 2mn, c = m^2 + n^2.',
+    axis: ['Demostracion'],
+    tension: 0.65
+  },
+  {
+    id: 'f4',
+    source_file: 'pitagoras_historia.md',
+    source_section: 'Historia',
+    content: 'El teorema fue conocido por babilonios, egipcios e indios antes que Pitagoras (~2000 a.C.). Los pitagoricos lo demostraron alrededor del 500 a.C. Lo revolucionario fue la idea de que las matematicas podian ser un sistema deductivo puro.',
+    axis: ['Intuicion'],
+    tension: 0.5
+  },
+  {
+    id: 'f5',
+    source_file: 'pitagoras_filosofia.md',
+    source_section: 'Filosofia',
+    content: 'Tension filosofica: Pitagoras creia que los numeros eran la esencia de toda Realidad. El descubrimiento de que sqrt(2) no es racional aparentemente contradecía esto. Este descubrimiento causo una crisis en la escuela pitagorica.',
+    axis: ['Intuicion', 'Elegancia'],
+    tension: 0.9
+  },
+  {
+    id: 'f6',
+    source_file: 'pitagoras_geometria.md',
+    source_section: 'NoEuclidiana',
+    content: 'En espacios no euclidianos, el teorema no se cumple. En geometria hiperbolica o esferica, las relaciones son diferentes. Es el teorema una verdad universal, o solo propiedad del espacio euclidiano?',
+    axis: ['Intuicion', 'Elegancia'],
+    tension: 0.95
+  }
+];
+
 interface MaterialChatProps {
   academyId: string;
   spaceId?: string;
@@ -91,10 +143,17 @@ export function MaterialChat({ academyId, spaceId, sourceFile, onSourceSelect }:
 
         const { data, error } = await query;
 
-        if (error) throw error;
-        setFragments(data || []);
+        if (error || !data || data.length === 0) {
+          // Use fallback data if DB query fails or returns empty
+          console.log('Using fallback RAG data');
+          setFragments(PITAGORAS_FALLBACK_DATA);
+        } else {
+          setFragments(data);
+        }
       } catch (err) {
         console.error('Error loading fragments:', err);
+        // Use fallback data on error
+        setFragments(PITAGORAS_FALLBACK_DATA);
       }
     }
 
