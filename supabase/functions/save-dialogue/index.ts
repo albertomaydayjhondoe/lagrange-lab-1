@@ -2,10 +2,11 @@
  * SAVE-DIALOGUE - Guardar sesión de investigación con procedencia
  * 
  * Flujo según flowchart:
- * LOOP (No) → SAVE → saved_dialogues
+ * LOOP (No) → SAVE → research_sessions
  * 
  * Guarda:
- * - Diálogo completo
+ * - Sesión de investigación completa
+ * - Mensajes individuales
  * - Procedencia de cada respuesta (P1-P5)
  */
 
@@ -113,11 +114,11 @@ serve(async (req) => {
       }
     }
 
-    let resultDialogueId: string;
+    let resultSessionId: string;
 
     if (dialogueId) {
       await supabase
-        .from('saved_dialogues')
+        .from('research_sessions')
         .update({
           title: title || undefined,
           research_topic: researchTopic || undefined,
@@ -129,11 +130,11 @@ serve(async (req) => {
         .eq('id', dialogueId)
         .eq('user_id', user.id);
 
-      await supabase.from('saved_dialogue_messages').delete().eq('dialogue_id', dialogueId);
-      resultDialogueId = dialogueId;
+      await supabase.from('research_messages').delete().eq('session_id', dialogueId);
+      resultSessionId = dialogueId;
     } else {
-      const { data: newDialogue, error: insertDialogueError } = await supabase
-        .from('saved_dialogues')
+      const { data: newSession, error: insertSessionError } = await supabase
+        .from('research_sessions')
         .insert({
           user_id: user.id,
           academy_id: academyId || null,
@@ -149,17 +150,17 @@ serve(async (req) => {
         .select('id')
         .single();
 
-      if (insertDialogueError) throw insertDialogueError;
-      resultDialogueId = newDialogue.id;
+      if (insertSessionError) throw insertSessionError;
+      resultSessionId = newSession.id;
     }
 
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
 
       const { data: savedMessage, error: insertMsgError } = await supabase
-        .from('saved_dialogue_messages')
+        .from('research_messages')
         .insert({
-          dialogue_id: resultDialogueId,
+          session_id: resultSessionId,
           message_index: i,
           role: msg.role,
           content: msg.content,
@@ -189,13 +190,13 @@ serve(async (req) => {
           fragment_ingested_at: p.ingested_at || null
         }));
 
-        await supabase.from('saved_dialogue_provenance').insert(provenanceRecords);
+        await supabase.from('research_provenance').insert(provenanceRecords);
       }
     }
 
     return new Response(JSON.stringify({
       success: true,
-      dialogue_id: resultDialogueId,
+      session_id: resultSessionId,
       total_messages: totalMessages,
       total_sources_used: totalSourcesUsed,
       has_inference_only: hasInferenceOnly
