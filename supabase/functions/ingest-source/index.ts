@@ -14,7 +14,7 @@
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createClient } from "https://esm.run/@supabase/supabase-js@2";
 import { normalizeContent, SourceInput, SUPPORTED_SOURCE_TYPES } from "../_shared/normalizer.ts";
 
 const corsHeaders = {

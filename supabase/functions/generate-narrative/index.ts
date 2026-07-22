@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.run/@supabase/supabase-js@2";
 import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
 import { fetchCorpusFragments, formatCorpusContext, CorpusFragment } from "../_shared/corpusRetrieval.ts";
 
