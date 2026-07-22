@@ -69,7 +69,8 @@ jobs:
           AI_CHAT_MODEL: ${{ secrets.AI_CHAT_MODEL }}
           AI_EMBEDDING_MODEL: ${{ secrets.AI_EMBEDDING_MODEL }}
 
-      - name: Push Migrations
-        run: npx supabase db push
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      # Migrations are applied via Management API - uncomment if needed
+      # - name: Push Migrations
+      #   run: npx supabase db push --include-all
+      #   env:
+      #     SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
