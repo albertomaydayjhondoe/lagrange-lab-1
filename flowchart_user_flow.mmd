@@ -1,0 +1,49 @@
+flowchart TD
+    START(["Usuario nuevo"]) --> REG["📝 REGISTRO<br/>INPUT: email + password<br/>↓<br/>Supabase Auth.signUp()"]
+
+
+    REG --> PROFILE["OUTPUT: auth.users row<br/>+ trigger crea profiles.id<br/>(automático, ya verificado)"]
+
+
+    PROFILE --> CREATE_ACAD["🏛️ CREACIÓN DE ACADEMIA<br/>INPUT: nombre, slug,<br/>descripción, is_public"]
+
+
+    CREATE_ACAD --> ACAD_CHECK{"RLS: owner_user_id<br/>= auth.uid()?"}
+    ACAD_CHECK -->|Sí| ACAD_OUT["OUTPUT: fila en academies<br/>+ INSERT automático en<br/>academy_members (role=owner)"]
+    ACAD_CHECK -->|No| ACAD_FAIL["❌ Rechazado por RLS"]
+
+
+    ACAD_OUT --> SPACE_IN["📚 INGRESO DE MATERIA/ESPACIO<br/>INPUT: nombre libre<br/>('Ética', 'Bioquímica'...)"]
+
+
+    SPACE_IN --> SPACE_OUT["OUTPUT: fila en academy_spaces<br/>(o thematic_axes, según<br/>qué migración esté aplicada)<br/>academy_id = la creada arriba"]
+
+
+    SPACE_OUT --> UPLOAD["📤 Carga opcional de material RAG<br/>INPUT: texto/PDF/URL<br/>↓ ingest-source<br/>OUTPUT: corpus_fragments<br/>+ embedding vector(1536)"]
+
+
+    UPLOAD --> ASK["💬 ANÁLISIS CONVERSACIONAL IA<br/>INPUT: pregunta del usuario<br/>sobre ESE espacio"]
+
+
+    subgraph RECURSIVE["🔁 Ciclo recursivo de I/O (el núcleo del oráculo)"]
+        direction TB
+        R1["INPUT: pregunta + historial<br/>de la conversación previa"]
+        R2["getEmbedding(pregunta)"]
+        R3["match_corpus_fragments()<br/>filtrado por academy_id + space_id"]
+        R4["IA compone respuesta<br/>USANDO ese contexto recuperado"]
+        R5["OUTPUT: respuesta al usuario<br/>+ se ANEXA al historial"]
+        R6{"¿Usuario repregunta?"}
+
+
+        R1 --> R2 --> R3 --> R4 --> R5 --> R6
+        R6 -->|Sí| R1
+    end
+
+
+    ASK --> RECURSIVE
+    R6 -->|No, guarda| SAVE["💾 saved_dialogues<br/>INPUT: historial completo<br/>OUTPUT: fila persistida<br/>por user_id"]
+
+
+    style RECURSIVE fill:#534AB7,color:#fff
+    style ACAD_FAIL fill:#B7541D,color:#fff
+    style R6 fill:#1D9E75,color:#fff
