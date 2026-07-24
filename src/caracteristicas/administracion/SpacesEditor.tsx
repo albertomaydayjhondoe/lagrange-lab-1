@@ -1,6 +1,6 @@
 /**
- * Spaces Editor - Editor de Espacios Académicos (academy_spaces)
- * Reemplaza a AxesEditor.tsx para gestionar espacios unificados
+ * Spaces Editor - Editor de Materias Académicas (academy_spaces)
+ * Reemplaza a AxesEditor.tsx para gestionar materias unificadas
  */
 
 import { useState, useEffect } from 'react';
@@ -42,7 +42,7 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
 
     if (error) {
       console.error('Error fetching spaces:', error);
-      toast.error('Error al cargar espacios');
+      toast.error('Error al cargar materias');
     } else {
       setSpaces(data || []);
     }
@@ -84,11 +84,11 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
     const { error } = await supabase.from('academy_spaces').insert([insertData]);
 
     if (error) {
-      toast.error('Error al crear espacio: ' + error.message);
+      toast.error('Error al crear materia: ' + error.message);
       return;
     }
 
-    toast.success('Espacio creado');
+    toast.success('Materia creada');
     setIsCreating(false);
     setParentSpaceId(null);
     setFormData({});
@@ -117,7 +117,7 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
       return;
     }
 
-    toast.success('Espacio actualizado');
+    toast.success('Materia actualizada');
     setEditingId(null);
     setFormData({});
     fetchSpaces();
@@ -126,7 +126,7 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
 
   // Manejar eliminación
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`¿Eliminar espacio "${name}" y todos sus sub-espacios?`)) {
+    if (!confirm(`¿Eliminar materia "${name}" y todas sus sub-materias?`)) {
       return;
     }
 
@@ -141,7 +141,7 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
       return;
     }
 
-    toast.success('Espacio eliminado');
+    toast.success('Materia eliminada');
     fetchSpaces();
     onRefresh?.();
   };
@@ -205,7 +205,7 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
             className="gap-2"
           >
             <Plus className="w-4 h-4" />
-            Nuevo Espacio Raíz
+            Nueva Materia Raíz
           </Button>
           {rootSpaces.length > 0 && (
             <Select onValueChange={(v) => {
@@ -214,7 +214,7 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
               setFormData({ is_active: true, color: '#8B5CF6', icon: 'Folder' });
             }}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Añadir sub-espacio..." />
+                <SelectValue placeholder="Añadir sub-materia..." />
               </SelectTrigger>
               <SelectContent>
                 {rootSpaces.map(space => (
@@ -232,13 +232,13 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
       {isCreating && (
         <div className="p-4 border border-primary rounded-lg bg-card space-y-4">
           <h3 className="font-mono text-sm text-primary">
-            {parentSpaceId ? `Nuevo Sub-espacio de ${spaces.find(s => s.id === parentSpaceId)?.name}` : 'Nuevo Espacio Raíz'}
+            {parentSpaceId ? `Nueva Sub-materia de ${spaces.find(s => s.id === parentSpaceId)?.name}` : 'Nueva Materia Raíz'}
           </h3>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <Label>Nombre *</Label>
               <Input
-                placeholder="Nombre del espacio"
+                placeholder="Nombre de la materia"
                 value={formData.name || ''}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
@@ -290,7 +290,7 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
             <div className="md:col-span-2">
               <Label>Descripción</Label>
               <Textarea
-                placeholder="Descripción del espacio..."
+                placeholder="Descripción de la materia..."
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
@@ -307,7 +307,7 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
         </div>
       )}
 
-      {/* Lista de espacios */}
+      {/* Lista de materias */}
       <div className="space-y-2">
         {rootSpaces.map((space) => {
           const children = getChildSpaces(space.id);
@@ -315,7 +315,7 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
 
           return (
             <div key={space.id} className="space-y-1">
-              {/* Espacio principal */}
+              {/* Materia principal */}
               <div
                 className="p-3 border border-border rounded-lg bg-card flex items-center gap-3"
                 style={{ borderLeftColor: space.color, borderLeftWidth: 4 }}
@@ -397,7 +397,7 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
                 )}
               </div>
 
-              {/* Sub-espacios */}
+              {/* Sub-materias */}
               {children.length > 0 && isExpanded && (
                 <div className="ml-8 space-y-1 border-l-2 border-muted pl-4">
                   {children.map(child => (
@@ -440,9 +440,9 @@ export const SpacesEditor = ({ onRefresh, isAdmin, academyId }: SpacesEditorProp
       {rootSpaces.length === 0 && !isCreating && (
         <div className="text-center py-8 text-muted-foreground">
           <Folder className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p>No hay espacios configurados</p>
+          <p>No hay materias configuradas</p>
           {isAdmin && (
-            <p className="text-sm mt-1">Crea tu primer espacio para organizar el contenido</p>
+            <p className="text-sm mt-1">Crea tu primera materia para organizar el contenido</p>
           )}
         </div>
       )}

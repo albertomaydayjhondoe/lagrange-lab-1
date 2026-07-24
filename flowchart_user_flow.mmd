@@ -13,7 +13,7 @@ flowchart TD
     ACAD_CHECK -->|No| ACAD_FAIL["❌ Rechazado por RLS"]
 
 
-    ACAD_OUT --> SPACE_IN["📚 INGRESO DE MATERIA/ESPACIO<br/>INPUT: nombre libre<br/>('Ética', 'Bioquímica'...)"]
+    ACAD_OUT --> SPACE_IN["📚 INGRESO DE MATERIA<br/>INPUT: nombre libre<br/>('Ética', 'Bioquímica'...)"]
 
 
     SPACE_IN --> SPACE_OUT["OUTPUT: fila en academy_spaces<br/>(o thematic_axes, según<br/>qué migración esté aplicada)<br/>academy_id = la creada arriba"]
@@ -22,14 +22,14 @@ flowchart TD
     SPACE_OUT --> UPLOAD["📤 Carga opcional de material RAG<br/>INPUT: texto/PDF/URL<br/>↓ ingest-source<br/>OUTPUT: corpus_fragments<br/>+ embedding vector(1536)"]
 
 
-    UPLOAD --> ASK["💬 ANÁLISIS CONVERSACIONAL IA<br/>INPUT: pregunta del usuario<br/>sobre ESE espacio"]
+    UPLOAD --> ASK["💬 ANÁLISIS CONVERSACIONAL IA<br/>INPUT: pregunta del usuario<br/>sobre ESA materia"]
 
 
     subgraph RECURSIVE["🔁 Ciclo recursivo de I/O (el núcleo del oráculo)"]
         direction TB
         R1["INPUT: pregunta + historial<br/>de la conversación previa"]
         R2["getEmbedding(pregunta)"]
-        R3["match_corpus_fragments()<br/>filtrado por academy_id + space_id"]
+        R3["match_corpus_fragments()<br/>filtrado por academy_id + materia_id"]
         R4["IA compone respuesta<br/>USANDO ese contexto recuperado"]
         R5["OUTPUT: respuesta al usuario<br/>+ se ANEXA al historial"]
         R6{"¿Usuario repregunta?"}

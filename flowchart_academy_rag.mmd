@@ -3,9 +3,9 @@ flowchart TD
     START(["👤 Owner/Admin configura academia<br/>NUEVA (cualquier materia)"])
     
     %% Configuración inicial
-    CONFIG["📦 Crea espacio dinámico:<br/>nombre libre (ej. 'Derecho Constitucional',<br/>'Bioquímica', 'Historia del Arte'...)<br/>— sin lista fija de ejes"]
+    CONFIG["📦 Crea materia dinámica:<br/>nombre libre (ej. 'Derecho Constitucional',<br/>'Bioquímica', 'Historia del Arte'...)<br/>— sin lista fija de ejes"]
     
-    ASSIGN["👨‍🏫 Asigna tutor(es) IA al espacio<br/>+ define system prompt del tutor<br/>(persona/tono configurable por academia)"]
+    ASSIGN["👨‍🏫 Asigna tutor(es) IA a la materia<br/>+ define system prompt del tutor<br/>(persona/tono configurable por academia)"]
     
     UPLOAD["📤 Estudiante o tutor sube material<br/>de investigación — CUALQUIER formato"]
     
@@ -29,9 +29,9 @@ flowchart TD
     
     EMBED["🔢 getEmbedding() por fragmento<br/>+ registro del modelo usado<br/>(AI_EMBEDDING_MODEL)"]
     
-    STORE["💾 corpus_fragments:<br/>academy_id · space_id (dinámico)<br/>+ TODA metadata de procedencia<br/>+ embedding vector"]
+    STORE["💾 corpus_fragments:<br/>academy_id · materia_id (dinámico)<br/>+ TODA metadata de procedencia<br/>+ embedding vector"]
     
-    READY["✅ Material listo para investigación<br/>dentro de ESE espacio, ESA academia"]
+    READY["✅ Material listo para investigación<br/>dentro de ESA materia, ESA academia"]
     
     %% Investigación
     RESEARCH["🔍 Estudiante inicia modo<br/>'Investigar sobre [tema]'<br/>con el tutor IA"]
@@ -41,7 +41,7 @@ flowchart TD
         direction TB
         R1["📝 Estudiante pregunta:<br/>'¿qué dicen mis fuentes sobre X?'"]
         R2["🔢 Genera embedding de la pregunta"]
-        R3["🎯 match_corpus_fragments filtrado por<br/>academy_id + space_id dinámico<br/>→ N fragmentos más relevantes<br/>DE ENTRE TODOS LOS FORMATOS"]
+        R3["🎯 match_corpus_fragments filtrado por<br/>academy_id + materia_id dinámico<br/>→ N fragmentos más relevantes<br/>DE ENTRE TODOS LOS FORMATOS"]
         R4["🤖 Tutor IA compone respuesta<br/>usando SOLO esos fragmentos<br/>como contexto (no memoria genérica)"]
         R5["📤 Respuesta con<br/>procedencia adjunta por afirmación"]
         

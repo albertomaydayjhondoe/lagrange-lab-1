@@ -4,7 +4,7 @@
  * Implementación del flowchart:
  * 1. Registro/Auth
  * 2. Selección de Academia
- * 3. Espacio de Materia (dinámico)
+ * 3. Espacio de Materia (dinámico) - REEMPLAZADO por materias
  * 4. Upload de Material RAG
  * 5. Investigación con Tutor IA (tutoring-oracle)
  * 6. Guardado de Diálogos
@@ -92,13 +92,13 @@ export function ResearchLab() {
 
   const loadSpaces = async (academyId: string) => {
     const { data, error } = await supabase.from('academy_spaces').select('id, name, academy_id').eq('academy_id', academyId).eq('is_active', true).order('name');
-    if (error) { toast.error('Error cargando espacios'); return; }
+    if (error) { toast.error('Error cargando materias'); return; }
     setSpaces(data || []);
   };
 
   const handleUpload = async () => {
     if (!uploadContent.trim() && !uploadUrl.trim()) { toast.error('Ingresa contenido o URL'); return; }
-    if (!selectedAcademy || !selectedSpace || !user) { toast.error('Selecciona academia y espacio primero'); return; }
+    if (!selectedAcademy || !selectedSpace || !user) { toast.error('Selecciona academia y materia primero'); return; }
     setIsUploading(true);
     try {
       await supabase.functions.invoke('ingest-source', {
@@ -227,7 +227,7 @@ function SpaceCard({ spaces, selected, onSelect, onBack }: { spaces: Space[]; se
       <CardContent>
         <div className="grid gap-3">
           {spaces.map(s => <Button key={s.id} variant={selected?.id === s.id ? 'default' : 'outline'} onClick={() => onSelect(s)}>{s.name}</Button>)}
-          {spaces.length === 0 && <div className="text-center py-4"><p className="text-muted-foreground mb-3">No hay espacios</p><Button onClick={onBack} variant="secondary">← Volver</Button></div>}
+          {spaces.length === 0 && <div className="text-center py-4"><p className="text-muted-foreground mb-3">No hay materias</p><Button onClick={onBack} variant="secondary">← Volver</Button></div>}
         </div>
       </CardContent>
     </Card>

@@ -50,7 +50,7 @@ export function getCurrentAcademyId(): string {
 }
 
 /**
- * Invalida el cache de espacios para una academia
+ * Invalida el cache de materias para una academia
  */
 export function invalidateSpacesCache(academyId?: string) {
   const id = academyId || getCurrentAcademyId();
@@ -62,7 +62,7 @@ export function invalidateSpacesCache(academyId?: string) {
 // =============================================================================
 
 /**
- * Obtiene todos los espacios de una academia
+ * Obtiene todas las materias de una academia
  */
 export async function fetchAcademySpaces(academyId?: string): Promise<AcademySpace[]> {
   const id = academyId || getCurrentAcademyId();
@@ -88,7 +88,7 @@ export async function fetchAcademySpaces(academyId?: string): Promise<AcademySpa
 }
 
 /**
- * Obtiene espacios de nivel raíz (sin parent) - equivalente a thematic_axes originales
+ * Obtiene materias de nivel raíz (sin parent) - equivalente a thematic_axes originales
  */
 export async function fetchRootSpaces(academyId?: string): Promise<AcademySpace[]> {
   const spaces = await fetchAcademySpaces(academyId);
@@ -96,7 +96,7 @@ export async function fetchRootSpaces(academyId?: string): Promise<AcademySpace[
 }
 
 /**
- * Obtiene sub-espacios de un espacio padre - equivalente a topics
+ * Obtiene sub-materias de una materia padre - equivalente a topics
  */
 export async function fetchChildSpaces(parentSpaceId: string, academyId?: string): Promise<AcademySpace[]> {
   const spaces = await fetchAcademySpaces(academyId);
@@ -104,12 +104,12 @@ export async function fetchChildSpaces(parentSpaceId: string, academyId?: string
 }
 
 /**
- * Obtiene espacios en formato jerárquico
+ * Obtiene materias en formato jerárquico
  */
 export async function fetchSpacesHierarchy(academyId?: string): Promise<AcademySpaceWithChildren[]> {
   const spaces = await fetchAcademySpaces(academyId);
   
-  // Espacios raíz con sus hijos
+  // Materias raíz con sus hijos
   const rootSpaces = spaces.filter(s => !s.parent_space_id);
   
   return rootSpaces.map(root => ({
@@ -119,7 +119,7 @@ export async function fetchSpacesHierarchy(academyId?: string): Promise<AcademyS
 }
 
 /**
- * Obtiene un espacio por ID
+ * Obtiene una materia por ID
  */
 export async function fetchSpaceById(spaceId: string): Promise<AcademySpace | null> {
   const { data, error } = await supabase
@@ -137,7 +137,7 @@ export async function fetchSpaceById(spaceId: string): Promise<AcademySpace | nu
 }
 
 /**
- * Obtiene un espacio por slug
+ * Obtiene una materia por slug
  */
 export async function fetchSpaceBySlug(slug: string, academyId?: string): Promise<AcademySpace | null> {
   const id = academyId || getCurrentAcademyId();
@@ -158,7 +158,7 @@ export async function fetchSpaceBySlug(slug: string, academyId?: string): Promis
 }
 
 /**
- * Obtiene espacios de un tipo específico (source_table)
+ * Obtiene materias de un tipo específico (source_table)
  */
 export async function fetchSpacesByType(
   sourceTable: 'thematic_axes' | 'subjects',
@@ -193,7 +193,7 @@ export interface UpdateSpaceInput {
 }
 
 /**
- * Crea un nuevo espacio
+ * Crea una nueva materia
  */
 export async function createAcademySpace(
   input: CreateSpaceInput,
@@ -233,7 +233,7 @@ export async function createAcademySpace(
 }
 
 /**
- * Actualiza un espacio existente
+ * Actualiza una materia existente
  */
 export async function updateAcademySpace(
   spaceId: string,
@@ -261,7 +261,7 @@ export async function updateAcademySpace(
 }
 
 /**
- * Elimina un espacio
+ * Elimina una materia
  */
 export async function deleteAcademySpace(spaceId: string): Promise<{ success: boolean; error?: string }> {
   const { error } = await supabase
@@ -297,7 +297,7 @@ function generateSlug(name: string): string {
 }
 
 /**
- * Obtiene el color de un espacio por ID
+ * Obtiene el color de una materia por ID
  */
 export async function getSpaceColor(spaceId: string): Promise<string> {
   const space = await fetchSpaceById(spaceId);
@@ -305,15 +305,15 @@ export async function getSpaceColor(spaceId: string): Promise<string> {
 }
 
 /**
- * Obtiene el nombre de un espacio por ID
+ * Obtiene el nombre de una materia por ID
  */
 export async function getSpaceName(spaceId: string): Promise<string> {
   const space = await fetchSpaceById(spaceId);
-  return space?.name || 'Sin espacio';
+  return space?.name || 'Sin materia';
 }
 
 /**
- * Formatea un espacio para mostrar (con jerarquía si aplica)
+ * Formatea una materia para mostrar (con jerarquía si aplica)
  */
 export function formatSpaceName(space: AcademySpace, parentName?: string): string {
   if (parentName) {
