@@ -67,7 +67,7 @@ const Lab = ({ academyId }: LabProps) => {
               El Laboratorio
             </h1>
             <p className="text-muted-foreground font-serif max-w-2xl mx-auto text-sm md:text-base">
-              Este no es un espacio para encontrar consuelo. Es un espejo 
+              Este no es un lugar para encontrar consuelo. Es un espejo 
               dialéctico que te devuelve preguntas incómodas, no respuestas 
               tranquilizadoras.
             </p>

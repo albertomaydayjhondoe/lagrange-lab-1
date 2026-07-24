@@ -2,7 +2,7 @@ import { MermaidDiagram } from '@/components/MermaidDiagram';
 
 const UPLOAD_FLOWCHART = `
 flowchart TD
-    START(["Usuario (miembro de 'Sócrates')<br/>entra al espacio 'Ética'"]) --> UPLOAD_UI["Panel de Fuentes RAG<br/>(pestaña 'Fuentes' del espacio)"]
+    START(["Usuario (miembro de 'Sócrates')<br/>entra a la materia 'Ética'"]) --> UPLOAD_UI["Panel de Fuentes RAG<br/>(pestaña 'Fuentes' de la materia)"]
 
     UPLOAD_UI --> PICK["Sube su material de estudio:<br/>apuntes.pdf / notas.txt / resumen.md"]
 
@@ -20,7 +20,7 @@ flowchart TD
     INGEST --> INGEST_FLOW
     INGEST_FLOW --> STATUS["UI actualiza estado:<br/>'procesando' → 'procesada'<br/>(badge visible en la lista de fuentes)"]
 
-    STATUS --> NOTIFY["El material queda disponible<br/>para CUALQUIER consulta futura<br/>en el espacio 'Ética' de Sócrates"]
+    STATUS --> NOTIFY["El material queda disponible<br/>para CUALQUIER consulta futura<br/>en la materia 'Ética' de Sócrates"]
 
     NOTIFY --> DIRECTOR_ENTERS["La dirección de Sócrates<br/>(owner/admin de esa academia)<br/>entra a revisar el material subido"]
 
@@ -41,7 +41,7 @@ flowchart TD
 
     CONVERSATION --> DECISION{"¿La dirección aprueba<br/>el material y las preguntas<br/>sugeridas?"}
 
-    DECISION -->|Sí| PUBLISH["Fragmento queda marcado<br/>status='active'<br/>Preguntas sugeridas se insertan<br/>en socratic_questions del espacio"]
+    DECISION -->|Sí| PUBLISH["Fragmento queda marcado<br/>status='active'<br/>Preguntas sugeridas se insertan<br/>en socratic_questions de la materia"]
     DECISION -->|No, necesita ajuste| REJECT["Fragmento queda<br/>status='pending'<br/>o se solicita re-subir"]
 
     PUBLISH --> IMPACT["A partir de ahora, CUALQUIER<br/>estudiante que pregunte al oráculo<br/>sobre 'Ética' puede recibir contexto<br/>de este material aprobado"]

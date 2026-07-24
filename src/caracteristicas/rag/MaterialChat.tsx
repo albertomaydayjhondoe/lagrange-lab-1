@@ -14,6 +14,7 @@ import { Badge } from '@/compartido/ui/badge';
 import { Send, Sparkles, BookOpen, Quote, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/compartido/lib/supabaseClient';
+import { tutoringChat, ProvenanceEntry } from '@/utils/aiService';
 
 interface ChatMessage {
   id: string;
@@ -219,44 +220,38 @@ O simplemente pregúntame lo que quieras y buscaré en el material.`,
     setIsLoading(true);
 
     try {
-      const relevantFragments = await searchFragments(userMessage.content);
+      // Build conversation history for tutoring-oracle
+      const conversationHistory = messages
+        .filter(m => m.role === 'assistant')
+        .map(m => ({ role: 'user' as const, content: m.content }));
 
-      let ragContext = '';
-      if (relevantFragments.length > 0) {
-        ragContext = '\n\n## FRAGMENTOS RECUPERADOS:\n' +
-          relevantFragments.map((f, i) => 
-            `[Fragmento ${i + 1}] (${f.source_file})\n"${f.content}"\nEjes: ${f.axis.join(', ')} | Tension: ${f.tension}`
-          ).join('\n\n') + '\n\n---\n';
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('https://naikdjreibbugblihgwl.supabase.co/functions/v1/ai-dialogue-summary', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': session ? `Bearer ${session.access_token}` : ''
-        },
-        body: JSON.stringify({
-          action: 'chat',
-          context: ragContext + '\n\nPregunta: ' + userMessage.content,
+      // Use tutoring-oracle for RAG chat with provenance
+      const result = await tutoringChat(
+        academyId,
+        spaceId,
+        userMessage.content,
+        conversationHistory,
+        {
           systemPrompt: RAG_CHAT_PROMPT,
-          academyId
-        })
-      });
+          includeRag: true,
+          maxSources: 5
+        }
+      );
 
-      let content: string;
-      if (response.ok) {
-        const data = await response.json();
-        content = data.result?.content || data.content || generateFallbackResponse(userMessage.content, relevantFragments);
-      } else {
-        content = generateFallbackResponse(userMessage.content, relevantFragments);
-      }
+      // Convert provenance to corpus fragments for display
+      const provenanceFragments: CorpusFragment[] = result.provenance.map((p: ProvenanceEntry) => ({
+        id: p.fragment_id,
+        source_file: p.source_file,
+        content: p.source_content,
+        axis: [],
+        tension: 0.5
+      }));
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content,
-        sources: relevantFragments,
+        content: result.response,
+        sources: provenanceFragments.length > 0 ? provenanceFragments : undefined,
         timestamp: new Date()
       };
 
@@ -265,10 +260,13 @@ O simplemente pregúntame lo que quieras y buscaré en el material.`,
       console.error('Chat error:', err);
       toast.error('Error en el chat');
 
+      // Fallback to basic response
+      const relevantFragments = await searchFragments(userMessage.content);
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: generateFallbackResponse(input, []),
+        content: generateFallbackResponse(input, relevantFragments),
+        sources: relevantFragments,
         timestamp: new Date()
       }]);
     } finally {

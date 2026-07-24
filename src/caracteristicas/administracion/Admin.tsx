@@ -470,7 +470,7 @@ const Admin = () => {
                   >
                     <h2 className="font-serif text-xl mb-4">Ejes Temáticos</h2>
                     <p className="text-sm text-muted-foreground mb-6">
-                      Gestiona los espacios de contenido. Unifican ejes socráticos y materias de tutorías.
+                      Gestiona las materias de contenido. Unifican ejes socráticos y áreas de tutorías.
                     </p>
                     <SpacesEditor spaces={spaces} onRefresh={fetchData} isAdmin={isAdmin} academyId={academyId || ''} />
                   </motion.div>
@@ -623,7 +623,7 @@ const Admin = () => {
               >
                 <div className="p-4 rounded-lg bg-card border border-border">
                   <span className="text-3xl font-mono text-lagrange-tension">{spaces.length}</span>
-                  <p className="text-sm text-muted-foreground">Espacios</p>
+                  <p className="text-sm text-muted-foreground">Materias</p>
                 </div>
                 <div className="p-4 rounded-lg bg-card border border-border">
                   <span className="text-3xl font-mono text-primary">{nodes.length}</span>
