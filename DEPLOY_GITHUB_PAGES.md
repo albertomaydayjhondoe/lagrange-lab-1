@@ -3,10 +3,12 @@
 ## Credenciales Supabase (Producción)
 
 ```env
-VITE_SUPABASE_URL=https://rwfqswiwalygzfojyeqk.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3ZnFzd2l3YWx5Z3pmb2p5ZXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2ODE0NTEsImV4cCI6MjA4MjI1NzQ1MX0.qQ5AqWm-peTqZYXNFMAO2qOLUDkW5Dv2zb6jdwCfmSM
-VITE_SUPABASE_PROJECT_ID=rwfqswiwalygzfojyeqk
+VITE_SUPABASE_URL=https://naikdjreibbugblihgwl.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
+VITE_SUPABASE_PROJECT_ID=naikdjreibbugblihgwl
 ```
+
+> ⚠️ **IMPORTANT**: This project reference is `naikdjreibbugblihgwl`. All Supabase Edge Functions (including AI functions) are deployed to this project. DO NOT use a different project reference - AI functions will fail.
 
 ## Paso 1: Clonar el Repositorio
 
@@ -27,9 +29,9 @@ Crea un archivo `.env.production` en la raíz del proyecto:
 
 ```bash
 # .env.production
-VITE_SUPABASE_URL=https://rwfqswiwalygzfojyeqk.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3ZnFzd2l3YWx5Z3pmb2p5ZXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2ODE0NTEsImV4cCI6MjA4MjI1NzQ1MX0.qQ5AqWm-peTqZYXNFMAO2qOLUDkW5Dv2zb6jdwCfmSM
-VITE_SUPABASE_PROJECT_ID=rwfqswiwalygzfojyeqk
+VITE_SUPABASE_URL=https://naikdjreibbugblihgwl.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
+VITE_SUPABASE_PROJECT_ID=naikdjreibbugblihgwl
 ```
 
 ## Paso 4: Configurar vite.config.ts para GitHub Pages
@@ -165,9 +167,9 @@ jobs:
 
 | Secret Name | Value |
 |-------------|-------|
-| `VITE_SUPABASE_URL` | `https://rwfqswiwalygzfojyeqk.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3ZnFzd2l3YWx5Z3pmb2p5ZXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2ODE0NTEsImV4cCI6MjA4MjI1NzQ1MX0.qQ5AqWm-peTqZYXNFMAO2qOLUDkW5Dv2zb6jdwCfmSM` |
-| `VITE_SUPABASE_PROJECT_ID` | `rwfqswiwalygzfojyeqk` |
+| `VITE_SUPABASE_URL` | `https://naikdjreibbugblihgwl.supabase.co` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc` |
+| `VITE_SUPABASE_PROJECT_ID` | `naikdjreibbugblihgwl` |
 
 ## Paso 7: Configurar GitHub Pages
 
@@ -179,7 +181,7 @@ jobs:
 
 Añade tu dominio de GitHub Pages en la configuración de Supabase:
 
-1. Ve a https://supabase.com/dashboard/project/rwfqswiwalygzfojyeqk/auth/url-configuration
+1. Ve a https://supabase.com/dashboard/project/naikdjreibbugblihgwl/auth/url-configuration
 2. En "Site URL", añade: `https://TU_USUARIO.github.io/TU_REPO`
 3. En "Redirect URLs", añade: `https://TU_USUARIO.github.io/TU_REPO/**`
 
@@ -187,10 +189,10 @@ Añade tu dominio de GitHub Pages en la configuración de Supabase:
 
 | Recurso | URL |
 |---------|-----|
-| Supabase Dashboard | https://supabase.com/dashboard/project/rwfqswiwalygzfojyeqk |
-| Edge Functions | https://rwfqswiwalygzfojyeqk.supabase.co/functions/v1/ |
-| Storage | https://rwfqswiwalygzfojyeqk.supabase.co/storage/v1/ |
-| Auth | https://rwfqswiwalygzfojyeqk.supabase.co/auth/v1/ |
+| Supabase Dashboard | https://supabase.com/dashboard/project/naikdjreibbugblihgwl |
+| Edge Functions | https://naikdjreibbugblihgwl.supabase.co/functions/v1/ |
+| Storage | https://naikdjreibbugblihgwl.supabase.co/storage/v1/ |
+| Auth | https://naikdjreibbugblihgwl.supabase.co/auth/v1/ |
 
 ## 🔧 Edge Functions Disponibles
 
@@ -214,8 +216,8 @@ Después de desplegar, verifica:
 
 ```bash
 # Probar conexión a Supabase
-curl https://rwfqswiwalygzfojyeqk.supabase.co/rest/v1/topology_nodes?select=id,label&limit=1 \
-  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3ZnFzd2l3YWx5Z3pmb2p5ZXFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2ODE0NTEsImV4cCI6MjA4MjI1NzQ1MX0.qQ5AqWm-peTqZYXNFMAO2qOLUDkW5Dv2zb6jdwCfmSM"
+curl https://naikdjreibbugblihgwl.supabase.co/rest/v1/topology_nodes?select=id,label&limit=1 \
+  -H "apikey: sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc"
 ```
 
 Si recibes datos JSON, ¡la conexión funciona!

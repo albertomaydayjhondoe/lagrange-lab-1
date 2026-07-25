@@ -127,6 +127,92 @@ VITE_SUPABASE_URL=https://naikdjreibbugblihgwl.supabase.co
 
 ---
 
+## 🤖 AI CONFIGURATION - Edge Functions
+
+### ⚠️ CRITICAL: AI Secrets Required
+
+Para que las funciones de IA funcionen, debes configurar los siguientes secrets en Supabase:
+
+```bash
+# Instalar Supabase CLI
+npm install supabase@1 --save-dev
+
+# Login a Supabase
+npx supabase login
+
+# Configurar secrets
+npx supabase secrets set "AI_API_KEY=<tu_openai_api_key>" --project-ref naikdjreibbugblihgwl
+npx supabase secrets set "AI_GATEWAY_URL=https://api.openai.com/v1" --project-ref naikdjreibbugblihgwl
+npx supabase secrets set "AI_CHAT_MODEL=gpt-4o-mini" --project-ref naikdjreibbugblihgwl
+npx supabase secrets set "AI_EMBEDDING_MODEL=text-embedding-3-small" --project-ref naikdjreibbugblihgwl
+```
+
+### Secrets Obligatorios
+
+| Secret | Descripción | Default |
+|--------|-------------|---------|
+| `AI_API_KEY` | API key de OpenAI (requerido) | - |
+| `AI_GATEWAY_URL` | URL del gateway de IA | `https://api.openai.com/v1` |
+| `AI_CHAT_MODEL` | Modelo para chat | `gpt-4o-mini` |
+| `AI_EMBEDDING_MODEL` | Modelo para embeddings | `text-embedding-3-small` |
+
+### Secrets Opcionales
+
+| Secret | Descripción | Default |
+|--------|-------------|---------|
+| `ELEVENLABS_API_KEY` | API key de ElevenLabs (para TTS) | - |
+
+### Funciones que Requieren AI_API_KEY
+
+- `socratic-oracle`
+- `tutoring-oracle`
+- `ai-nodes`
+- `ai-edges`
+- `ai-questions`
+- `ai-episodes`
+- `ai-curate-text`
+- `ai-dialogue-summary`
+- `generate-narrative`
+- `generate-ambient-narrative`
+- `eco-oracle`
+- `fog-teaser`
+- `regenerate-topology-delta`
+- `ingest-source`
+
+### Script Automatizado
+
+Ejecuta el script de configuración:
+```bash
+./setup-secrets.sh
+```
+
+### Errores Comunes
+
+| Error | Causa | Solución |
+|-------|-------|----------|
+| `AI_API_KEY is not configured` | Secret no configurado | Configurar `AI_API_KEY` en Supabase |
+| `AI_API_KEY no configurada` | Secret no configurado | Configurar `AI_API_KEY` en Supabase |
+| `UNAUTHORIZED_INVALID_JWT_FORMAT` | Token inválido | Verificar JWT del usuario |
+
+### Verificar Configuración
+
+```bash
+# Verificar que las funciones están desplegadas
+npx supabase functions list --project-ref naikdjreibbugblihgwl
+
+# Probar función simple
+curl "https://naikdjreibbugblihgwl.supabase.co/functions/v1/list-academies"
+```
+
+### Dashboard de Secrets
+
+Para configurar secrets manualmente:
+1. Ve a: https://supabase.com/dashboard/project/naikdjreibbugblihgwl/functions/secrets
+2. Click en "New Secret"
+3. Añade cada secret de la tabla anterior
+
+---
+
 ## 🆕 COMPONENTES NUEVOS (2026-07-21)
 
 ### MaterialChat.tsx

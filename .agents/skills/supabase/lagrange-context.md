@@ -7,6 +7,25 @@ This file provides specific context for the Lagrange Lab project.
 **Project ID:** `naikdjreibbugblihgwl`
 **Project URL:** https://naikdjreibbugblihgwl.supabase.co
 
+## AI Configuration (Edge Functions Secrets)
+
+All AI functions require the following secrets to be configured via `supabase secrets set`:
+
+| Secret | Required | Default |
+|--------|----------|---------|
+| `AI_API_KEY` | **YES** | - |
+| `AI_GATEWAY_URL` | No | `https://api.openai.com/v1` |
+| `AI_CHAT_MODEL` | No | `gpt-4o-mini` |
+| `AI_EMBEDDING_MODEL` | No | `text-embedding-3-small` |
+| `ELEVENLABS_API_KEY` | No (for TTS) | - |
+
+**Functions requiring AI_API_KEY:**
+- socratic-oracle, tutoring-oracle, ai-nodes, ai-edges, ai-questions
+- ai-episodes, ai-curate-text, ai-dialogue-summary, generate-narrative
+- generate-ambient-narrative, eco-oracle, fog-teaser, regenerate-topology-delta, ingest-source
+
+**Error:** If `AI_API_KEY` is not set, functions will return: `"AI_API_KEY is not configured"` or `"AI_API_KEY no configurada"`
+
 ## Tables
 
 ### corpus_fragments
