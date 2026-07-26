@@ -1,176 +1,183 @@
-# Supabase CLI (v1)
+# Lagrange Lab
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main)
+Plataforma de aprendizaje socrático con academias multi-tenant, tutorías con IA, y sistema RAG (Retrieval-Augmented Generation) para contexto semántico vivo.
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+## Sistema
 
-This repository contains all the functionality for Supabase CLI.
+**Academias socráticas + materias**: Cada academia es un espacio de aprendizaje con su propia comunidad, materiales RAG, y conversaciones con el oráculo socrático. Las materias (Subjects/Topics) son el concepto unificado que sirve tanto para tutorías como para el oráculo.
 
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Pushing your local changes to production
-- [x] Create and Deploy Supabase Functions
-- [ ] Manage your Supabase Account
-- [x] Manage your Supabase Projects
-- [x] Generating types directly from your database schema
-- [ ] Generating API and validation schemas from your database
+**RAG**: El sistema de Retrieval-Augmented Generation permite subir materiales (PDFs, textos, links) que se procesan con embeddings para buscar contexto semántico relevante antes de generar respuestas.
 
-## Getting started
+**Capa viva**: Los materiales, sesiones de tutoría, y el corpus narrativo se actualizan dinámicamente. La topología de nodos y aristas representa el mapa del conocimiento.
 
-### Install the CLI
+## Arquitectura
 
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
+```
+lagrange-lab-1/
+├── src/
+│   ├── caracteristicas/
+│   │   ├── academia/         # Gestión de academias
+│   │   ├── administracion/   # Panel de admin
+│   │   ├── autenticacion/    # Auth y perfiles
+│   │   ├── oraculo/          # Oráculo socrático
+│   │   ├── podcast/          # Generación de podcasts
+│   │   ├── rag/              # Chat con materiales
+│   │   ├── research/         # Investigación
+│   │   ├── topologia/        # Mapa de conocimiento
+│   │   └── tutorias/         # Sistema de tutorías
+│   ├── compartico/           # Componentes compartidos
+│   ├── lib/                  # Supabase client
+│   └── hooks/                # React hooks
+├── supabase/
+│   ├── functions/            # Edge Functions (Deno)
+│   │   ├── socratic-oracle/  # Genera preguntas socráticas con RAG
+│   │   ├── tutoring-oracle/  # Chat de tutorías con RAG
+│   │   ├── ingest-source/    # Procesa materiales y genera embeddings
+│   │   ├── match_corpus_fragments/ # Búsqueda vectorial
+│   │   ├── book-session/     # Reserva de tutorías
+│   │   ├── create-session/   # Crear sesión de tutoría
+│   │   ├── list-sessions/    # Listar sesiones disponibles
+│   │   └── [otras funciones]
+│   └── migrations/           # Schema SQL
+└── public/                   # Assets estáticos
+```
+
+## Esquema de tablas (information_schema.tables)
+
+### Tablas Core
+| Tabla | Descripción |
+|-------|-------------|
+| `academies` | Academias multi-tenant con owner y configuración |
+| `academy_members` | Membresías con roles (admin, member, tutor) |
+| `profiles` | Perfiles extendidos con roles de tutoría |
+| `platform_admins` | Adminstradores de plataforma |
+
+### Topología
+| Tabla | Descripción |
+|-------|-------------|
+| `topology_nodes` | Nodos del mapa de conocimiento |
+| `topology_edges` | Conexiones entre nodos |
+| `thematic_axes` | Ejes temáticos (legacy - migrando a subjects) |
+
+### Corpus y RAG
+| Tabla | Descripción |
+|-------|-------------|
+| `corpus_fragments` | Fragmentos narrativos con embeddings vector(1536) |
+| `socratic_questions` | Preguntas socráticas por eje |
+| `podcast_episodes` | Episodios de podcast generados |
+| `saved_dialogues` | Conversaciones guardadas |
+
+### Tutorías
+| Tabla | Descripción |
+|-------|-------------|
+| `subjects` | Materias (concepto unificado) |
+| `topics` | Temas dentro de cada materia |
+| `materials` | Materiales educativos con embeddings |
+| `tutoring_sessions` | Sesiones programadas |
+| `session_bookings` | Reservas de estudiantes |
+| `payments` | Pagos mock (Stripe simulado) |
+| `tutoring_history` | Historial de interacciones IA |
+| `tutor_availability` | Disponibilidad de tutores |
+| `subscriptions` | Suscripciones de usuarios |
+
+## Edge Functions
+
+| Función | JWT | Descripción |
+|---------|-----|-------------|
+| `socratic-oracle` | ✅ | Genera pregunta socrática con contexto RAG |
+| `tutoring-oracle` | ✅ | Chat de tutoría con materiales |
+| `ingest-source` | ✅ | Procesa materiales y genera embeddings |
+| `match_corpus_fragments` | ✅ | RPC de búsqueda vectorial |
+| `list-academies` | ❌ | Lista academias públicas |
+| `get-academy` | ❌ | Detalle de academia |
+| `list-sessions` | ❌ | Lista sesiones disponibles |
+| `book-session` | ✅ | Reserva una sesión |
+| `create-session` | ✅ | Crea sesión de tutoría |
+| `cancel-booking` | ✅ | Cancela reserva |
+| `process-payment` | ✅ | Procesa pago mock |
+| `regenerate-topology-delta` | ✅ | Regenera delta de topología |
+| `fog-teaser` | ✅ | Genera teaser de niebla |
+| `generate-ambient-narrative` | ✅ | Narrativa ambiental |
+| `oracle-echo` | ✅ | Eco del oráculo |
+| `ai-*` | ✅ | Múltiples funciones de IA |
+
+## Changelog de decisiones clave
+
+### Fusión de ejes + materias → "materia" como concepto único
+- **Antes**: `thematic_axes` era un catálogo separado del modelo de tutorías (`subjects`)
+- **Decisión**: Unificar en `subjects` con `academy_id` para scope de academia
+- **Impacto**: Una materia creada en una academia aparece como opción de eje en el oráculo y como materia reservable en tutorías
+
+### Modelo de owner de plataforma (platform_admins)
+- **Antes**: Sin mecanismo para admins de plataforma
+- **Decisión**: Crear tabla `platform_admins` separada de `profiles`
+- **RLS**: SELECT en `platform_admins` requiere membership en academia con rol admin
+
+### RLS recursion fix
+- **Problema**: Policies con subqueries a `academy_members` causaban recursión infinita
+- **Solución**: Usar `WITH SECURITY DEFINER` en funciones helper + RLS bypass en contextos seguros
+
+## Desarrollo local
 
 ```bash
-npm i supabase --save-dev
+# Instalar dependencias
+npm install
+
+# Desarrollo con Vite
+npm run dev
+
+# Build producción
+npm run build
+
+# Lint
+npm run lint
+
+# Reset base de datos local (requiere CLI de Supabase)
+npx supabase db reset
+
+# Aplicar migraciones locales
+npx supabase db push
 ```
 
-To install the beta release channel:
+## Deploy
 
+### Supabase (Backend)
 ```bash
-npm i supabase@beta --save-dev
+# Link al proyecto
+npx supabase link --project-ref <project-ref>
+
+# Push migraciones a producción
+npx supabase db push
+
+# Deploy edge functions
+npx supabase functions deploy
 ```
 
-> **Note**
-For Bun users, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
-
-<details>
-  <summary><b>macOS</b></summary>
-
-  Available via [Homebrew](https://brew.sh). To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Windows</b></summary>
-
-  Available via [Scoop](https://scoop.sh). To install:
-
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
-
-  To upgrade:
-
-  ```powershell
-  scoop update supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Linux</b></summary>
-
-  Available via [Homebrew](https://brew.sh) and Linux packages.
-
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
-
+### Vercel (Frontend)
 ```bash
-supabase help
+# Deploy preview
+npx vercel
+
+# Deploy producción
+npx vercel --prod
 ```
 
-Or using npx:
+### Variables de entorno requeridas
 
-```bash
-npx supabase help
+**Vercel:**
+```
+VITE_SUPABASE_PROJECT_ID=your-project-id
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+VITE_SUPABASE_URL=https://your-project.supabase.co
 ```
 
-## Docs
-
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
-
-## Breaking changes
-
-The CLI is a WIP and we're still exploring the design, so expect a lot of breaking changes. We try to document migration steps in [Releases](https://github.com/supabase/cli/releases). Please file an issue if these steps don't work!
-
-## Developing
-
-To run from source:
-
-```sh
-# Go >= 1.20
-go run . help
+**Supabase Edge Functions (Secrets):**
 ```
+AI_API_KEY=sk-...
+```
+
+## Proyecto
+
+- **Supabase**: `naikdjreibbugblihgwl`
+- **Vercel**: `lagrange-lab-1`
 

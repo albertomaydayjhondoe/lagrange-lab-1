@@ -84,7 +84,7 @@ serve(async (req) => {
         is_rag_enabled,
         ai_model,
         subject:subjects(id, name, slug, icon, color),
-        tutor:profiles!tutor_id(id, full_name, avatar_url, bio)
+        tutor:profiles!tutor_id(id, display_name, avatar_url, bio)
       `, { count: 'exact' });
 
     // Filters
