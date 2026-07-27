@@ -6,23 +6,26 @@ import { Rutas } from "./rutas";
 import { AcademyHeader } from "@/caracteristicas/academia/AcademyHeader";
 import { SessionProvider } from "@/compartido/lib/SessionProvider";
 import { AcademyProvider } from "@/caracteristicas/academia/AcademyContext";
+import { ErrorBoundary } from "@/compartido/lib/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Sonner />
-      <SessionProvider>
-        <AcademyProvider>
-          <HashRouter>
-            <AcademyHeader />
-            <Rutas />
-          </HashRouter>
-        </AcademyProvider>
-      </SessionProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Sonner />
+        <SessionProvider>
+          <AcademyProvider>
+            <HashRouter>
+              <AcademyHeader />
+              <Rutas />
+            </HashRouter>
+          </AcademyProvider>
+        </SessionProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
