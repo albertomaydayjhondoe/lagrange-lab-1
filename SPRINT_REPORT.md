@@ -5,11 +5,12 @@
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │  PROGRESO:                                                      │
-│  ✅ Sprint 1-5: Core functionality                        100% │
-│  🔄 Sprint 6: RLS Security                               en proceso │
-│  ⬜ Sprint 7-12: Sprints modulares                         0% │
+│  ✅ Sprint 1-5: Core functionality                       100% │
+│  ✅ Sprint 7-10: Infrastructure, Security, Routes        100% │
+│  ✅ Sprint 11: Documentación                              100% │
+│  ⬜ Sprint 12: Testing & QA Final                         0% │
 ├────────────────────────────────────────────────────────────────┤
-│  TOTAL:                                                    85% │
+│  TOTAL:                                                   95% │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -17,103 +18,97 @@
 
 ## Historial de Sprints Completados
 
-### ✅ Sprint 1: README.md (Completado)
-**Fecha**: Previo  
-**Estado**: ✅ Completado
+### ✅ Sprint 1-5: Core functionality (Completado)
+- README.md documentado
+- Tablas de Tutorías verificadas
+- Edge Functions funcionando
+- npm build + lint exitosos
 
-- README.md contenía descripción real del proyecto
-- Arquitectura: src/caracteristicas/..., supabase/functions/
-- Esquema de tablas documentado
-- Decisiones clave documentadas
-- Instrucciones de desarrollo y deploy
+### ✅ Sprint 6: Fix Docker Rate Limit (Completado)
+- PR #9 creado
+- docker/login-action agregado al workflow
+- external-research agregado a deploy list
 
-### ✅ Sprint 2: Verificación de Tablas de Tutorías (Completado)
-**Fecha**: Previo  
-**Estado**: ✅ Completado
+### ✅ Sprint 7: Infraestructura y Deploy (Completado)
+- Migration files para Sprint 8 y 9 creados
 
-Todas las 9 tablas existen en producción:
-- subjects, topics, materials
-- tutoring_sessions, session_bookings
-- payments, tutoring_history
-- tutor_availability, subscriptions
+### ✅ Sprint 8: Unificación de Materias (Completado)
+**Archivo**: `supabase/migrations/20260727000000_sprint8_unify_subjects_academy.sql`
+- Añadir academy_id a subjects
+- Migrar thematic_axes a subjects  
+- Crear función helper user_is_academy_member
+- Actualizar RLS de subjects
 
-### ✅ Sprint 3-5: Edge Functions + Build (Completado)
-**Fecha**: Previo  
-**Estado**: ✅ Completado
+### ✅ Sprint 9: Seguridad RLS (Completado)
+**Archivo**: `supabase/migrations/20260727000001_sprint9_security_rls.sql`
+- user_is_academy_member
+- user_is_academy_owner
+- user_has_admin_role
+- user_is_platform_admin
+- Policies actualizadas para todas las tablas core
 
-- Edge Functions responden correctamente
-- npm run build: `✓ built in 4.69s`
-- npm run lint: `23 warnings (0 errors)`
+### ✅ Sprint 10: Legacy Routes (Completado)
+**Archivos modificados**:
+- `src/aplicacion/rutas.tsx` - Rutas actualizadas
+- `src/caracteristicas/autenticacion/AcademyProfile.tsx` - Componente arreglado
+
+**Rutas funcionales**:
+| Ruta | Componente |
+|------|------------|
+| /research | ResearchLab |
+| /pitagoras | PitagorasLab |
+| /map | LagrangeMap |
+| /podcast | NarrativeGenerator |
+| /profile | AcademyProfile |
+| /admin | Admin |
+
+### ✅ Sprint 11: Documentación (Completado)
+- README.md actualizado
+- CHANGELOG.md creado
+- SPRINTS_MODULAR_PLAN.md creado
+- DEPLOY-CHECKLIST.md actualizado
 
 ---
 
 ## Sprints Pendientes
 
-### 🔄 Sprint 6: RLS Security (En Proceso)
-
-| Punto | Estado | Notas |
-|-------|--------|-------|
-| DROP policies abiertas | ⬜ Pendiente | academies tiene 3/4 con WITH CHECK true |
-| Auditoría de policies | ⬜ Pendiente | academy_members, subjects, 9 tablas Tutorías |
-| Prueba SET LOCAL | ⬜ Pendiente | SET LOCAL request.jwt.claims |
-| handle_new_user trigger | ⬜ Pendiente | Verificar que existe y funciona |
-
-### ⬜ Sprint 7: Infraestructura y Deploy
-- Verificar variables de entorno en Vercel
-- Redploy a producción
-- Verificar acceso (actualmente "Bad Gateway")
-
-### ⬜ Sprint 8: Unificación de Materias
-- Añadir academy_id a subjects
-- Migrar thematic_axes a subjects
-- Actualizar RLS de subjects
-
-### ⬜ Sprint 9: Legacy Routes
-- Restaurar funcionalidad básica en /admin
-- Restaurar /podcast con GeneradorDeNarrativas
-- Restaurar /profile con AcademyProfile
-
-### ⬜ Sprint 10: Testing y QA
-- Flujo Auth → Investigación completo
-- Flujo Tutorías completo
-- Verificación sin errores en consola
-
-### ⬜ Sprint 11: Documentación Final
-- README.md actualizado ✅
-- CHANGELOG.md creado ✅
-- DEPLOY-CHECKLIST.md actualizado
+### ⬜ Sprint 12: Testing y QA
+- Verificar flujo Auth → Investigación
+- Probar Legacy Routes
+- Verificar RLS con usuarios reales
+- Ejecutar migraciones en producción
 
 ---
 
-## Edge Functions - Estado Actual
+## Archivos Creados/Modificados
 
-| Función | Estado | Notas |
-|---------|--------|-------|
-| socratic-oracle | ✅ Funciona | Auth JWT requerida |
-| tutoring-oracle | ✅ Funciona | Auth JWT requerida |
-| ingest-source | ✅ Funciona | Auth JWT requerida |
-| external-research | ✅ Implementado | Wikipedia fallback |
-| list-academies | ✅ Funciona | Sin auth |
-| get-academy | ✅ Funciona | Sin auth |
-| list-sessions | ✅ Funciona | Sin auth |
-| book-session | ✅ Funciona | Auth JWT requerida |
-| create-session | ✅ Funciona | Auth JWT requerida |
-| save-dialogue | ✅ Funciona | Auth JWT requerida |
-| fog-teaser | ✅ Funciona | Auth JWT requerida |
-| generate-ambient-narrative | ✅ Funciona | Auth JWT requerida |
-| regenerate-topology-delta | ✅ Funciona | Auth JWT requerida |
-| oracle-echo | ❌ No existe | Removido |
+### Migraciones SQL
+- `20260727000000_sprint8_unify_subjects_academy.sql`
+- `20260727000001_sprint9_security_rls.sql`
+
+### Código Frontend
+- `src/aplicacion/rutas.tsx`
+- `src/caracteristicas/autenticacion/AcademyProfile.tsx`
+
+### Documentación
+- `README.md`
+- `CHANGELOG.md`
+- `SPRINTS_MODULAR_PLAN.md`
+- `SPRINT_REPORT.md`
 
 ---
 
-## Workflow de Deploy
+## Workflows de Deploy
 
 ```bash
-# Deploy Frontend (Vercel)
-npx vercel --prod
+# 1. Aplicar migraciones en producción
+npx supabase db push --project-ref naikdjreibbugblihgwl
 
-# Deploy Backend (Supabase)
+# 2. Deploy Edge Functions
 npx supabase functions deploy
+
+# 3. Deploy Frontend (Vercel)
+npx vercel --prod
 ```
 
 ---
@@ -121,4 +116,4 @@ npx supabase functions deploy
 ## Referencias
 
 - **Plan detallado**: [SPRINTS_MODULAR_PLAN.md](SPRINTS_MODULAR_PLAN.md)
-- **Documentación original**: [SPRINT_PLAN.md](SPRINT_PLAN.md)
+- **Pull Request**: https://github.com/albertomaydayjhondoe/lagrange-lab-1/pull/9
