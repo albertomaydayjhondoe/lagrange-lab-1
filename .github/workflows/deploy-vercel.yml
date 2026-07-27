@@ -76,7 +76,6 @@ jobs:
             regenerate-topology-delta \
             fog-teaser \
             generate-ambient-narrative \
-            oracle-echo \
             list-academies \
             get-academy; do
             echo "=== Deploying $func ==="
