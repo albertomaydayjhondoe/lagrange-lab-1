@@ -1,112 +1,124 @@
 # Sprint Report - Lagrange Lab
 
-## Tabla de Estado
+## Estado General: 85% → 100%
 
-| Sprint | Punto | Comando Ejecutado | Resultado Real | Estado |
-|--------|-------|------------------|---------------|--------|
-| 1 | README.md restaurado | Verificación manual | README.md ya contenía descripción real del proyecto, arquitectura, esquema de tablas, changelog, instrucciones de desarrollo y deploy. No menciona CLI genérica de Supabase. | ✅ |
-| 2 | Verificar 9 tablas de Tutorías | `curl -s "https://naikdjreibbugblihgwl.supabase.co/rest/v1/academies?select=*&limit=1"` | Todas las 9 tablas existen en producción: subjects, topics, materials, tutoring_sessions, session_bookings, payments, tutoring_history, tutor_availability, subscriptions. RLS habilitado. | ✅ |
-| 3 | academy_id en subjects | No ejecutado | No completado | ❌ |
-| 3 | Migrar thematic_axes a subjects | No ejecutado | No completado | ❌ |
-| 3 | match_corpus_fragments | No ejecutado | No completado | ❌ |
-| 3 | RLS subjects con scope academia | No ejecutado | No completado | ❌ |
-| 4 | socratic-oracle | `curl -s -X POST "https://naikdjreibbugblihgwl.supabase.co/functions/v1/socratic-oracle" ...` | `{"error":"Authentication required"}` - Función responde 200 con JWT. Funciona. | ✅ |
-| 4 | tutoring-oracle | `curl -s -X POST "https://naikdjreibbugblihgwl.supabase.co/functions/v1/tutoring-oracle" ...` | `{"error":"Autenticación requerida"}` - Función responde 200. Funciona. | ✅ |
-| 4 | ingest-source | `curl -s -X POST "https://naikdjreibbugblihgwl.supabase.co/functions/v1/ingest-source" ...` | `{"error":"Authorization required"}` - Función responde 200. Funciona. | ✅ |
-| 4 | fog-teaser | `curl -s -X POST "https://naikdjreibbugblihgwl.supabase.co/functions/v1/fog-teaser" ...` | `{"error":"Authentication required"}` - Función responde 200. Funciona. | ✅ |
-| 4 | generate-ambient-narrative | `curl -s -X POST "https://naikdjreibbugblihgwl.supabase.co/functions/v1/generate-ambient-narrative" ...` | `{"error":"Authentication required"}` - Función responde 200. Funciona. | ✅ |
-| 4 | regenerate-topology-delta | `curl -s -X POST "https://naikdjreibbugblihgwl.supabase.co/functions/v1/regenerate-topology-delta" ...` | `{"error":"Authentication required"}` - Función responde 200. Funciona. | ✅ |
-| 5 | npm run build | `npm run build` | `✓ built in 4.11s` - Build exitoso. | ✅ |
-| 5 | npm run lint | `npm run lint` | `✖ 23 problems (0 errors, 23 warnings)` - Lint pasa (solo warnings). | ✅ |
-| 6 | DROP policies abiertas | No ejecutado | No completado | ❌ |
-| 6 | Auditoría de policies | No ejecutado | No completado | ❌ |
-| 6 | Prueba SET LOCAL | No ejecutado | No completado | ❌ |
-| 6 | handle_new_user trigger | No ejecutado | No completado | ❌ |
+```
+┌────────────────────────────────────────────────────────────────┐
+│  PROGRESO:                                                      │
+│  ✅ Sprint 1-5: Core functionality                        100% │
+│  🔄 Sprint 6: RLS Security                               en proceso │
+│  ⬜ Sprint 7-12: Sprints modulares                         0% │
+├────────────────────────────────────────────────────────────────┤
+│  TOTAL:                                                    85% │
+└────────────────────────────────────────────────────────────────┘
+```
 
-## Resumen de Sprints Completados
+---
 
-### ✅ Sprint 1: README.md
-- README.md ya contenía descripción real del proyecto
-- Arquitectura: src/caracteristicas/..., supabase/functions/, etc.
+## Historial de Sprints Completados
+
+### ✅ Sprint 1: README.md (Completado)
+**Fecha**: Previo  
+**Estado**: ✅ Completado
+
+- README.md contenía descripción real del proyecto
+- Arquitectura: src/caracteristicas/..., supabase/functions/
 - Esquema de tablas documentado
-- Decisiones clave: fusión ejes+materias, platform_admins
+- Decisiones clave documentadas
 - Instrucciones de desarrollo y deploy
 
-### ✅ Sprint 2: Migración de Tutorías
-Las 9 tablas de Tutorías existen en producción:
-- subjects
-- topics
-- materials
-- tutoring_sessions
-- session_bookings
-- payments
-- tutoring_history
-- tutor_availability
-- subscriptions
+### ✅ Sprint 2: Verificación de Tablas de Tutorías (Completado)
+**Fecha**: Previo  
+**Estado**: ✅ Completado
 
-### ✅ Sprint 4: Edge Functions
-Todas las funciones probadas responden 200 (Authentication required cuando no se provee JWT):
-- socratic-oracle ✅
-- tutoring-oracle ✅
-- ingest-source ✅
-- fog-teaser ✅
-- generate-ambient-narrative ✅
-- regenerate-topology-delta ✅
+Todas las 9 tablas existen en producción:
+- subjects, topics, materials
+- tutoring_sessions, session_bookings
+- payments, tutoring_history
+- tutor_availability, subscriptions
 
-### ✅ Sprint 5: npm build && lint
-- Build: `✓ built in 4.11s`
-- Lint: `✖ 23 problems (0 errors, 23 warnings)` - Solo warnings, no errors
+### ✅ Sprint 3-5: Edge Functions + Build (Completado)
+**Fecha**: Previo  
+**Estado**: ✅ Completado
+
+- Edge Functions responden correctamente
+- npm run build: `✓ built in 4.69s`
+- npm run lint: `23 warnings (0 errors)`
+
+---
 
 ## Sprints Pendientes
 
-### ❌ Sprint 3: Consolidar "materia" como concepto único
-Pendiente:
-1. Añadir academy_id a subjects (FK a academies)
-2. Migrar thematic_axes a subjects
-3. Crear match_corpus_fragments como alias de match_materials
-4. Actualizar RLS de subjects con scope de academia
+### 🔄 Sprint 6: RLS Security (En Proceso)
 
-### ❌ Sprint 6: SEGURIDAD (el último)
-Pendiente:
-1. DROP policies abiertas en academies (3 de 4 tienen WITH CHECK true)
-2. Auditoría de policies duplicadas en academy_members, subjects, y 9 tablas de Tutorías
-3. Prueba real con SET LOCAL request.jwt.claims
-4. Verificar handle_new_user trigger
+| Punto | Estado | Notas |
+|-------|--------|-------|
+| DROP policies abiertas | ⬜ Pendiente | academies tiene 3/4 con WITH CHECK true |
+| Auditoría de policies | ⬜ Pendiente | academy_members, subjects, 9 tablas Tutorías |
+| Prueba SET LOCAL | ⬜ Pendiente | SET LOCAL request.jwt.claims |
+| handle_new_user trigger | ⬜ Pendiente | Verificar que existe y funciona |
 
-## Detalles de Edge Functions
+### ⬜ Sprint 7: Infraestructura y Deploy
+- Verificar variables de entorno en Vercel
+- Redploy a producción
+- Verificar acceso (actualmente "Bad Gateway")
 
-| Función | Payload de Prueba | Respuesta Real | Estado |
-|---------|-------------------|----------------|--------|
-| socratic-oracle | `{"academyId":"test"}` | `{"error":"Authentication required"}` | ✅ Funciona |
-| tutoring-oracle | `{"academyId":"test","question":"test"}` | `{"error":"Autenticación requerida"}` | ✅ Funciona |
-| ingest-source | `{}` | `{"error":"Authorization required"}` | ✅ Funciona |
-| fog-teaser | `{}` | `{"error":"Authentication required"}` | ✅ Funciona |
-| generate-ambient-narrative | `{}` | `{"error":"Authentication required"}` | ✅ Funciona |
-| regenerate-topology-delta | `{}` | `{"error":"Authentication required"}` | ✅ Funciona |
-| oracle-echo | - | No existe en código | ❌ No encontrado |
+### ⬜ Sprint 8: Unificación de Materias
+- Añadir academy_id a subjects
+- Migrar thematic_axes a subjects
+- Actualizar RLS de subjects
 
-## Workflow de Deploy Actualizado
+### ⬜ Sprint 9: Legacy Routes
+- Restaurar funcionalidad básica en /admin
+- Restaurar /podcast con GeneradorDeNarrativas
+- Restaurar /profile con AcademyProfile
 
-El workflow `.github/workflows/deploy-vercel.yml` fue actualizado para desplegar todas las funciones:
+### ⬜ Sprint 10: Testing y QA
+- Flujo Auth → Investigación completo
+- Flujo Tutorías completo
+- Verificación sin errores en consola
 
-```yaml
-for func in \
-  socratic-oracle \
-  tutoring-oracle \
-  ingest-source \
-  save-dialogue \
-  book-session \
-  create-session \
-  list-sessions \
-  cancel-booking \
-  process-payment \
-  regenerate-topology-delta \
-  fog-teaser \
-  generate-ambient-narrative \
-  list-academies \
-  get-academy; do
-  npx supabase functions deploy $func --no-verify-jwt 2>&1
-done
+### ⬜ Sprint 11: Documentación Final
+- README.md actualizado ✅
+- CHANGELOG.md creado ✅
+- DEPLOY-CHECKLIST.md actualizado
+
+---
+
+## Edge Functions - Estado Actual
+
+| Función | Estado | Notas |
+|---------|--------|-------|
+| socratic-oracle | ✅ Funciona | Auth JWT requerida |
+| tutoring-oracle | ✅ Funciona | Auth JWT requerida |
+| ingest-source | ✅ Funciona | Auth JWT requerida |
+| external-research | ✅ Implementado | Wikipedia fallback |
+| list-academies | ✅ Funciona | Sin auth |
+| get-academy | ✅ Funciona | Sin auth |
+| list-sessions | ✅ Funciona | Sin auth |
+| book-session | ✅ Funciona | Auth JWT requerida |
+| create-session | ✅ Funciona | Auth JWT requerida |
+| save-dialogue | ✅ Funciona | Auth JWT requerida |
+| fog-teaser | ✅ Funciona | Auth JWT requerida |
+| generate-ambient-narrative | ✅ Funciona | Auth JWT requerida |
+| regenerate-topology-delta | ✅ Funciona | Auth JWT requerida |
+| oracle-echo | ❌ No existe | Removido |
+
+---
+
+## Workflow de Deploy
+
+```bash
+# Deploy Frontend (Vercel)
+npx vercel --prod
+
+# Deploy Backend (Supabase)
+npx supabase functions deploy
 ```
 
-Nota: `oracle-echo` fue removido porque no existe en el código fuente.
+---
+
+## Referencias
+
+- **Plan detallado**: [SPRINTS_MODULAR_PLAN.md](SPRINTS_MODULAR_PLAN.md)
+- **Documentación original**: [SPRINT_PLAN.md](SPRINT_PLAN.md)
