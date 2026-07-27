@@ -17,6 +17,12 @@
  * P3: Similitud semántica (score 0-1)
  * P4: Modelo IA + timestamp
  * P5: Marca de inferencia sin respaldo directo
+ * 
+ * EXTERNAL RESEARCH (Wikipedia):
+ * E1: Extrae término de búsqueda (vía IA)
+ * E2: Llama a la API pública de Wikipedia
+ * E3-E4: Extrae extracto del artículo top
+ * E5: Devuelve null si no hay resultado (degradación con gracia)
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -37,7 +43,30 @@ const MAX_HISTORY_LENGTH = 20;
 const RATE_LIMIT_WINDOW_MS = 60000;
 const RATE_LIMIT_MAX = 20;
 
+// External research threshold - use Wikipedia when similarity < 0.75
+const EXTERNAL_RESEARCH_SIMILARITY_THRESHOLD = 0.75;
+
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+// External research result type
+interface ExternalResearchResult {
+  found: boolean;
+  searchTerm?: string;
+  title?: string;
+  extract?: string;
+  url?: string;
+  language?: string;
+  timestamp?: string;
+  error?: string;
+}
+
+// Wikipedia context for prompt
+interface WikipediaContext {
+  title: string;
+  extract: string;
+  url: string;
+  searchTerm: string;
+}
 
 interface ProvenanceEntry {
   fragment_id: string;
@@ -74,6 +103,12 @@ interface TutorResponse {
   model: string;
   response_time_ms: number;
   tokens_used: number;
+  wikipedia_provenance?: {
+    title?: string;
+    url?: string;
+    used: boolean;
+    note: string;
+  };
 }
 
 serve(async (req) => {
@@ -105,7 +140,7 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await (supabase.auth as any).getUser();
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: "Token inválido o expirado" }),
@@ -180,6 +215,8 @@ serve(async (req) => {
       total_sources: 0
     };
     
+    let wikipediaContext: WikipediaContext | undefined;
+    
     if (includeRag) {
       try {
         // R2: Genera embedding de la pregunta
@@ -193,9 +230,88 @@ serve(async (req) => {
           spaceId || undefined,
           maxSources
         );
+        
+        // Check if we have sufficient internal context
+        const maxSimilarity = ragResult.fragments.length > 0 
+          ? Math.max(...ragResult.fragments.map(f => f.similarity || 0))
+          : 0;
+        
+        if (ragResult.fragments.length === 0 || maxSimilarity < EXTERNAL_RESEARCH_SIMILARITY_THRESHOLD) {
+          // Insufficient internal context - try external research (Wikipedia)
+          console.log(`Tutoring Oracle - Low internal similarity (${maxSimilarity.toFixed(3)} < ${EXTERNAL_RESEARCH_SIMILARITY_THRESHOLD}), attempting external research`);
+          
+          try {
+            const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+            const externalResearchResponse = await fetch(`${supabaseUrl}/functions/v1/external-research`, {
+              method: 'POST',
+              headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                question: question,
+                language: 'es',
+                academyId
+              }),
+            });
+            
+            if (externalResearchResponse.ok) {
+              const externalResult: ExternalResearchResult = await externalResearchResponse.json();
+              
+              if (externalResult.found && externalResult.extract) {
+                wikipediaContext = {
+                  title: externalResult.title!,
+                  extract: externalResult.extract!,
+                  url: externalResult.url!,
+                  searchTerm: externalResult.searchTerm || ''
+                };
+                console.log(`Tutoring Oracle - Wikipedia result found: "${externalResult.title}"`);
+              } else {
+                console.log(`Tutoring Oracle - No Wikipedia result (${externalResult.error || 'not found'})`);
+              }
+            } else {
+              console.warn(`External research failed: ${externalResearchResponse.status}`);
+            }
+          } catch (externalError) {
+            console.warn('External research error:', externalError);
+          }
+        }
       } catch (ragError) {
         console.error("RAG error:", ragError);
         ragResult.has_inference_only = true;
+        
+        // Try external research as fallback
+        try {
+          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+          const externalResearchResponse = await fetch(`${supabaseUrl}/functions/v1/external-research`, {
+            method: 'POST',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              question: question,
+              language: 'es',
+              academyId
+            }),
+          });
+          
+          if (externalResearchResponse.ok) {
+            const externalResult: ExternalResearchResult = await externalResearchResponse.json();
+            
+            if (externalResult.found && externalResult.extract) {
+              wikipediaContext = {
+                title: externalResult.title!,
+                extract: externalResult.extract!,
+                url: externalResult.url!,
+                searchTerm: externalResult.searchTerm || ''
+              };
+              console.log(`Tutoring Oracle - Wikipedia result found (after RAG failure): "${externalResult.title}"`);
+            }
+          }
+        } catch (externalError) {
+          console.warn('External research error after RAG failure:', externalError);
+        }
       }
     } else {
       ragResult.has_inference_only = true;
@@ -210,7 +326,7 @@ serve(async (req) => {
 
     const baseSystemPrompt = systemPrompt || `Eres un tutor de IA especializado en ayudar a los estudiantes a investigar y aprender.`;
 
-    const systemMessage = `${baseSystemPrompt}
+    let systemMessage = `${baseSystemPrompt}
 
 ${promptAcademyInfo}${promptSpaceInfo}${promptSourcesInfo}
 
@@ -222,7 +338,21 @@ ${promptAcademyInfo}${promptSpaceInfo}${promptSourcesInfo}
 - Adapta tu explicación al nivel del estudiante
 - IMPORTANTE: Cuando respondas usando información del material de investigación, cita la fuente correspondiente`;
 
-    // R4: Tutor IA compone respuesta usando SOLO fragmentos como contexto
+    // Add Wikipedia context with clear provenance attribution
+    if (wikipediaContext) {
+      systemMessage += `
+
+## 📚 Fondo Informativo Adicional (Fuente Externa)
+El siguiente contexto proviene de Wikipedia y NO forma parte del material subido por el usuario:
+**Artículo:** ${wikipediaContext.title}
+**URL:** ${wikipediaContext.url}
+**Contenido:**
+${wikipediaContext.extract}
+
+*Usa esta información general para enriquecer tu respuesta, pero indica claramente que proviene de Wikipedia.*`;
+    }
+
+    // R4: Tutor IA compone respuesta usando SOLO fragmentos como contexto (plus Wikipedia if available)
     let ragContext = '';
     if (ragResult.fragments.length > 0) {
       ragContext = formatCorpusContext(ragResult.fragments, true);
@@ -287,6 +417,20 @@ ${promptAcademyInfo}${promptSpaceInfo}${promptSourcesInfo}
       model: AI_CHAT_MODEL,
       response_time_ms: responseTime,
       tokens_used: estimatedTokens,
+      ...(wikipediaContext && {
+        wikipedia_provenance: {
+          title: wikipediaContext.title,
+          url: wikipediaContext.url,
+          used: true,
+          note: "📚 Fuente: Wikipedia — Este contexto NO forma parte de tu corpus subido"
+        }
+      }),
+      ...(!wikipediaContext && ragResult.fragments.length === 0 && {
+        wikipedia_provenance: {
+          used: false,
+          note: "Sin fuentes de referencia disponibles"
+        }
+      })
     };
 
     return new Response(JSON.stringify(response), { 

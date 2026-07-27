@@ -8,7 +8,7 @@ import {
   getRefuerzoPrompt,
   checkRateLimit
 } from "../_shared/architectPrompt.ts";
-import { fetchCorpusFragments, fetchCorpusFragmentsWithRAG, formatCorpusContext } from "../_shared/corpusRetrieval.ts";
+import { fetchCorpusFragments, fetchCorpusFragmentsWithRAG, formatCorpusContext, CorpusFragment } from "../_shared/corpusRetrieval.ts";
 import { getEmbedding } from "../_shared/embeddings.ts";
 
 const corsHeaders = {
@@ -27,10 +27,33 @@ const MAX_INTENTS = 2;
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minuto
 const RATE_LIMIT_MAX = 10; // 10 requests por minuto
 
-async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
+// External research threshold - use Wikipedia when similarity < 0.75
+const EXTERNAL_RESEARCH_SIMILARITY_THRESHOLD = 0.75;
+
+// External research result type
+interface ExternalResearchResult {
+  found: boolean;
+  searchTerm?: string;
+  title?: string;
+  extract?: string;
+  url?: string;
+  language?: string;
+  timestamp?: string;
+  error?: string;
+}
+
+// Wikipedia context for system prompt
+interface WikipediaContext {
+  title: string;
+  extract: string;
+  url: string;
+  searchTerm: string;
+}
+
+async function verifyAuth(req: Request): Promise<{ user: any; supabaseClient: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
-    return { user: null, error: 'Authentication required' };
+    return { user: null, supabaseClient: null, error: 'Authentication required' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -40,9 +63,9 @@ async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> 
     global: { headers: { Authorization: authHeader } }
   });
 
-  const { data: { user }, error } = await supabaseClient.auth.getUser();
+  const { data: { user }, error } = await (supabaseClient.auth as any).getUser();
   if (error || !user) {
-    return { user: null, error: 'Invalid or expired token' };
+    return { user: null, supabaseClient: null, error: 'Invalid or expired token' };
   }
 
   return { user, supabaseClient };
@@ -204,7 +227,7 @@ async function generateAndValidateQuestion(
   
   if (!validation.valido && intento < MAX_INTENTS) {
     console.log(`Intento ${intento}: Pregunta rechazada - ${validation.razon}. Regenerando...`);
-    const reinforcedPrompt = userPrompt + getRefuerzoPrompt(validation.razon);
+    const reinforcedPrompt = userPrompt + getRefuerzoPrompt(validation.razon || '');
     return generateAndValidateQuestion(AI_API_KEY, systemPrompt, reinforcedPrompt, intento + 1);
   }
 
@@ -219,11 +242,24 @@ async function generateAndValidateQuestion(
 function buildSystemPrompt(
   academyEjes: string[], 
   personaPrompt: string | null, 
-  corpusContext?: string
+  corpusContext?: string,
+  wikipediaContext?: WikipediaContext
 ): string {
   const ejeList = academyEjes.length > 0 
     ? academyEjes.join(', ') 
     : 'Miedo, Control, SaludMental, Legitimidad, Responsabilidad';
+  
+  let corpusSection = corpusContext || '';
+  
+  // Add Wikipedia context with clear provenance attribution
+  if (wikipediaContext) {
+    corpusSection += `\n\n## 📚 Fondo Informativo Adicional (Fuente Externa)\n`;
+    corpusSection += `El siguiente contexto proviene de Wikipedia y NO forma parte del material subido por el usuario:\n`;
+    corpusSection += `**Artículo:** ${wikipediaContext.title}\n`;
+    corpusSection += `**URL:** ${wikipediaContext.url}\n`;
+    corpusSection += `**Contenido:**\n${wikipediaContext.extract}\n`;
+    corpusSection += `\n*Usa esta información general para enriquecer tu pregunta socrática, pero no la cites directamente como fuente del usuario.*`;
+  }
   
   const specificInstructions = `
 ## INSTRUCCIÓN ESPECÍFICA: Generador de Preguntas Socráticas
@@ -232,7 +268,7 @@ Tu misión es generar preguntas que provoquen "fricción cognitiva" - incomodida
 ## Ejes de esta academia:
 ${ejeList}
 
-${corpusContext || ''}
+${corpusSection}
 
 ## Formato de respuesta:
 Responde SOLO con un JSON válido con esta estructura:
@@ -283,6 +319,9 @@ serve(async (req) => {
       );
     }
 
+    // Get auth header for external research calls
+    const authHeader = req.headers.get('authorization') || '';
+    
     const { academyId, context, eje, nivel, conversationHistory, includeCorpus = true } = validatedInput;
     
     const AI_API_KEY = Deno.env.get("AI_API_KEY");
@@ -336,6 +375,9 @@ serve(async (req) => {
     
     // Fetch corpus fragments for context (filtered by academy) with RAG
     let corpusContext = '';
+    let fragmentsWithSimilarity: { fragments: CorpusFragment[]; provenance: any[] } = { fragments: [], provenance: [] };
+    let wikipediaContext: WikipediaContext | undefined;
+    
     if (includeCorpus) {
       try {
         // Generate embedding for semantic search
@@ -346,37 +388,119 @@ serve(async (req) => {
         );
         
         // Use RAG with vector similarity
-        const fragments = await fetchCorpusFragmentsWithRAG(
+        const ragResult = await fetchCorpusFragmentsWithRAG(
           supabaseClient, 
           academyId, 
           queryEmbedding,
           eje
         );
         
-        if (fragments.length > 0) {
-          corpusContext = formatCorpusContext(fragments);
-          console.log(`Socratic Oracle - Using ${fragments.length} corpus fragments with RAG`);
+        fragmentsWithSimilarity = ragResult;
+        
+        // Check if we have sufficient internal context
+        const maxSimilarity = ragResult.fragments.length > 0 
+          ? Math.max(...ragResult.fragments.map(f => f.similarity || 0))
+          : 0;
+        
+        if (ragResult.fragments.length > 0 && maxSimilarity >= EXTERNAL_RESEARCH_SIMILARITY_THRESHOLD) {
+          // Sufficient internal context - use it
+          corpusContext = formatCorpusContext(ragResult.fragments);
+          console.log(`Socratic Oracle - Using ${ragResult.fragments.length} corpus fragments with RAG (max similarity: ${maxSimilarity.toFixed(3)})`);
         } else {
-          // Fallback to basic fetch if no RAG results
-          const fallbackFragments = await fetchCorpusFragments(supabaseClient, academyId, eje);
-          if (fallbackFragments.length > 0) {
-            corpusContext = formatCorpusContext(fallbackFragments);
-            console.log(`Socratic Oracle - Using ${fallbackFragments.length} corpus fragments (fallback)`);
+          // Insufficient internal context - try external research
+          console.log(`Socratic Oracle - Low internal similarity (${maxSimilarity.toFixed(3)} < ${EXTERNAL_RESEARCH_SIMILARITY_THRESHOLD}), attempting external research`);
+          
+          // Keep internal context if available (partial)
+          if (ragResult.fragments.length > 0) {
+            corpusContext = formatCorpusContext(ragResult.fragments);
+            console.log(`Socratic Oracle - Using partial internal context (${ragResult.fragments.length} fragments)`);
+          }
+          
+          // Call external research
+          try {
+            const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+            const externalResearchResponse = await fetch(`${supabaseUrl}/functions/v1/external-research`, {
+              method: 'POST',
+              headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                question: contextText || "tema filosófico",
+                language: 'es',
+                academyId
+              }),
+            });
+            
+            if (externalResearchResponse.ok) {
+              const externalResult: ExternalResearchResult = await externalResearchResponse.json();
+              
+              if (externalResult.found && externalResult.extract) {
+                wikipediaContext = {
+                  title: externalResult.title!,
+                  extract: externalResult.extract!,
+                  url: externalResult.url!,
+                  searchTerm: externalResult.searchTerm || ''
+                };
+                console.log(`Socratic Oracle - Wikipedia result found: "${externalResult.title}"`);
+              } else {
+                console.log(`Socratic Oracle - No Wikipedia result (${externalResult.error || 'not found'})`);
+              }
+            } else {
+              console.warn(`External research failed: ${externalResearchResponse.status}`);
+            }
+          } catch (externalError) {
+            console.warn('External research error:', externalError);
           }
         }
       } catch (ragError) {
-        console.warn('RAG fetch failed, using basic corpus:', ragError);
-        // Fallback to basic fetch
-        const fragments = await fetchCorpusFragments(supabaseClient, academyId, eje);
-        if (fragments.length > 0) {
-          corpusContext = formatCorpusContext(fragments);
-          console.log(`Socratic Oracle - Using ${fragments.length} corpus fragments (basic)`);
+        console.warn('RAG fetch failed:', ragError);
+        
+        // Try basic fetch first
+        const fallbackFragments = await fetchCorpusFragments(supabaseClient, academyId, eje);
+        if (fallbackFragments.length > 0) {
+          corpusContext = formatCorpusContext(fallbackFragments);
+          console.log(`Socratic Oracle - Using ${fallbackFragments.length} corpus fragments (basic)`);
+        }
+        
+        // Still try external research as last resort
+        try {
+          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+          const contextText = [context, eje, nivel].filter(Boolean).join(' ') || "tema filosófico";
+          const externalResearchResponse = await fetch(`${supabaseUrl}/functions/v1/external-research`, {
+            method: 'POST',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              question: contextText,
+              language: 'es',
+              academyId
+            }),
+          });
+          
+          if (externalResearchResponse.ok) {
+            const externalResult: ExternalResearchResult = await externalResearchResponse.json();
+            
+            if (externalResult.found && externalResult.extract) {
+              wikipediaContext = {
+                title: externalResult.title!,
+                extract: externalResult.extract!,
+                url: externalResult.url!,
+                searchTerm: externalResult.searchTerm || ''
+              };
+              console.log(`Socratic Oracle - Wikipedia result found (after RAG failure): "${externalResult.title}"`);
+            }
+          }
+        } catch (externalError) {
+          console.warn('External research error after RAG failure:', externalError);
         }
       }
     }
 
-    // Build system prompt with academy-specific config
-    const systemPrompt = buildSystemPrompt(academyEjes, academy?.oracle_persona_prompt || null, corpusContext);
+    // Build system prompt with academy-specific config (including Wikipedia if available)
+    const systemPrompt = buildSystemPrompt(academyEjes, academy?.oracle_persona_prompt || null, corpusContext, wikipediaContext);
 
     // Build user prompt
     let userPrompt: string;
@@ -431,7 +555,26 @@ Basándote en el intercambio anterior, genera la siguiente pregunta socrática q
     // Remove internal validation fields before returning
     const { _validation, _intentos, ...cleanResult } = result;
 
-    return new Response(JSON.stringify(cleanResult), {
+    // Build response with Wikipedia provenance if used
+    const responsePayload = {
+      ...cleanResult,
+      ...(wikipediaContext && {
+        wikipedia_provenance: {
+          title: wikipediaContext.title,
+          url: wikipediaContext.url,
+          used: true,
+          note: "📚 Fuente: Wikipedia — Este contexto NO forma parte de tu corpus subido"
+        }
+      }),
+      ...(!wikipediaContext && fragmentsWithSimilarity.fragments.length === 0 && {
+        wikipedia_provenance: {
+          used: false,
+          note: "Sin fuentes de referencia disponibles"
+        }
+      })
+    };
+
+    return new Response(JSON.stringify(responsePayload), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
