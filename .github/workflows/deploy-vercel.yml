@@ -62,12 +62,27 @@ jobs:
 
       - name: Deploy Edge Functions
         run: |
-          echo "Deploying ingest-source..."
-          npx supabase functions deploy ingest-source --no-verify-jwt 2>&1
-          echo "Deploying tutoring-oracle..."
-          npx supabase functions deploy tutoring-oracle --no-verify-jwt 2>&1
-          echo "Deploying save-dialogue..."
-          npx supabase functions deploy save-dialogue --no-verify-jwt 2>&1
+          echo "Deploying all edge functions..."
+          for func in \
+            socratic-oracle \
+            tutoring-oracle \
+            ingest-source \
+            save-dialogue \
+            book-session \
+            create-session \
+            list-sessions \
+            cancel-booking \
+            process-payment \
+            regenerate-topology-delta \
+            fog-teaser \
+            generate-ambient-narrative \
+            oracle-echo \
+            list-academies \
+            get-academy; do
+            echo "=== Deploying $func ==="
+            npx supabase functions deploy $func --no-verify-jwt 2>&1
+            echo ""
+          done
           echo "All functions deployed!"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
