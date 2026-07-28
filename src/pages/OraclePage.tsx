@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Loader2, Sparkles, User, Bot, RefreshCw, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Send, Loader2, Sparkles, User, Bot, RefreshCw, Trash2, GraduationCap, Plus } from 'lucide-react';
 import { Button } from '@/compartido/ui/button';
 import { Input } from '@/compartido/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/compartido/ui/card';
@@ -14,26 +15,60 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  sources?: any[];
+}
+
+interface Academy {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 /**
  * ORÁCULO - Página Principal
  * Chat dialéctico centrado en el Oráculo Socrático
+ * USA academy_id de la academia seleccionada para filtrar corpus
  */
 export function OraclePage() {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [selectedEje, setSelectedEje] = useState('dialéctico');
+  const [selectedAcademy, setSelectedAcademy] = useState<Academy | null>(null);
+  const [myAcademies, setMyAcademies] = useState<Academy[]>([]);
+  const [loadingAcademies, setLoadingAcademies] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const ejes = ['dialéctico', 'ontológico', 'epistemológico', 'ético', 'político'];
 
+  // Cargar academias del usuario
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const loadData = async () => {
+      // Check auth
+      const { data: { session } } = await supabase.auth.getSession();
       setIsAuthenticated(!!session);
-    });
+
+      if (!session) {
+        setLoadingAcademies(false);
+        return;
+      }
+
+      // Cargar academias del usuario
+      const { data } = await supabase.functions.invoke('list-academies');
+      if (data?.academies) {
+        const userAcademies = data.academies.filter((a: any) => a.is_member);
+        setMyAcademies(userAcademies);
+        // Seleccionar primera academia por defecto
+        if (userAcademies.length > 0 && !selectedAcademy) {
+          setSelectedAcademy(userAcademies[0]);
+        }
+      }
+      setLoadingAcademies(false);
+    };
+
+    loadData();
 
     // Mensaje inicial del Oráculo
     if (messages.length === 0) {
@@ -52,6 +87,34 @@ export function OraclePage() {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Llamada real al Oráculo (Edge Function única para todas las academias)
+  const callOracle = async (question: string, history: { role: string; content: string }[]): Promise<any> => {
+    if (!selectedAcademy) {
+      throw new Error('Selecciona una academia');
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Inicia sesión');
+    }
+
+    const response = await supabase.functions.invoke('socratic-oracle', {
+      body: {
+        academyId: selectedAcademy.id,
+        context: question,
+        eje: selectedEje,
+        conversationHistory: history,
+        includeCorpus: true,
+      },
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message || 'Error del Oráculo');
+    }
+
+    return response.data;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -68,19 +131,34 @@ export function OraclePage() {
     setIsLoading(true);
 
     try {
-      // Simular respuesta del Oráculo (reemplazar con llamada real a Edge Function)
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Construir historial para el oráculo
+      const history = messages.map(m => ({
+        role: m.role === 'user' ? 'user' : 'oracle',
+        content: m.content,
+      }));
 
+      // Llamar al Oráculo real (filtra corpus por selectedAcademy.id)
+      const response = await callOracle(input.trim(), history);
+
+      const oracleResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response.pregunta || generateSocraticResponse(input.trim()),
+        timestamp: new Date(),
+        sources: response.wikipedia_provenance,
+      };
+
+      setMessages((prev) => [...prev, oracleResponse]);
+    } catch (error: any) {
+      toast.error(error.message || 'El Oráculo no responde. Intenta de nuevo.');
+      // Fallback: respuesta simulada
       const oracleResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: generateSocraticResponse(input.trim()),
         timestamp: new Date(),
       };
-
       setMessages((prev) => [...prev, oracleResponse]);
-    } catch (error) {
-      toast.error('El Oráculo no responde. Intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }
@@ -132,22 +210,58 @@ export function OraclePage() {
         </p>
       </motion.div>
 
-      {/* Selector de eje */}
-      <div className="flex flex-wrap gap-2 justify-center mb-6">
-        {ejes.map((eje) => (
-          <Button
-            key={eje}
-            variant={selectedEje === eje ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSelectedEje(eje)}
-            className={cn(
-              "capitalize text-xs",
-              selectedEje === eje && "bg-primary"
-            )}
-          >
-            {eje}
-          </Button>
-        ))}
+      {/* Selector de academia + eje */}
+      <div className="space-y-4 mb-6">
+        {/* Selector de Academia (obligatorio para usar el oráculo) */}
+        {loadingAcademies ? (
+          <div className="flex items-center justify-center py-2">
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            <span className="text-sm text-muted-foreground">Cargando academias...</span>
+          </div>
+        ) : myAcademies.length > 0 ? (
+          <div className="flex flex-wrap gap-2 items-center justify-center">
+            <GraduationCap className="w-4 h-4 text-primary" />
+            <select
+              value={selectedAcademy?.id || ''}
+              onChange={(e) => {
+                const acad = myAcademies.find(a => a.id === e.target.value);
+                setSelectedAcademy(acad || null);
+              }}
+              className="bg-background border rounded-md px-3 py-1.5 text-sm"
+            >
+              {myAcademies.map((acad) => (
+                <option key={acad.id} value={acad.id}>
+                  {acad.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : isAuthenticated ? (
+          <div className="text-center py-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/academies')}>
+              <Plus className="w-4 h-4 mr-2" />
+              Crear o unirse a una academia
+            </Button>
+          </div>
+        ) : null}
+
+        {/* Selector de eje */}
+        <div className="flex flex-wrap gap-2 justify-center">
+          {ejes.map((eje) => (
+            <Button
+              key={eje}
+              variant={selectedEje === eje ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedEje(eje)}
+              className={cn(
+                "capitalize text-xs",
+                selectedEje === eje && "bg-primary"
+              )}
+            >
+              {eje}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Chat */}
