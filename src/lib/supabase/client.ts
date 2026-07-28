@@ -127,6 +127,7 @@ export type Database = {
           icon: string | null
           color: string | null
           cover_image_url: string | null
+          academy_id: string | null  // FK a academies para scope multi-tenant
           is_active: boolean
           created_at: string
           updated_at: string

@@ -1082,5 +1082,77 @@ REVOKE ALL ON FUNCTION public.match_corpus_fragments(vector, uuid, uuid, int, fl
 GRANT EXECUTE ON FUNCTION public.match_corpus_fragments(vector, uuid, uuid, int, float) TO authenticated, service_role;
 
 -- ================================================================
--- FIN: FLOWCHART RAG MULTI-FORMATO IMPLEMENTADO
+-- SPRINT 8: UNIFICACIÓN DE MATERIAS (subjects + thematic_axes)
+-- ================================================================
+-- Añadir academy_id a subjects para scope multi-tenant
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'subjects' AND column_name = 'academy_id'
+  ) THEN
+    ALTER TABLE public.subjects
+    ADD COLUMN academy_id UUID REFERENCES public.academies(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS idx_subjects_academy ON public.subjects(academy_id);
+  END IF;
+END $$;
+
+-- Migrar thematic_axes activos a subjects
+INSERT INTO public.subjects (slug, name, description, icon, color, academy_id, is_active)
+SELECT
+  'axis-' || ta.id AS slug,
+  ta.label AS name,
+  ta.description,
+  'Target' AS icon,
+  COALESCE(ta.color, '#8B5CF6') AS color,
+  ta.academy_id,
+  ta.is_active
+FROM public.thematic_axes ta
+WHERE ta.is_active = true
+ON CONFLICT (slug) DO NOTHING;
+
+-- RLS para subjects con scope de academia
+DROP POLICY IF EXISTS "Anyone can view active subjects" ON public.subjects;
+DROP POLICY IF EXISTS "Admins can manage subjects" ON public.subjects;
+DROP POLICY IF EXISTS "Anyone can view subjects" ON public.subjects;
+DROP POLICY IF EXISTS "Authenticated users can view subjects" ON public.subjects;
+
+-- Policy: Cualquiera puede ver subjects activos de academias públicas
+CREATE POLICY "Public subjects are viewable by everyone"
+  ON public.subjects FOR SELECT
+  USING (
+    is_active = true
+    AND (
+      academy_id IS NULL
+      OR EXISTS (
+        SELECT 1 FROM public.academies a
+        WHERE a.id = subjects.academy_id AND a.is_public = true
+      )
+    )
+  );
+
+-- Policy: Miembros de academia pueden ver subjects de su academia
+CREATE POLICY "Academy members can view their subjects"
+  ON public.subjects FOR SELECT
+  USING (
+    is_active = true
+    AND is_member_of_academy(academy_id)
+  );
+
+-- Policy: Administradores pueden gestionar subjects
+CREATE POLICY "Academy admins can manage subjects"
+  ON public.subjects FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.academy_members am
+      WHERE am.academy_id = subjects.academy_id
+      AND am.user_id = auth.uid()
+      AND am.role = 'admin'
+    )
+  );
+
+COMMENT ON COLUMN public.subjects.academy_id IS 'Foreign key a academies para scope multi-tenant. NULL = materia global.';
+
+-- ================================================================
+-- FIN: FLOWCHART RAG MULTI-FORMATO + UNIFICACIÓN MATERIAS
 -- ================================================================
