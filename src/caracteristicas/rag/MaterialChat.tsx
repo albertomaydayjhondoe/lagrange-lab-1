@@ -3,6 +3,7 @@
  * 
  * Componente de chat conversacional RAG para analizar material de academia.
  * Permite a usuarios conversar con IA sobre fuentes específicas de conocimiento.
+ * Implementa el flujo completo: RESEARCH → SESSION → PROVENANCE → DISPLAY
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -11,16 +12,29 @@ import { Button } from '@/compartido/ui/button';
 import { Textarea } from '@/compartido/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/compartido/ui/card';
 import { Badge } from '@/compartido/ui/badge';
-import { Send, Sparkles, BookOpen, Quote, RotateCcw } from 'lucide-react';
+import { 
+  Send, 
+  Sparkles, 
+  BookOpen, 
+  Quote, 
+  RotateCcw,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/compartido/lib/supabaseClient';
 import { tutoringChat, ProvenanceEntry } from '@/utils/aiService';
+import { SourcesPanel, CompactSourcesBadge, WikipediaProvenance } from './SourcesPanel';
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   sources?: CorpusFragment[];
+  provenance?: ProvenanceEntry[];
+  wikipedia?: WikipediaProvenance;
+  hasInferenceOnly?: boolean;
   timestamp: Date;
 }
 
@@ -247,11 +261,22 @@ O simplemente pregúntame lo que quieras y buscaré en el material.`,
         tension: 0.5
       }));
 
+      // Get wikipedia provenance if available (from response metadata)
+      const wikipediaProvenance: WikipediaProvenance | undefined = (result as any).wikipedia_provenance ? {
+        title: (result as any).wikipedia_provenance.title,
+        url: (result as any).wikipedia_provenance.url,
+        used: (result as any).wikipedia_provenance.used,
+        note: (result as any).wikipedia_provenance.note
+      } : undefined;
+
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: result.response,
         sources: provenanceFragments.length > 0 ? provenanceFragments : undefined,
+        provenance: result.provenance,
+        wikipedia: wikipediaProvenance,
+        hasInferenceOnly: result.has_inference_only,
         timestamp: new Date()
       };
 
@@ -267,6 +292,7 @@ O simplemente pregúntame lo que quieras y buscaré en el material.`,
         role: 'assistant',
         content: generateFallbackResponse(input, relevantFragments),
         sources: relevantFragments,
+        hasInferenceOnly: true,
         timestamp: new Date()
       }]);
     } finally {
@@ -339,7 +365,31 @@ O simplemente pregúntame lo que quieras y buscaré en el material.`,
                   ? 'bg-primary/10 border border-primary/20' 
                   : 'bg-card border border-border'
               }`}>
-                {msg.sources && msg.sources.length > 0 && (
+                {/* Provenance Panel - R5: Respuesta con procedencia */}
+                {msg.role === 'assistant' && (msg.provenance || msg.wikipedia) && (
+                  <div className="mb-3 pb-3 border-b border-border/50">
+                    <SourcesPanel 
+                      provenance={msg.provenance || []}
+                      wikipedia={msg.wikipedia}
+                      hasInferenceOnly={msg.hasInferenceOnly}
+                      compact={true}
+                      onSourceClick={(source) => {
+                        // Convertir provenance a CorpusFragment para onSourceSelect
+                        const fragment: CorpusFragment = {
+                          id: source.fragment_id,
+                          source_file: source.source_file,
+                          content: source.source_content,
+                          axis: [],
+                          tension: 0.5
+                        };
+                        onSourceSelect?.(fragment);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Legacy sources display for fallback */}
+                {msg.role === 'assistant' && !msg.provenance && msg.sources && msg.sources.length > 0 && (
                   <div className="mb-3 pb-3 border-b border-border/50">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                       <Quote className="w-3 h-3" />
@@ -356,6 +406,14 @@ O simplemente pregúntame lo que quieras y buscaré en el material.`,
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Inference warning */}
+                {msg.role === 'assistant' && msg.hasInferenceOnly && !msg.provenance && (
+                  <div className="mb-3 pb-3 border-b border-border/50 flex items-center gap-2 text-amber-600 text-xs">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>Respuesta basada en conocimiento general (sin fuentes del corpus)</span>
                   </div>
                 )}
 

@@ -8,7 +8,25 @@
  * F4 [URL→scraping] ─────┤
  * F5 [Imagen→OCR] ───────┤
  * F6 [CSV→narrativo] ────┘
+ * 
+ * Usa parsers.ts para implementaciones reales de:
+ * - PDF (extracción nativa + API fallback)
+ * - DOCX (parsing XML)
+ * - Audio (Whisper API)
+ * - Video (YouTube subtitles + transcripción)
+ * - Imagen (OCR.space API)
  */
+
+import { 
+  parsePDF, 
+  parseDOCX, 
+  parseAudio, 
+  parseVideo, 
+  parseImagen,
+  getMimeType,
+  detectFileType,
+  ParseResult 
+} from './parsers.ts';
 
 export interface NormalizedContent {
   text: string;
@@ -17,6 +35,7 @@ export interface NormalizedContent {
   page_reference?: string;
   original_url?: string;
   metadata?: Record<string, any>;
+  warnings?: string[];
 }
 
 export interface SourceInput {
@@ -91,71 +110,97 @@ export function detectSourceType(input: SourceInput): NormalizedContent['source_
 
 /**
  * Normaliza contenido a texto plano
- * Este es el paso NORMALIZE del flowchart - TODO: implementar parsers reales
+ * Usa parsers.ts para implementaciones reales de todos los formatos
  */
 export async function normalizeContent(input: SourceInput): Promise<NormalizedContent> {
   const source_type = detectSourceType(input);
+  const warnings: string[] = [];
+  
+  let result: NormalizedContent;
   
   switch (source_type) {
     case 'pdf':
-      return normalizePDF(input);
+      result = await normalizePDF(input);
+      break;
     case 'docx':
-      return normalizeDOCX(input);
+      result = await normalizeDOCX(input);
+      break;
     case 'txt':
     case 'md':
-      return normalizeText(input);
+      result = await normalizeText(input);
+      break;
     case 'audio':
-      return normalizeAudio(input);
+      result = await normalizeAudio(input);
+      break;
     case 'video':
-      return normalizeVideo(input);
+      result = await normalizeVideo(input);
+      break;
     case 'url':
-      return normalizeURL(input);
+      result = await normalizeURL(input);
+      break;
     case 'imagen':
-      return normalizeImagen(input);
+      result = await normalizeImagen(input);
+      break;
     case 'csv':
-      return normalizeCSV(input);
+      result = await normalizeCSV(input);
+      break;
     default:
-      return normalizeText(input);
+      result = await normalizeText(input);
   }
+  
+  // Combinar warnings
+  if (result.warnings && result.warnings.length > 0) {
+    warnings.push(...result.warnings);
+  }
+  
+  // Verificar si el contenido requiere procesamiento adicional
+  if (result.text.includes('_PENDIENTE') || result.text.includes('_ERROR')) {
+    warnings.push('El contenido requiere procesamiento adicional');
+  }
+  
+  return {
+    ...result,
+    warnings: warnings.length > 0 ? warnings : undefined
+  };
 }
 
 // ============================================================================
-// NORMALIZADORES POR TIPO
+// NORMALIZADORES POR TIPO (usando parsers.ts)
 // ============================================================================
 
 /**
- * Normaliza PDF - Extrae texto (requiere pdf-parse en entorno real)
+ * Normaliza PDF - Extrae texto usando parsers.pdf (extracción nativa + API fallback)
  * F1 del flowchart
  */
 async function normalizePDF(input: SourceInput): Promise<NormalizedContent> {
-  // TODO: Implementar con pdf-parse o similar
-  // Por ahora, marcar como pendiente de parsing real
+  const result: ParseResult = await parsePDF(input.content, input.filename || 'document.pdf');
+  
   return {
-    text: `[CONTENIDO_PDF_PENDIENTE] El archivo PDF requiere parsing con pdf-parse o similar`,
+    text: result.text,
     source_type: 'pdf',
-    title: input.filename || 'documento.pdf',
-    metadata: {
-      parser: 'pdf-parse',
-      status: 'pending_implementation',
-      note: 'Requiere integración con servicio de parsing PDF'
-    }
+    title: result.title || input.filename,
+    page_reference: result.page_reference,
+    original_url: result.original_url,
+    metadata: result.metadata,
+    warnings: result.warnings
   };
 }
 
 /**
- * Normaliza DOCX - Extrae texto (requiere mammoth en entorno real)
+ * Normaliza DOCX - Extrae texto usando parsers.docx (parsing XML)
  * F1 del flowchart
  */
 async function normalizeDOCX(input: SourceInput): Promise<NormalizedContent> {
-  // TODO: Implementar con mammoth o similar
+  const result: ParseResult = await parseDOCX(input.content, input.filename || 'document.docx');
+  
   return {
-    text: `[CONTENIDO_DOCX_PENDIENTE] El archivo DOCX requiere parsing con mammoth o similar`,
+    text: result.text,
     source_type: 'docx',
-    title: input.filename || 'documento.docx',
-    metadata: {
-      parser: 'mammoth',
-      status: 'pending_implementation'
-    }
+    title: result.title || input.filename,
+    page_reference: result.page_reference,
+    original_url: result.original_url,
+    metadata: result.metadata,
+    warnings: result.warnings
   };
 }
 
@@ -208,54 +253,46 @@ async function normalizeText(input: SourceInput): Promise<NormalizedContent> {
 }
 
 /**
- * Normaliza audio - Requiere transcripción previa
+ * Normaliza audio - Transcribe usando Whisper API
  * F2 del flowchart
  */
 async function normalizeAudio(input: SourceInput): Promise<NormalizedContent> {
-  // TODO: Implementar con servicio de transcripción (Whisper, etc.)
+  const mimeType = input.mimeType || getMimeType(input.filename || 'audio.mp3');
+  const result: ParseResult = await parseAudio(input.content, input.filename || 'audio.mp3', mimeType);
+  
   return {
-    text: `[CONTENIDO_AUDIO_PENDIENTE] El audio requiere transcripción con Whisper API o similar`,
+    text: result.text,
     source_type: 'audio',
-    title: input.filename || 'audio.mp3',
-    metadata: {
-      parser: 'whisper-api',
-      status: 'pending_implementation',
-      note: 'Primero transcribir, luego enviar texto transcrito'
-    }
+    title: result.title || input.filename,
+    page_reference: result.page_reference,
+    original_url: result.original_url,
+    metadata: result.metadata,
+    warnings: result.warnings
   };
 }
 
 /**
- * Normaliza video - Extrae subtítulos/transcript
+ * Normaliza video - Extrae subtítulos/transcript usando parsers.video
  * F3 del flowchart
  */
 async function normalizeVideo(input: SourceInput): Promise<NormalizedContent> {
-  // Detectar si es YouTube
-  const isYouTube = input.content.includes('youtube.com') || input.content.includes('youtu.be');
+  const isUrl = input.type === 'url';
+  const mimeType = input.mimeType || getMimeType(input.filename || 'video.mp4');
   
-  if (isYouTube) {
-    return {
-      text: `[CONTENIDO_YOUTUBE_PENDIENTE] YouTube: ${input.content} - Requiere extracción de subtítulos`,
-      source_type: 'video',
-      title: `Video de YouTube`,
-      original_url: input.content,
-      metadata: {
-        platform: 'youtube',
-        parser: 'youtube-transcript-api',
-        status: 'pending_implementation'
-      }
-    };
-  }
+  const result: ParseResult = await parseVideo(
+    input.content,
+    input.filename || 'video.mp4',
+    { isUrl, mimeType, extractSubtitles: true }
+  );
   
-  // Video local
   return {
-    text: `[CONTENIDO_VIDEO_PENDIENTE] El video local requiere extracción de subtítulos o transcripción`,
+    text: result.text,
     source_type: 'video',
-    title: input.filename || 'video.mp4',
-    metadata: {
-      parser: 'whisper-api',
-      status: 'pending_implementation'
-    }
+    title: result.title || input.filename,
+    page_reference: result.page_reference,
+    original_url: result.original_url,
+    metadata: result.metadata,
+    warnings: result.warnings
   };
 }
 
@@ -309,20 +346,21 @@ async function normalizeURL(input: SourceInput): Promise<NormalizedContent> {
 }
 
 /**
- * Normaliza imagen - OCR si contiene texto
+ * Normaliza imagen - Extrae texto usando OCR via parsers.imagen
  * F5 del flowchart
  */
 async function normalizeImagen(input: SourceInput): Promise<NormalizedContent> {
-  // TODO: Implementar OCR con Tesseract.js o similar
+  const mimeType = input.mimeType || getMimeType(input.filename || 'image.png');
+  const result: ParseResult = await parseImagen(input.content, input.filename || 'image.png', mimeType);
+  
   return {
-    text: `[CONTENIDO_IMAGEN_PENDIENTE] La imagen requiere OCR con Tesseract.js o similar`,
+    text: result.text,
     source_type: 'imagen',
-    title: input.filename || 'imagen.png',
-    metadata: {
-      parser: 'tesseract-ocr',
-      status: 'pending_implementation',
-      note: 'Primero OCR, luego enviar texto extraído'
-    }
+    title: result.title || input.filename,
+    page_reference: result.page_reference,
+    original_url: result.original_url,
+    metadata: result.metadata,
+    warnings: result.warnings
   };
 }
 
@@ -442,10 +480,62 @@ function extractTitle(html: string): string | undefined {
  * Exportar mapa de tipos soportados para UI
  */
 export const SUPPORTED_SOURCE_TYPES = {
-  pdf: { icon: '📄', label: 'PDF / DOCX / TXT / MD', description: 'Documentos de texto' },
-  audio: { icon: '🎙️', label: 'Audio', description: 'Clases grabadas (requiere transcripción)' },
-  video: { icon: '🎬', label: 'Video', description: 'YouTube o video local (requiere subtítulos)' },
-  url: { icon: '🌐', label: 'URL', description: 'Artículo web (scraping automático)' },
-  imagen: { icon: '🖼️', label: 'Imagen', description: 'Capturas con texto (requiere OCR)' },
-  csv: { icon: '📊', label: 'CSV / Hoja de cálculo', description: 'Datos tabulares (conversión a texto)' },
+  pdf: { 
+    icon: '📄', 
+    label: 'PDF', 
+    description: 'Documento PDF (extracción automática de texto)',
+    supported: true,
+    requiresApi: false
+  },
+  docx: { 
+    icon: '📝', 
+    label: 'DOCX', 
+    description: 'Documento Word (extracción de texto)',
+    supported: true,
+    requiresApi: false
+  },
+  txt: { 
+    icon: '📃', 
+    label: 'TXT / MD', 
+    description: 'Texto plano o Markdown',
+    supported: true,
+    requiresApi: false
+  },
+  audio: { 
+    icon: '🎙️', 
+    label: 'Audio', 
+    description: 'Clases grabadas (requiere WHISPER_API_KEY)',
+    supported: true,
+    requiresApi: true,
+    apiKey: 'WHISPER_API_KEY'
+  },
+  video: { 
+    icon: '🎬', 
+    label: 'Video', 
+    description: 'YouTube o video local (subtítulos o transcripción)',
+    supported: true,
+    requiresApi: false
+  },
+  url: { 
+    icon: '🌐', 
+    label: 'URL', 
+    description: 'Artículo web (scraping automático)',
+    supported: true,
+    requiresApi: false
+  },
+  imagen: { 
+    icon: '🖼️', 
+    label: 'Imagen', 
+    description: 'Capturas con texto (OCR básico - sin API key)',
+    supported: true,
+    requiresApi: false,
+    premiumApi: 'OCR_API_KEY'
+  },
+  csv: { 
+    icon: '📊', 
+    label: 'CSV / Hoja de cálculo', 
+    description: 'Datos tabulares (conversión a texto narrativo)',
+    supported: true,
+    requiresApi: false
+  },
 } as const;
