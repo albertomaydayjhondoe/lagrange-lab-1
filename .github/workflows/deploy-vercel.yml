@@ -9,7 +9,7 @@ on:
 env:
   VITE_SUPABASE_URL: https://naikdjreibbugblihgwl.supabase.co
   VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
-  VITE_SUPABASE_PROJECT_ID: Naikdjreibbugblihgwl
+  VITE_SUPABASE_PROJECT_ID: naikdjreibbugblihgwl
 
 jobs:
   deploy-vercel:
