@@ -7,6 +7,7 @@ import {
   Map, 
   GraduationCap, 
   Settings,
+  BookOpen,
   User,
   LogIn,
   LogOut,
@@ -27,13 +28,11 @@ import {
 
 /**
  * NAVEGACIÓN PRINCIPAL - Lagrange Lab
- * Arquitectura por pestañas centrada en el Oráculo
- * 
- * Pestañas:
- * 1. Oráculo (principal) - Chat IA con diálogo socrático
- * 2. Mapa - Topología de conocimiento
- * 3. Academias - Gestión de espacios
- * 4. Config - Ajustes
+ * Arquitectura por pestañas:
+ * 1. Oráculo - Chat IA socrático (principal)
+ * 2. Biblioteca - RAG universal
+ * 3. Mapa - Topología de conocimiento
+ * 4. Academias - Gestión de espacios
  */
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -48,6 +47,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   const getActiveTab = () => {
     const path = location.pathname;
     if (path === '/' || path.startsWith('/oracle')) return 'oracle';
+    if (path.startsWith('/library') || path.startsWith('/rag')) return 'library';
     if (path.startsWith('/map')) return 'map';
     if (path.startsWith('/academies') || path.startsWith('/academia')) return 'academies';
     if (path.startsWith('/config') || path.startsWith('/settings')) return 'config';
@@ -90,6 +90,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { id: 'oracle', path: '/', label: 'Oráculo', icon: Sparkles },
+    { id: 'library', path: '/library', label: 'Biblioteca', icon: BookOpen },
     { id: 'map', path: '/map', label: 'Mapa', icon: Map },
     { id: 'academies', path: '/academies', label: 'Academias', icon: GraduationCap },
     { id: 'config', path: '/config', label: 'Config', icon: Settings },
