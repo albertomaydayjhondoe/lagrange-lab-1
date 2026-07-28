@@ -1,66 +1,63 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { MainLayout } from "@/compartido/components/MainLayout";
 import NotFound from "@/pages/NotFound";
-import ResearchLab from "@/caracteristicas/research/ResearchLab";
-import AcademiesList from "@/caracteristicas/academia/ListaDeAcademias";
-import CreateAcademy from "@/caracteristicas/academia/CrearAcademia";
-import AcademyDetail from "@/caracteristicas/academia/AcademyDetail";
-import Configuracion from "@/pages/Configuracion";
-import PitagorasLab from "@/pages/PitagorasLab";
-import FlowchartTest from "@/pages/FlowchartTest";
-import Admin from "@/caracteristicas/administracion/Admin";
-import { NarrativeGenerator } from "@/caracteristicas/podcast/GeneradorDeNarrativas";
-import AcademyProfile from "@/caracteristicas/autenticacion/AcademyProfile";
+import { OraclePage } from "@/pages/OraclePage";
 import { LagrangeMap } from "@/caracteristicas/topologia/LagrangeMap";
-import { supabase } from "@/compartido/lib/supabaseClient";
+import AcademiesList from "@/caracteristicas/academia/ListaDeAcademias";
+import Configuracion from "@/pages/Configuracion";
+import AcademyProfile from "@/caracteristicas/autenticacion/AcademyProfile";
+import AuthPage from "@/caracteristicas/autenticacion/Auth";
 
 /**
- * RUTAS - Lagrange Lab
+ * RUTAS - Lagrange Lab (Refactorizado)
  * 
- * /research → ResearchLab (FLUJO PRINCIPAL)
- * /academies/* → Gestión de academias
- * /legacy → Sistema legado (mantenido para compatibilidad)
+ * Arquitectura centrada en el Oráculo:
+ * / → Oráculo (protagonista)
+ * /map → Mapa de conocimiento
+ * /academies → Gestión de academias
+ * /config → Configuración
+ * /auth → Autenticación
  */
 export function Rutas() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session);
-    });
-  }, []);
-
   return (
-    <Routes>
-      {/* ============ PRINCIPAL: RESEARCH LAB ============ */}
-      <Route path="/" element={<ResearchLab />} />
-      <Route path="/research" element={<ResearchLab />} />
-      
-      {/* Gestión de academias */}
-      <Route path="/academies" element={<AcademiesList />} />
-      <Route path="/academies/create" element={<CreateAcademy />} />
-      <Route path="/academia/:slug" element={<AcademyDetail />} />
-      <Route path="/config" element={<Configuracion />} />
-      
-      {/* ============ LEGACY ROUTES (funcionales) ============ */}
-      <Route path="/pitagoras" element={<PitagorasLab />} />
-      <Route path="/pitagoras-lab" element={<PitagorasLab />} />
-      <Route path="/lab" element={<ResearchLab />} />
-      <Route path="/map" element={<LagrangeMap />} />
-      <Route path="/podcast" element={<NarrativeGenerator isAuthenticated={isAuthenticated} isAdmin={isAdmin} />} />
-      <Route path="/profile" element={<AcademyProfile />} />
-      <Route path="/admin" element={<Admin />} />
-      <Route path="/flowchart-test" element={<FlowchartTest />} />
-      
-      {/* Legacy redirects para rutas no implementadas */}
-      <Route path="/tutorias" element={<Navigate to="/research" replace />} />
-      <Route path="/oraculo" element={<Navigate to="/research" replace />} />
-      <Route path="/rag" element={<Navigate to="/research" replace />} />
-      <Route path="/topologia" element={<Navigate to="/map" replace />} />
-      
-      {/* 404 */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <MainLayout>
+      <Routes>
+        {/* ============ PRINCIPAL: ORÁCULO ============ */}
+        <Route path="/" element={<OraclePage />} />
+        <Route path="/oracle" element={<OraclePage />} />
+        <Route path="/oracle/:mode" element={<OraclePage />} />
+        
+        {/* ============ MAPA ============ */}
+        <Route path="/map" element={<LagrangeMap />} />
+        
+        {/* ============ ACADEMIAS ============ */}
+        <Route path="/academies" element={<AcademiesList />} />
+        <Route path="/academies/create" element={<AcademiesList />} />
+        <Route path="/academia/:slug" element={<AcademiesList />} />
+        
+        {/* ============ CONFIGURACIÓN ============ */}
+        <Route path="/config" element={<Configuracion />} />
+        <Route path="/settings" element={<Configuracion />} />
+        
+        {/* ============ USUARIO ============ */}
+        <Route path="/profile" element={<AcademyProfile />} />
+        <Route path="/auth" element={<AuthPage />} />
+        
+        {/* ============ REDIRECTS (compatibilidad) ============ */}
+        <Route path="/research" element={<Navigate to="/" replace />} />
+        <Route path="/lab" element={<Navigate to="/" replace />} />
+        <Route path="/pitagoras" element={<Navigate to="/" replace />} />
+        <Route path="/pitagoras-lab" element={<Navigate to="/" replace />} />
+        <Route path="/oraculo" element={<Navigate to="/" replace />} />
+        <Route path="/tutorias" element={<Navigate to="/" replace />} />
+        <Route path="/rag" element={<Navigate to="/" replace />} />
+        <Route path="/podcast" element={<Navigate to="/" replace />} />
+        <Route path="/admin" element={<Navigate to="/config" replace />} />
+        <Route path="/topologia" element={<Navigate to="/map" replace />} />
+        
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </MainLayout>
   );
 }

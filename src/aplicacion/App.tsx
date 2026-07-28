@@ -3,7 +3,6 @@ import { TooltipProvider } from "@/compartido/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter } from "react-router-dom";
 import { Rutas } from "./rutas";
-import { AcademyHeader } from "@/caracteristicas/academia/AcademyHeader";
 import { SessionProvider } from "@/compartido/lib/SessionProvider";
 import { AcademyProvider } from "@/caracteristicas/academia/AcademyContext";
 import { ErrorBoundary } from "@/compartido/lib/ErrorBoundary";
@@ -18,7 +17,6 @@ const App = () => (
         <SessionProvider>
           <AcademyProvider>
             <HashRouter>
-              <AcademyHeader />
               <Rutas />
             </HashRouter>
           </AcademyProvider>
