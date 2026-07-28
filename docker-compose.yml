@@ -1,0 +1,89 @@
+# ============================================
+# Lagrange Lab - Docker Compose
+# Full Stack Self-Hosted PAAS
+# ============================================
+
+services:
+  # PostgreSQL with pgvector
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: lagrange-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lagrange_lab
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lagrange_lab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lagrange-net
+
+  # Backend API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: lagrange-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: lagrange_lab
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRES_IN: 7d
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_GATEWAY_URL: ${AI_GATEWAY_URL:-https://api.openai.com/v1}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gpt-4o-mini}
+      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-text-embedding-3-small}
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX: 60
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@lagrange.dev}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - lagrange-net
+
+  # Frontend (nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: lagrange-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+    networks:
+      - lagrange-net
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  lagrange-net:
+    driver: bridge
