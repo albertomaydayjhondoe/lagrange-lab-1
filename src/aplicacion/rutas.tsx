@@ -4,7 +4,6 @@ import NotFound from "@/pages/NotFound";
 import { OraclePage } from "@/pages/OraclePage";
 import { RAGPage } from "@/pages/RAGPage";
 import { AcademiesPage } from "@/pages/AcademiesPage";
-import { LagrangeMap } from "@/caracteristicas/topologia/LagrangeMap";
 import Configuracion from "@/pages/Configuracion";
 import AcademyProfile from "@/caracteristicas/autenticacion/AcademyProfile";
 import AuthPage from "@/caracteristicas/autenticacion/Auth";
@@ -15,7 +14,6 @@ import AuthPage from "@/caracteristicas/autenticacion/Auth";
  * Arquitectura:
  * /             → Oráculo (protagonista - chat socrático)
  * /library      → Biblioteca RAG universal
- * /map          → Mapa de conocimiento
  * /academies    → Academias (gestión + ingesta de materiales)
  * /config       → Configuración
  * /auth         → Autenticación
@@ -33,9 +31,6 @@ export function Rutas() {
         <Route path="/library" element={<RAGPage />} />
         <Route path="/rag" element={<RAGPage />} />
         
-        {/* ============ MAPA ============ */}
-        <Route path="/map" element={<LagrangeMap />} />
-        
         {/* ============ ACADEMIAS (PRINCIPAL) ============ */}
         <Route path="/academies" element={<AcademiesPage />} />
         <Route path="/academies/create" element={<AcademiesPage />} />
@@ -50,6 +45,7 @@ export function Rutas() {
         <Route path="/auth" element={<AuthPage />} />
         
         {/* ============ REDIRECTS (compatibilidad) ============ */}
+        <Route path="/map" element={<Navigate to="/" replace />} />
         <Route path="/research" element={<Navigate to="/" replace />} />
         <Route path="/lab" element={<Navigate to="/" replace />} />
         <Route path="/pitagoras" element={<Navigate to="/" replace />} />
@@ -58,7 +54,7 @@ export function Rutas() {
         <Route path="/tutorias" element={<Navigate to="/" replace />} />
         <Route path="/podcast" element={<Navigate to="/" replace />} />
         <Route path="/admin" element={<Navigate to="/config" replace />} />
-        <Route path="/topologia" element={<Navigate to="/map" replace />} />
+        <Route path="/topologia" element={<Navigate to="/" replace />} />
         
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

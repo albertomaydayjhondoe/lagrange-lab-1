@@ -66,11 +66,14 @@ export function AcademiesPage() {
   const [textTitle, setTextTitle] = useState('');
   const [urlContent, setUrlContent] = useState('');
   const [urlTitle, setUrlTitle] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileContent, setFileContent] = useState<string>('');
+  const [fileTitle, setFileTitle] = useState('');
 
   const formats: IngestFormat[] = [
     { id: 'text', name: 'Texto', icon: FileText, description: 'Pega texto plano o formatted', accept: '.txt,.md' },
     { id: 'url', name: 'URL', icon: LinkIcon, description: 'Extraer contenido de página web', accept: '' },
-    { id: 'file', name: 'Archivo', icon: File, description: 'PDF, DOCX, TXT (próximamente)', accept: '.pdf,.docx' },
+    { id: 'file', name: 'Archivo', icon: File, description: 'PDF, DOCX, TXT (extraer texto)', accept: '.pdf,.docx,.txt,.md' },
   ];
 
   useEffect(() => {
@@ -104,10 +107,14 @@ export function AcademiesPage() {
     try {
       let content = '';
       let title = '';
+      let file: string | undefined;
+      let filename: string | undefined;
+      let mimeType: string | undefined;
 
       if (ingestType === 'text') {
         if (!textContent.trim() || !textTitle.trim()) {
           toast.error('Completa título y contenido');
+          setIsIngesting(false);
           return;
         }
         content = textContent;
@@ -115,14 +122,53 @@ export function AcademiesPage() {
       } else if (ingestType === 'url') {
         if (!urlContent.trim() || !urlTitle.trim()) {
           toast.error('Completa URL y título');
+          setIsIngesting(false);
           return;
         }
-        // Aquí iría la extracción de URL (por implementar)
-        content = `Contenido extraído de: ${urlContent}\n\n[La extracción de URLs se implementará con un servicio de scraping]`;
-        title = urlTitle;
+        // Usar ingest-source con URL
+        const { data: ingestData, error: ingestError } = await supabase.functions.invoke('ingest-source', {
+          body: {
+            academyId: selectedAcademy.id,
+            url: urlContent,
+            title: urlTitle,
+          }
+        });
+
+        if (ingestError) throw ingestError;
+
+        toast.success(`Material ingestado: ${ingestData.chunks_created} fragmentos creados`);
+        resetForm();
+        setShowIngestDialog(false);
+        setIsIngesting(false);
+        return;
+      } else if (ingestType === 'file') {
+        if (!selectedFile) {
+          toast.error('Selecciona un archivo');
+          setIsIngesting(false);
+          return;
+        }
+        
+        // Usar ingest-source con archivo
+        const { data: ingestData, error: ingestError } = await supabase.functions.invoke('ingest-source', {
+          body: {
+            academyId: selectedAcademy.id,
+            file: fileContent,
+            filename: selectedFile.name,
+            mimeType: selectedFile.type || getMimeType(selectedFile.name),
+            title: fileTitle || selectedFile.name,
+          }
+        });
+
+        if (ingestError) throw ingestError;
+
+        toast.success(`Archivo ingestado: ${ingestData.chunks_created} fragmentos creados`);
+        resetForm();
+        setShowIngestDialog(false);
+        setIsIngesting(false);
+        return;
       }
 
-      // Insertar en corpus_fragments
+      // Insertar en corpus_fragments (para texto directo)
       const { error } = await supabase.from('corpus_fragments').insert({
         academy_id: selectedAcademy.id,
         source_file: title,
@@ -135,17 +181,97 @@ export function AcademiesPage() {
       if (error) throw error;
 
       toast.success('Material ingerido correctamente');
+      resetForm();
       setShowIngestDialog(false);
-      setTextContent('');
-      setTextTitle('');
-      setUrlContent('');
-      setUrlTitle('');
-      setSelectedAcademy(null);
     } catch (error) {
+      console.error('Ingest error:', error);
       toast.error('Error al ingestar material');
     } finally {
       setIsIngesting(false);
     }
+  };
+
+  const resetForm = () => {
+    setTextContent('');
+    setTextTitle('');
+    setUrlContent('');
+    setUrlTitle('');
+    setSelectedFile(null);
+    setFileContent('');
+    setFileTitle('');
+    setSelectedAcademy(null);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+    setFileTitle(file.name.replace(/\.[^/.]+$/, ''));
+
+    // Extraer texto del archivo según tipo
+    try {
+      let text = '';
+      const fileName = file.name.toLowerCase();
+
+      if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
+        // Texto plano
+        text = await file.text();
+      } else if (fileName.endsWith('.pdf')) {
+        toast.info('PDF detectado. Extrayendo texto...');
+        text = await extractTextFromPDF(file);
+      } else if (fileName.endsWith('.docx')) {
+        toast.info('DOCX detectado. Extrayendo texto...');
+        text = await extractTextFromDOCX(file);
+      } else {
+        toast.error('Formato no soportado');
+        return;
+      }
+
+      setFileContent(btoa(unescape(encodeURIComponent(text))));
+      toast.success(`Texto extraído: ${text.length} caracteres`);
+    } catch (error) {
+      console.error('Error reading file:', error);
+      toast.error('Error al leer archivo');
+    }
+  };
+
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    // PDF.js inline extraction
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+
+    for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      fullText += pageText + '\n\n';
+    }
+
+    return fullText.trim();
+  };
+
+  const extractTextFromDOCX = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  };
+
+  const getMimeType = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      'txt': 'text/plain',
+      'md': 'text/markdown',
+      'pdf': 'application/pdf',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+    return mimeTypes[ext || ''] || 'application/octet-stream';
   };
 
   const myAcademies = academies.filter((a) => a.is_member);
@@ -401,7 +527,6 @@ export function AcademiesPage() {
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border hover:bg-muted"
                       )}
-                      disabled={format.id === 'file'}
                     >
                       <Icon className="w-6 h-6" />
                       <span className="text-sm font-medium">{format.name}</span>
@@ -412,11 +537,6 @@ export function AcademiesPage() {
                   );
                 })}
               </div>
-              {ingestType === 'file' && (
-                <p className="text-sm text-amber-500">
-                  La ingesta de archivos estará disponible próximamente. Usa texto o URL por ahora.
-                </p>
-              )}
             </div>
 
             {/* Formularios según tipo */}
@@ -462,7 +582,55 @@ export function AcademiesPage() {
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  El contenido se extraerá automáticamente de la URL cuando la funcionalidad esté disponible.
+                  El contenido se extraerá y se procesará con RAG.
+                </p>
+              </div>
+            )}
+
+            {ingestType === 'file' && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Archivo (PDF, DOCX, TXT, MD)</label>
+                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
+                    <input
+                      type="file"
+                      id="file-input"
+                      accept=".pdf,.docx,.txt,.md"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <label htmlFor="file-input" className="cursor-pointer">
+                      <File className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      {selectedFile ? (
+                        <div>
+                          <p className="font-medium">{selectedFile.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {(selectedFile.size / 1024).toFixed(1)} KB
+                          </p>
+                          {fileContent && (
+                            <p className="text-sm text-green-500 mt-2">
+                              ✓ Texto extraído: {(atob(fileContent).length / 1024).toFixed(1)} KB
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground">
+                          Haz clic o arrastra un archivo para seleccionarlo
+                        </p>
+                      )}
+                    </label>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Título (opcional)</label>
+                  <Input
+                    value={fileTitle}
+                    onChange={(e) => setFileTitle(e.target.value)}
+                    placeholder="Nombre del material (se usa el nombre del archivo si está vacío)"
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  El texto se extrae automáticamente y se fragmenta para búsqueda semántica.
                 </p>
               </div>
             )}
