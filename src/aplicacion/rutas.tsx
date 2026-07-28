@@ -3,20 +3,20 @@ import { MainLayout } from "@/compartido/components/MainLayout";
 import NotFound from "@/pages/NotFound";
 import { OraclePage } from "@/pages/OraclePage";
 import { RAGPage } from "@/pages/RAGPage";
+import { AcademiesPage } from "@/pages/AcademiesPage";
 import { LagrangeMap } from "@/caracteristicas/topologia/LagrangeMap";
-import AcademiesList from "@/caracteristicas/academia/ListaDeAcademias";
 import Configuracion from "@/pages/Configuracion";
 import AcademyProfile from "@/caracteristicas/autenticacion/AcademyProfile";
 import AuthPage from "@/caracteristicas/autenticacion/Auth";
 
 /**
- * RUTAS - Lagrange Lab (Refactorizado con RAG)
+ * RUTAS - Lagrange Lab (PaaS Educativo)
  * 
  * Arquitectura:
- * /             → Oráculo (chat socrático - protagonista)
+ * /             → Oráculo (protagonista - chat socrático)
  * /library      → Biblioteca RAG universal
  * /map          → Mapa de conocimiento
- * /academies    → Gestión de academias
+ * /academies    → Academias (gestión + ingesta de materiales)
  * /config       → Configuración
  * /auth         → Autenticación
  */
@@ -36,10 +36,10 @@ export function Rutas() {
         {/* ============ MAPA ============ */}
         <Route path="/map" element={<LagrangeMap />} />
         
-        {/* ============ ACADEMIAS ============ */}
-        <Route path="/academies" element={<AcademiesList />} />
-        <Route path="/academies/create" element={<AcademiesList />} />
-        <Route path="/academia/:slug" element={<AcademiesList />} />
+        {/* ============ ACADEMIAS (PRINCIPAL) ============ */}
+        <Route path="/academies" element={<AcademiesPage />} />
+        <Route path="/academies/create" element={<AcademiesPage />} />
+        <Route path="/academia/:slug" element={<AcademiesPage />} />
         
         {/* ============ CONFIGURACIÓN ============ */}
         <Route path="/config" element={<Configuracion />} />
