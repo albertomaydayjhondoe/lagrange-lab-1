@@ -105,20 +105,28 @@ export function AcademiesPage() {
     setIsIngesting(true);
 
     try {
-      let content = '';
-      let title = '';
-      let file: string | undefined;
-      let filename: string | undefined;
-      let mimeType: string | undefined;
-
       if (ingestType === 'text') {
         if (!textContent.trim() || !textTitle.trim()) {
           toast.error('Completa título y contenido');
           setIsIngesting(false);
           return;
         }
-        content = textContent;
-        title = textTitle;
+        // Usar ingest-source con texto
+        const { data: ingestData, error: ingestError } = await supabase.functions.invoke('ingest-source', {
+          body: {
+            academyId: selectedAcademy.id,
+            text: textContent,
+            title: textTitle,
+          }
+        });
+
+        if (ingestError) throw ingestError;
+
+        toast.success(`Material ingestado: ${ingestData.chunks_created} fragmentos creados`);
+        resetForm();
+        setShowIngestDialog(false);
+        setIsIngesting(false);
+        return;
       } else if (ingestType === 'url') {
         if (!urlContent.trim() || !urlTitle.trim()) {
           toast.error('Completa URL y título');
@@ -167,22 +175,6 @@ export function AcademiesPage() {
         setIsIngesting(false);
         return;
       }
-
-      // Insertar en corpus_fragments (para texto directo)
-      const { error } = await supabase.from('corpus_fragments').insert({
-        academy_id: selectedAcademy.id,
-        source_file: title,
-        source_type: ingestType,
-        content: content,
-        axis: [],
-        tension: 0.5,
-      });
-
-      if (error) throw error;
-
-      toast.success('Material ingerido correctamente');
-      resetForm();
-      setShowIngestDialog(false);
     } catch (error) {
       console.error('Ingest error:', error);
       toast.error('Error al ingestar material');

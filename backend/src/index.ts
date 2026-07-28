@@ -247,7 +247,7 @@ app.post('/api/oracles/tutoring', authenticate, async (req, res) => {
     }
 
     // Build prompt
-    let systemPrompt = `Eres un tutor de IA especializado. Academia: ${academy.rows[0].name}. Responde de manera clara y didáctica.`;
+    const systemPrompt = `Eres un tutor de IA especializado. Academia: ${academy.rows[0].name}. Responde de manera clara y didáctica.`;
 
     // Add conversation history
     const messages: any[] = [{ role: 'system', content: systemPrompt }];
