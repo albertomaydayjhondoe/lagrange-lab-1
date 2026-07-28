@@ -254,10 +254,10 @@ export function SocraticDialogue({ initialContent, onContentUsed }: SocraticDial
             <MessageCircle className="w-10 h-10 text-primary" />
           </div>
           <h2 className="font-serif text-3xl md:text-4xl text-foreground mb-4">
-            Diálogo Socrático
+            Tutor Virtual
           </h2>
           <p className="text-muted-foreground mb-8 leading-relaxed">
-            Inicia una conversación profunda con el Oráculo. Cada respuesta tuya 
+            Inicia una conversación profunda con tu Asistente de Cátedra. Cada respuesta tuya 
             generará una nueva pregunta que desafía tus asunciones y expone 
             contradicciones. No hay respuestas correctas, solo fricción productiva.
           </p>
@@ -286,7 +286,7 @@ export function SocraticDialogue({ initialContent, onContentUsed }: SocraticDial
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />
-          <span className="font-serif text-lg">Diálogo Socrático</span>
+          <span className="font-serif text-lg">Tutor Virtual</span>
           <span className="text-xs text-muted-foreground">
             ({Math.floor(dialogue.length / 2)} intercambios)
           </span>
@@ -374,7 +374,7 @@ export function SocraticDialogue({ initialContent, onContentUsed }: SocraticDial
             <div className="bg-card/50 border border-border/50 rounded-lg p-4">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Sparkles className="w-4 h-4 animate-spin" />
-                <span className="text-sm">El Oráculo reflexiona...</span>
+                <span className="text-sm">El Tutor reflexiona...</span>
               </div>
             </div>
           </motion.div>

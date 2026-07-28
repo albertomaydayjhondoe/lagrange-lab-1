@@ -166,12 +166,12 @@ export default function AcademyDetail() {
 
         {/* Welcome for non-members */}
         {!isMember && (
-          <div className="p-8 bg-lagrange-surface rounded-lg border border-lagrange-border text-center">
-            <h2 className="text-2xl font-semibold mb-4">¿Quieres unirte?</h2>
-            <p className="text-gray-400 mb-6">
+          <div className="card-carrera p-8 text-center">
+            <h2 className="text-2xl font-semibold mb-4">¿Quieres matricularte?</h2>
+            <p className="text-muted-foreground mb-6">
               {academy.is_public 
-                ? "Únete a esta academia pública con un clic" 
-                : "Solicita acceso para participar en esta academia"
+                ? "Inscríbete en esta carrera pública con un clic" 
+                : "Solicita acceso para participar en esta carrera"
               }
             </p>
             {academy.is_public ? (
@@ -182,14 +182,20 @@ export default function AcademyDetail() {
                       p_academy_id: academy.id
                     });
                     if (error) throw error;
-                    window.location.reload();
+                    // Show success message before reload
+                    const btn = document.activeElement as HTMLButtonElement;
+                    if (btn) {
+                      btn.innerHTML = '✓ ¡Ya eres estudiante!';
+                      btn.className = 'status-listo text-lg py-3 px-6';
+                      setTimeout(() => window.location.reload(), 1500);
+                    }
                   } catch (err: any) {
-                    alert(err.message || 'Error al unirse a la academia');
+                    alert(err.message || 'Error al matricularse');
                   }
                 }}
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                className="btn-matricular"
               >
-                Unirme a la Academia
+                Matricularme
               </button>
             ) : (
               <button className="px-6 py-3 bg-lagrange-accent hover:bg-lagrange-accent/80 rounded-lg transition-colors">

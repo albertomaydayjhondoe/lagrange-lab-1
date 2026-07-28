@@ -54,7 +54,7 @@ const SUPPORTED_TYPES = [
   { type: 'jpg', icon: Image, label: 'Imagen', color: 'text-green-500' },
 ];
 
-// Status badge component
+// Status badge component - Universidad palette
 function StatusBadge({ status }: { status: string | null }) {
   const normalizedStatus = status?.toLowerCase() || 'processed';
   
@@ -62,22 +62,32 @@ function StatusBadge({ status }: { status: string | null }) {
     completed: {
       label: 'Completado',
       icon: CheckCircle,
-      className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+      className: 'status-listo',
+    },
+    processed: {
+      label: 'Listo',
+      icon: CheckCircle,
+      className: 'status-listo',
     },
     processing: {
       label: 'Procesando',
-      icon: Clock,
-      className: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+      icon: Loader2,
+      className: 'status-procesando',
     },
     error: {
       label: 'Error',
       icon: AlertCircle,
-      className: 'bg-red-500/20 text-red-400 border-red-500/30',
+      className: 'status-error',
+    },
+    failed: {
+      label: 'Fallido',
+      icon: AlertCircle,
+      className: 'status-error',
     },
     pending: {
       label: 'Pendiente',
       icon: Clock,
-      className: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+      className: 'status-procesando',
     },
     embedding_failed: {
       label: 'Embedding fallido',
@@ -401,8 +411,8 @@ export function RAGSourcesEditor({ academyId, isAdmin = false }: RAGSourcesEdito
       {/* Header with add button */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-medium">Fuentes RAG</h3>
-          <p className="text-sm text-muted-foreground">Textos que el oráculo usa como contexto</p>
+          <h3 className="text-lg font-medium">Material de Estudio</h3>
+          <p className="text-sm text-muted-foreground">Textos que el Tutor Virtual usa como contexto</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={fetchSources} variant="outline" size="sm">
@@ -414,7 +424,7 @@ export function RAGSourcesEditor({ academyId, isAdmin = false }: RAGSourcesEdito
             className="gap-2"
           >
             <Plus className="w-4 h-4" />
-            Añadir fuente
+            Subir apuntes
           </Button>
         </div>
       </div>
@@ -486,7 +496,7 @@ export function RAGSourcesEditor({ academyId, isAdmin = false }: RAGSourcesEdito
                   ) : (
                     <>
                       <Upload className="w-4 h-4 mr-2" />
-                      Subir Texto
+                      Cargar material
                     </>
                   )}
                 </Button>
@@ -605,10 +615,21 @@ export function RAGSourcesEditor({ academyId, isAdmin = false }: RAGSourcesEdito
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : Object.keys(groupedSources).length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-border rounded-lg">
-          <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-          <p className="text-muted-foreground">No hay fuentes subidas todavía</p>
-          <p className="text-sm text-muted-foreground/70">Sube un texto o archivo para comenzar</p>
+        <div className="card-carrera text-center py-12 px-6">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-accent/10 flex items-center justify-center">
+            <FileText className="w-8 h-8 text-accent" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Sé el primero en aportar apuntes</h3>
+          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+            Esta asignatura aún no tiene material de estudio. Sube tus apuntes para que el Tutor Virtual pueda usarlo como contexto.
+          </p>
+          <button 
+            onClick={() => setShowUploadForm(true)}
+            className="btn-secundario"
+          >
+            <Upload className="w-4 h-4" />
+            Subir apuntes
+          </button>
         </div>
       ) : (
         <div className="space-y-4">

@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         serif: ['Cormorant Garamond', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -70,6 +71,19 @@ export default {
           calm: "hsl(var(--lagrange-calm))",
           glow: "hsl(var(--lagrange-glow))",
         },
+        // Universidad Siglo XXI - Paleta Cromática
+        uni: {
+          red: "hsl(var(--uni-red))",
+          "red-dark": "hsl(var(--uni-red-dark))",
+          yellow: "hsl(var(--uni-yellow))",
+          "yellow-light": "hsl(var(--uni-yellow-light))",
+          green: "hsl(var(--uni-green))",
+          "green-dark": "hsl(var(--uni-green-dark))",
+        },
+      },
+      backgroundImage: {
+        'gradient-uni-primary': 'var(--gradient-uni-primary)',
+        'gradient-uni-card': 'var(--gradient-uni-card)',
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -97,6 +111,15 @@ export default {
           from: { opacity: "0", transform: "translateY(20px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // Universidad animations
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% center" },
+          "100%": { backgroundPosition: "200% center" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 20px hsl(var(--uni-yellow) / 0.3)" },
+          "50%": { boxShadow: "0 0 40px hsl(var(--uni-yellow) / 0.5)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -104,6 +127,8 @@ export default {
         "node-pulse": "node-pulse 3s ease-in-out infinite",
         "fade-in": "fade-in 0.5s ease-out",
         "slide-up": "slide-up 0.6s ease-out",
+        "shimmer": "shimmer 3s linear infinite",
+        "glow-pulse": "glow-pulse 4s ease-in-out infinite",
       },
     },
   },

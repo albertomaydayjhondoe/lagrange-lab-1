@@ -61,10 +61,10 @@ const Lab = ({ academyId }: LabProps) => {
             className="text-center mb-8 md:mb-12"
           >
             <div className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-mono uppercase tracking-wider mb-3 md:mb-4">
-              Academia
+              Cátedra
             </div>
             <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl text-foreground mb-3 md:mb-4">
-              El Laboratorio
+              Centro de Estudios
             </h1>
             <p className="text-muted-foreground font-serif max-w-2xl mx-auto text-sm md:text-base">
               Este no es un lugar para encontrar consuelo. Es un espejo 
