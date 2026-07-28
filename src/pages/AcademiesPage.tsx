@@ -177,7 +177,7 @@ export function AcademiesPage() {
       }
     } catch (error) {
       console.error('Ingest error:', error);
-      toast.error('Error al ingestar material');
+      toast.error('Error al Subir material');
     } finally {
       setIsIngesting(false);
     }
@@ -291,7 +291,7 @@ export function AcademiesPage() {
               <GraduationCap className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="font-serif text-2xl md:text-3xl">Academias</h1>
+              <h1 className="font-serif text-2xl md:text-3xl">Catálogo de Carreras</h1>
               <p className="text-muted-foreground text-sm">
                 {myAcademies.length} academia{myAcademies.length !== 1 ? 's' : ''} · {otherAcademies.length} disponible{otherAcademies.length !== 1 ? 's' : ''}
               </p>
@@ -306,7 +306,7 @@ export function AcademiesPage() {
               className="gap-2"
             >
               <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Ingestar Material</span>
+              <span className="hidden sm:inline">Subir Apuntes</span>
             </Button>
             <Button onClick={() => navigate('/academies/create')} className="gap-2">
               <Plus className="w-4 h-4" />
@@ -321,7 +321,7 @@ export function AcademiesPage() {
         <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="mine" className="gap-2">
             <GraduationCap className="w-4 h-4" />
-            Mis Academias
+            Mis Carreras
             {myAcademies.length > 0 && (
               <Badge variant="secondary" className="ml-1">{myAcademies.length}</Badge>
             )}
@@ -352,13 +352,13 @@ export function AcademiesPage() {
             <Card>
               <CardContent className="py-12 text-center">
                 <Sparkles className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-serif text-lg mb-2">Sin academias aún</h3>
+                <h3 className="font-serif text-lg mb-2">Sin carreras aún</h3>
                 <p className="text-muted-foreground mb-4">
                   Crea tu primera academia o únete a una existente
                 </p>
                 <div className="flex items-center justify-center gap-2">
                   <Button variant="outline" onClick={() => navigate('/academies/create')}>
-                    Crear Academia
+                    Crear Carrera
                   </Button>
                 </div>
               </CardContent>
@@ -409,7 +409,7 @@ export function AcademiesPage() {
                           }}
                         >
                           <Upload className="w-3 h-3" />
-                          Ingestar
+                          Subir
                         </Button>
                       </div>
                     </CardContent>
@@ -426,7 +426,7 @@ export function AcademiesPage() {
             <Card>
               <CardContent className="py-12 text-center">
                 <Globe className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-serif text-lg mb-2">No hay academias públicas</h3>
+                <h3 className="font-serif text-lg mb-2">No hay carreras públicas</h3>
                 <p className="text-muted-foreground">
                   Crea una academia pública para que otros puedan descubrirla
                 </p>
@@ -474,7 +474,7 @@ export function AcademiesPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload className="w-5 h-5 text-primary" />
-              Ingestar Material
+              Subir Apuntes
             </DialogTitle>
             <DialogDescription>
               Añade materiales de conocimiento a una academia
@@ -644,7 +644,7 @@ export function AcademiesPage() {
               ) : (
                 <>
                   <Upload className="w-4 h-4 mr-2" />
-                  Ingestar
+                  Subir
                 </>
               )}
             </Button>
