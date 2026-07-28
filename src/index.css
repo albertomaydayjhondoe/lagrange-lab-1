@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -15,8 +15,9 @@
     --popover: 220 18% 8%;
     --popover-foreground: 45 30% 92%;
 
-    --primary: 357 90% 50%;        /* Rojo vibrante */
-    --primary-foreground: 0 0% 100%;
+    /* Paleta Original Lagrange */
+    --primary: 45 80% 55%;
+    --primary-foreground: 220 20% 6%;
 
     --secondary: 220 15% 15%;
     --secondary-foreground: 45 30% 85%;
@@ -24,17 +25,17 @@
     --muted: 220 15% 12%;
     --muted-foreground: 220 10% 55%;
 
-    --accent: 45 100% 55%;        /* Amarillo cálido */
-    --accent-foreground: 220 20% 6%;
+    --accent: 200 60% 45%;
+    --accent-foreground: 45 30% 95%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 45 30% 95%;
 
     --border: 220 15% 18%;
     --input: 220 15% 15%;
-    --ring: 357 90% 50%;
+    --ring: 45 80% 55%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Custom Lagrange tokens */
     --lagrange-gold: 45 80% 55%;
@@ -45,48 +46,28 @@
     --lagrange-calm: 160 40% 40%;
     --lagrange-glow: 45 100% 70%;
 
-    /* Universidad Siglo XXI - Paleta Cromática */
-    /* Rojo vibrante */
-    --uni-red: 357 90% 50%;
-    --uni-red-dark: 357 85% 40%;
-    /* Amarillo cálido */
-    --uni-yellow: 45 100% 55%;
-    --uni-yellow-light: 45 100% 70%;
-    /* Verde vivo */
-    --uni-green: 145 60% 35%;
-    --uni-green-dark: 145 55% 25%;
-
     /* Gradients */
     --gradient-void: radial-gradient(ellipse at center, hsl(220 20% 8%) 0%, hsl(220 25% 4%) 100%);
     --gradient-gold: linear-gradient(135deg, hsl(45 80% 55%) 0%, hsl(35 90% 45%) 100%);
     --gradient-node: radial-gradient(circle, hsl(200 60% 50% / 0.3) 0%, transparent 70%);
-    /* Universidad Gradients */
-    --gradient-uni-primary: linear-gradient(135deg, hsl(357 90% 50%) 0%, hsl(357 85% 40%) 100%);
-    --gradient-uni-card: linear-gradient(145deg, hsl(357 85% 45% / 0.15) 0%, hsl(220 18% 10%) 100%);
 
     /* Shadows */
     --shadow-glow: 0 0 30px hsl(45 80% 55% / 0.15);
     --shadow-node: 0 0 20px hsl(200 60% 45% / 0.3);
     --shadow-deep: 0 25px 50px -12px hsl(220 25% 2% / 0.8);
-    /* Universidad Shadows */
-    --shadow-red-glow: 0 0 30px hsl(357 90% 50% / 0.25);
-    --shadow-yellow-glow: 0 0 20px hsl(45 100% 55% / 0.3);
-    --shadow-green-glow: 0 0 20px hsl(145 60% 35% / 0.3);
-    --shadow-card-hover: 0 20px 40px -10px hsl(0 0% 0% / 0.5);
 
     /* Typography */
     --font-serif: 'Cormorant Garamond', Georgia, serif;
     --font-mono: 'JetBrains Mono', monospace;
-    --font-sans: 'Inter', system-ui, sans-serif;
 
     --sidebar-background: 220 18% 8%;
     --sidebar-foreground: 45 30% 85%;
-    --sidebar-primary: 357 90% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-primary: 45 80% 55%;
+    --sidebar-primary-foreground: 220 20% 6%;
     --sidebar-accent: 220 15% 15%;
     --sidebar-accent-foreground: 45 30% 85%;
     --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 357 90% 50%;
+    --sidebar-ring: 45 80% 55%;
   }
 }
 
@@ -209,17 +190,17 @@
     animation: text-shimmer 3s linear infinite;
   }
 
-  /* Universidad Siglo XXI - Tarjetas de Carrera */
+  /* Universidad Siglo XXI - Tarjetas de Carrera (con paleta Lagrange) */
   .card-carrera {
-    @apply relative overflow-hidden rounded-xl border border-transparent;
-    background: var(--gradient-uni-card);
+    @apply relative overflow-hidden rounded-xl border border-border/50;
+    background: linear-gradient(145deg, hsl(45 80% 55% / 0.08) 0%, hsl(220 18% 10%) 100%);
     transition: all 0.3s ease;
   }
 
   .card-carrera::before {
     content: '';
     @apply absolute inset-0 opacity-0 transition-opacity duration-300;
-    background: linear-gradient(135deg, hsl(357 90% 50% / 0.1) 0%, hsl(45 100% 55% / 0.05) 100%);
+    background: linear-gradient(135deg, hsl(45 80% 55% / 0.1) 0%, hsl(200 60% 45% / 0.05) 100%);
   }
 
   .card-carrera:hover::before {
@@ -227,36 +208,22 @@
   }
 
   .card-carrera:hover {
-    border-color: hsl(var(--uni-red) / 0.5);
-    box-shadow: var(--shadow-card-hover), var(--shadow-red-glow);
+    border-color: hsl(var(--lagrange-gold) / 0.5);
+    box-shadow: 0 20px 40px -10px hsl(0 0% 0% / 0.5), 0 0 30px hsl(45 80% 55% / 0.15);
     transform: translateY(-4px);
   }
 
-  /* Variante con borde amarillo */
+  /* Variante con borde dorado */
   .card-carrera-accent {
-    @apply relative overflow-hidden rounded-xl;
-    background: var(--gradient-uni-card);
-    border: 2px solid hsl(var(--uni-yellow) / 0.3);
+    @apply relative overflow-hidden rounded-xl border border-lagrange-gold/30;
+    background: linear-gradient(145deg, hsl(45 80% 55% / 0.12) 0%, hsl(220 18% 10%) 100%);
     transition: all 0.3s ease;
   }
 
   .card-carrera-accent:hover {
-    border-color: hsl(var(--uni-yellow));
-    box-shadow: var(--shadow-card-hover), var(--shadow-yellow-glow);
+    border-color: hsl(var(--lagrange-gold));
+    box-shadow: 0 20px 40px -10px hsl(0 0% 0% / 0.5), 0 0 30px hsl(45 80% 55% / 0.2);
     transform: translateY(-2px);
-  }
-
-  /* Variante verde (para status positiva) */
-  .card-carrera-success {
-    @apply relative overflow-hidden rounded-xl border;
-    background: var(--gradient-uni-card);
-    border-color: hsl(var(--uni-green) / 0.4);
-    transition: all 0.3s ease;
-  }
-
-  .card-carrera-success:hover {
-    border-color: hsl(var(--uni-green));
-    box-shadow: var(--shadow-card-hover), var(--shadow-green-glow);
   }
 
   /* Badge de carrera */
@@ -265,27 +232,27 @@
   }
 
   .badge-publica {
-    background: hsl(var(--uni-green) / 0.2);
-    color: hsl(var(--uni-green));
-    border: 1px solid hsl(var(--uni-green) / 0.3);
+    background: hsl(var(--lagrange-calm) / 0.2);
+    color: hsl(var(--lagrange-calm));
+    border: 1px solid hsl(var(--lagrange-calm) / 0.3);
   }
 
   .badge-privada {
-    background: hsl(var(--uni-yellow) / 0.2);
-    color: hsl(var(--uni-yellow));
-    border: 1px solid hsl(var(--uni-yellow) / 0.3);
+    background: hsl(var(--lagrange-node) / 0.2);
+    color: hsl(var(--lagrange-node));
+    border: 1px solid hsl(var(--lagrange-node) / 0.3);
   }
 
-  /* Botones de la universidad */
+  /* Botones de la universidad (con paleta Lagrange) */
   .btn-matricular {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 font-semibold transition-all duration-200;
-    background: hsl(var(--uni-green));
+    background: hsl(var(--lagrange-calm));
     color: white;
   }
 
   .btn-matricular:hover {
-    background: hsl(var(--uni-green-dark));
-    box-shadow: var(--shadow-green-glow);
+    background: hsl(145 55% 30%);
+    box-shadow: 0 0 20px hsl(145 60% 35% / 0.3);
     transform: translateY(-1px);
   }
 
@@ -295,34 +262,34 @@
 
   .btn-secundario {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 font-medium transition-all duration-200;
-    background: hsl(var(--uni-red));
-    color: white;
+    background: hsl(var(--lagrange-gold));
+    color: hsl(220 20% 6%);
   }
 
   .btn-secundario:hover {
-    background: hsl(var(--uni-red-dark));
-    box-shadow: var(--shadow-red-glow);
+    background: hsl(var(--lagrange-gold-dim));
+    box-shadow: 0 0 20px hsl(45 80% 55% / 0.3);
   }
 
-  /* Status badges para uploads */
+  /* Status badges para uploads (con paleta Lagrange) */
   .status-procesando {
     @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium;
-    background: hsl(var(--uni-yellow) / 0.2);
-    color: hsl(var(--uni-yellow));
-    border: 1px solid hsl(var(--uni-yellow) / 0.3);
+    background: hsl(var(--lagrange-node) / 0.2);
+    color: hsl(var(--lagrange-node));
+    border: 1px solid hsl(var(--lagrange-node) / 0.3);
   }
 
   .status-listo {
     @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium;
-    background: hsl(var(--uni-green) / 0.2);
-    color: hsl(var(--uni-green));
-    border: 1px solid hsl(var(--uni-green) / 0.3);
+    background: hsl(var(--lagrange-calm) / 0.2);
+    color: hsl(var(--lagrange-calm));
+    border: 1px solid hsl(var(--lagrange-calm) / 0.3);
   }
 
   .status-error {
     @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium;
-    background: hsl(0 70% 50% / 0.2);
-    color: hsl(0 70% 50%);
-    border: 1px solid hsl(0 70% 50% / 0.3);
+    background: hsl(var(--lagrange-tension) / 0.2);
+    color: hsl(var(--lagrange-tension));
+    border: 1px solid hsl(var(--lagrange-tension) / 0.3);
   }
 }
