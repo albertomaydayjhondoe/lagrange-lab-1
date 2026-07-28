@@ -1,4 +1,39 @@
-# 🐳 Lagrange Lab - Docker Self-Hosted
+# 🚀 Deploy a Producción (Gratis)
+
+## Opción A: Vercel + Supabase (Recomendado)
+
+### 1. Crear Proyecto Supabase
+```bash
+# Ve a https://app.supabase.com
+# Crea nuevo proyecto
+# Copia Project URL y anon public key
+```
+
+### 2. Configurar Variables en Vercel
+```
+# Vercel Dashboard → Project → Settings → Environment Variables
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=tu-anon-key
+```
+
+### 3. Deploy
+```bash
+# Opción 1: Vercel CLI
+npm i -g vercel
+vercel --prod
+
+# Opción 2: Conectar GitHub en vercel.com
+# Push a main → Auto-deploy
+```
+
+### 4. Migrar Base de Datos
+```bash
+npx supabase db push
+```
+
+---
+
+## Opción B: Docker Self-Hosted
 
 Plataforma educativa PaaS completamente funcional sin dependencias de servicios externos.
 
