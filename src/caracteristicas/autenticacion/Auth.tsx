@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/compartido/lib/supabaseClient';
-import { LagrangeNav } from '@/components/LagrangeNav';
 import { Button } from '@/compartido/ui/button';
 import { Input } from '@/compartido/ui/input';
 import { Label } from '@/compartido/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/compartido/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Lock, Mail, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { GraduationCap, Mail, Eye, EyeOff, Loader2, Building2 } from 'lucide-react';
 import { z } from 'zod';
 
 const authSchema = z.object({
@@ -33,20 +32,19 @@ const Auth = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (isMounted && session) {
-          navigate('/admin');
+          // Redirigir a Campus o a la academia activa
+          navigate('/academies');
         }
       } catch (error) {
         console.error('Error checking session:', error);
       }
     };
     
-    // Small delay to prevent flash of auth page
     const timer = setTimeout(checkSession, 100);
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (isMounted && session) {
-        navigate('/admin');
+        navigate('/academies');
       }
     });
 
@@ -118,13 +116,11 @@ const Auth = () => {
     
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/admin`;
-      
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl,
+          emailRedirectTo: `${window.location.origin}/academies`,
         },
       });
 
@@ -144,9 +140,10 @@ const Auth = () => {
         }
       } else {
         toast({
-          title: 'Cuenta creada',
-          description: 'Tu cuenta ha sido creada. Ya puedes acceder al panel.',
+          title: '¡Bienvenido!',
+          description: 'Tu cuenta ha sido creada. Ahora puedes explorar el campus.',
         });
+        navigate('/academies');
       }
     } catch (error) {
       toast({
@@ -161,33 +158,43 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <LagrangeNav />
+      {/* Fondo decorativo */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+      </div>
       
-      <main className="pt-24 pb-12 px-6 flex items-center justify-center min-h-[80vh]">
+      <main className="relative min-h-screen px-6 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md"
         >
+          {/* Header */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4 glow-gold">
-              <Lock className="w-7 h-7 text-primary" />
-            </div>
-            <h1 className="font-serif text-3xl text-foreground mb-2">
-              Acceso Restringido
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4 border border-primary/20"
+            >
+              <GraduationCap className="w-10 h-10 text-primary" />
+            </motion.div>
+            <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-2">
+              Accede a tu campus
             </h1>
-            <p className="text-muted-foreground font-serif text-sm">
-              Panel de control del Sistema Lagrange
+            <p className="text-muted-foreground font-serif">
+              Inicia tu viaje de aprendizaje socrático
             </p>
           </div>
 
-          <div className="bg-card/50 backdrop-blur-sm rounded-2xl border border-border p-8">
+          {/* Formulario */}
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl border border-border p-8 shadow-xl">
             <Tabs defaultValue="login" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 bg-secondary">
-                <TabsTrigger value="login" className="font-mono text-sm">
+              <TabsList className="grid w-full grid-cols-2 bg-muted">
+                <TabsTrigger value="login" className="font-serif">
                   Iniciar Sesión
                 </TabsTrigger>
-                <TabsTrigger value="signup" className="font-mono text-sm">
+                <TabsTrigger value="signup" className="font-serif">
                   Registrarse
                 </TabsTrigger>
               </TabsList>
@@ -195,18 +202,18 @@ const Auth = () => {
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email" className="text-sm font-mono">
-                      Email
+                    <Label htmlFor="login-email" className="text-sm">
+                      Correo electrónico
                     </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="login-email"
                         type="email"
-                        placeholder="admin@lagrange.dev"
+                        placeholder="tu@email.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 bg-secondary border-border"
+                        className="pl-10"
                       />
                     </div>
                     {errors.email && (
@@ -215,18 +222,17 @@ const Auth = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="login-password" className="text-sm font-mono">
+                    <Label htmlFor="login-password" className="text-sm">
                       Contraseña
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="login-password"
                         type={showPassword ? 'text' : 'password'}
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 pr-10 bg-secondary border-border"
+                        className="pr-10"
                       />
                       <button
                         type="button"
@@ -244,7 +250,7 @@ const Auth = () => {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full font-serif bg-primary hover:bg-primary/90"
+                    className="w-full font-serif"
                   >
                     {loading ? (
                       <>
@@ -252,7 +258,10 @@ const Auth = () => {
                         Accediendo...
                       </>
                     ) : (
-                      'Acceder al Panel'
+                      <>
+                        <Building2 className="w-4 h-4 mr-2" />
+                        Entrar al Campus
+                      </>
                     )}
                   </Button>
                 </form>
@@ -261,8 +270,8 @@ const Auth = () => {
               <TabsContent value="signup">
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-sm font-mono">
-                      Email
+                    <Label htmlFor="signup-email" className="text-sm">
+                      Correo electrónico
                     </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -272,7 +281,7 @@ const Auth = () => {
                         placeholder="tu@email.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 bg-secondary border-border"
+                        className="pl-10"
                       />
                     </div>
                     {errors.email && (
@@ -281,18 +290,17 @@ const Auth = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-sm font-mono">
+                    <Label htmlFor="signup-password" className="text-sm">
                       Contraseña
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         id="signup-password"
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Mínimo 6 caracteres"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 pr-10 bg-secondary border-border"
+                        className="pr-10"
                       />
                       <button
                         type="button"
@@ -310,7 +318,7 @@ const Auth = () => {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full font-serif bg-primary hover:bg-primary/90"
+                    className="w-full font-serif"
                   >
                     {loading ? (
                       <>
@@ -318,7 +326,10 @@ const Auth = () => {
                         Creando cuenta...
                       </>
                     ) : (
-                      'Crear Cuenta'
+                      <>
+                        <GraduationCap className="w-4 h-4 mr-2" />
+                        Unirme al Campus
+                      </>
                     )}
                   </Button>
                 </form>
@@ -326,8 +337,9 @@ const Auth = () => {
             </Tabs>
           </div>
 
-          <p className="text-center text-xs text-muted-foreground mt-6 font-mono">
-            El poder requiere autenticación. God mode no es para todos.
+          {/* Footer */}
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            Al registrarte, aceptas formar parte de una comunidad de aprendizaje.
           </p>
         </motion.div>
       </main>

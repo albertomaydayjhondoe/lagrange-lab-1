@@ -299,18 +299,19 @@ export function AcademiesPage() {
           </div>
           
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline"
-              onClick={() => setShowIngestDialog(true)}
-              disabled={!isAuthenticated}
-              className="gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Subir Apuntes</span>
-            </Button>
+            {isAuthenticated && (
+              <Button 
+                variant="outline"
+                onClick={() => setShowIngestDialog(true)}
+                className="gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Aportar Apuntes</span>
+              </Button>
+            )}
             <Button onClick={() => navigate('/academies/create')} className="gap-2">
               <Plus className="w-4 h-4" />
-              Crear
+              <span className="hidden sm:inline">Fundar Facultad</span>
             </Button>
           </div>
         </div>
@@ -354,11 +355,11 @@ export function AcademiesPage() {
                 <Sparkles className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="font-serif text-lg mb-2">Sin carreras aún</h3>
                 <p className="text-muted-foreground mb-4">
-                  Crea tu primera academia o únete a una existente
+                  Explora las carreras disponibles o funda tu propia facultad
                 </p>
                 <div className="flex items-center justify-center gap-2">
-                  <Button variant="outline" onClick={() => navigate('/academies/create')}>
-                    Crear Carrera
+                  <Button onClick={() => navigate('/academies/create')}>
+                    Fundar una Facultad
                   </Button>
                 </div>
               </CardContent>
