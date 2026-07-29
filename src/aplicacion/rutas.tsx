@@ -8,57 +8,62 @@ import Configuracion from "@/pages/Configuracion";
 import AcademyProfile from "@/caracteristicas/autenticacion/AcademyProfile";
 import AuthPage from "@/caracteristicas/autenticacion/Auth";
 
+// SaaS - Academias Estancas
+import { SaaSWelcome } from "@/pages/saas/SaaSWelcome";
+
 /**
- * RUTAS - Lagrange Lab (PaaS Educativo)
+ * RUTAS - Lagrange Lab SaaS (Academias Estancas)
  * 
  * Arquitectura:
- * /             → Oráculo (protagonista - chat socrático)
- * /library      → Biblioteca RAG universal
- * /academies    → Academias (gestión + ingesta de materiales)
+ * /             → SaaSWelcome (landing academia estanca)
+ * /mi-academia  → Panel de usuario (academia personal)
+ * /library      → Biblioteca RAG personal
+ * /academies    → Gestionar academias
  * /config       → Configuración
  * /auth         → Autenticación
  */
 export function Rutas() {
   return (
-    <MainLayout>
-      <Routes>
-        {/* ============ PRINCIPAL: ORÁCULO ============ */}
-        <Route path="/" element={<OraclePage />} />
-        <Route path="/oracle" element={<OraclePage />} />
-        <Route path="/oracle/:mode" element={<OraclePage />} />
-        
-        {/* ============ BIBLIOTECA RAG ============ */}
-        <Route path="/library" element={<RAGPage />} />
-        <Route path="/rag" element={<RAGPage />} />
-        
-        {/* ============ ACADEMIAS (PRINCIPAL) ============ */}
-        <Route path="/academies" element={<AcademiesPage />} />
-        <Route path="/academies/create" element={<AcademiesPage />} />
-        <Route path="/academia/:slug" element={<AcademiesPage />} />
-        
-        {/* ============ CONFIGURACIÓN ============ */}
-        <Route path="/config" element={<Configuracion />} />
-        <Route path="/settings" element={<Configuracion />} />
-        
-        {/* ============ USUARIO ============ */}
-        <Route path="/profile" element={<AcademyProfile />} />
-        <Route path="/auth" element={<AuthPage />} />
-        
-        {/* ============ REDIRECTS (compatibilidad) ============ */}
-        <Route path="/map" element={<Navigate to="/" replace />} />
-        <Route path="/research" element={<Navigate to="/" replace />} />
-        <Route path="/lab" element={<Navigate to="/" replace />} />
-        <Route path="/pitagoras" element={<Navigate to="/" replace />} />
-        <Route path="/pitagoras-lab" element={<Navigate to="/" replace />} />
-        <Route path="/oraculo" element={<Navigate to="/" replace />} />
-        <Route path="/tutorias" element={<Navigate to="/" replace />} />
-        <Route path="/podcast" element={<Navigate to="/" replace />} />
-        <Route path="/admin" element={<Navigate to="/config" replace />} />
-        <Route path="/topologia" element={<Navigate to="/" replace />} />
-        
-        {/* 404 */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </MainLayout>
+    <Routes>
+      {/* ============ SAAS: ACADEMIAS ESTANCAS ============ */}
+      <Route path="/" element={<SaaSWelcome />} />
+      
+      {/* Mi Academia (panel personal) */}
+      <Route path="/mi-academia" element={<MainLayout><AcademyProfile /></MainLayout>} />
+      
+      {/* Oráculo Personal */}
+      <Route path="/oracle" element={<MainLayout><OraclePage /></MainLayout>} />
+      <Route path="/oracle/:mode" element={<MainLayout><OraclePage /></MainLayout>} />
+      
+      {/* Biblioteca RAG Personal */}
+      <Route path="/library" element={<MainLayout><RAGPage /></MainLayout>} />
+      <Route path="/rag" element={<MainLayout><RAGPage /></MainLayout>} />
+      
+      {/* Gestionar Academias */}
+      <Route path="/academies" element={<MainLayout><AcademiesPage /></MainLayout>} />
+      <Route path="/academies/create" element={<MainLayout><AcademiesPage /></MainLayout>} />
+      <Route path="/academia/:slug" element={<MainLayout><AcademiesPage /></MainLayout>} />
+      
+      {/* Configuración */}
+      <Route path="/config" element={<MainLayout><Configuracion /></MainLayout>} />
+      <Route path="/settings" element={<MainLayout><Configuracion /></MainLayout>} />
+      
+      {/* Usuario */}
+      <Route path="/profile" element={<MainLayout><AcademyProfile /></MainLayout>} />
+      <Route path="/auth" element={<AuthPage />} />
+      
+      {/* Redirects */}
+      <Route path="/map" element={<Navigate to="/mi-academia" replace />} />
+      <Route path="/research" element={<Navigate to="/mi-academia" replace />} />
+      <Route path="/lab" element={<Navigate to="/mi-academia" replace />} />
+      <Route path="/oraculo" element={<Navigate to="/oracle" replace />} />
+      <Route path="/tutorias" element={<Navigate to="/mi-academia" replace />} />
+      <Route path="/podcast" element={<Navigate to="/mi-academia" replace />} />
+      <Route path="/admin" element={<Navigate to="/config" replace />} />
+      <Route path="/topologia" element={<Navigate to="/mi-academia" replace />} />
+      
+      {/* 404 */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
