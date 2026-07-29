@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { SUPABASE_URL } from '@/lib/env';
 
 interface RadioEpisode {
   id: string;
@@ -57,7 +58,7 @@ export function useRadioPlayer(episodes: RadioEpisode[], defaultAmbientVolume = 
       const { data: { session } } = await (await import('@/compartido/lib/supabaseClient')).supabase.auth.getSession();
       if (!session?.access_token) return;
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-ambient-narrative`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-ambient-narrative`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

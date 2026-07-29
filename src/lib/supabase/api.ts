@@ -6,8 +6,9 @@
  */
 
 import { supabase } from './client'
+import { SUPABASE_URL } from '../env'
 
-const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL || 'https://naikdjreibbugblihgwl.supabase.co'
+const FUNCTIONS_URL = SUPABASE_URL
 
 // ============================================================================
 // INGEST-SOURCE: Multi-formato ingestion

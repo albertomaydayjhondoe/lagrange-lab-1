@@ -20,6 +20,7 @@ import { Button } from '@/compartido/ui/button';
 import { X, Zap, Link2, Brain, Filter, Activity, RefreshCw } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent } from '@/compartido/ui/sheet';
+import { SUPABASE_URL } from '@/lib/env';
 
 // Extended node type with vitality fields
 interface VitalNode extends LagrangeNode {
@@ -529,7 +530,7 @@ export function LagrangeMap() {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/regenerate-topology-delta`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/regenerate-topology-delta`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

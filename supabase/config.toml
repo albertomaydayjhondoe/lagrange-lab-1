@@ -120,3 +120,21 @@ verify_jwt = false
 
 [functions.seed-pitagoras]
 verify_jwt = false
+
+[functions.student-oracle]
+verify_jwt = true
+
+[functions.ingest-material]
+verify_jwt = true
+
+[functions.manage-subject]
+verify_jwt = true
+
+[functions.manage-rector]
+verify_jwt = true
+
+[functions.external-research]
+verify_jwt = true
+
+[functions.eco-oracle]
+verify_jwt = true

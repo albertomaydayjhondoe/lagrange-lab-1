@@ -6,8 +6,8 @@ import { authApi, setAuthToken, getAuthToken } from '../../lib/apiClient';
 
 // Check if using custom API
 const USE_CUSTOM_API = import.meta.env.VITE_USE_CUSTOM_API === 'true';
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://naikdjreibbugblihgwl.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc';
 
 // Validate that URL doesn't have duplicate paths
 if (SUPABASE_URL.includes('/rest/v1/')) {
@@ -15,7 +15,8 @@ if (SUPABASE_URL.includes('/rest/v1/')) {
 }
 
 // Browser client with session persistence
-export const supabase: SupabaseClient<Database> = SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY && !USE_CUSTOM_API
+// Always use the correct Supabase project (naikdjreibbugblihgwl)
+export const supabase: SupabaseClient<Database> = !USE_CUSTOM_API
   ? createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
         storage: typeof window !== 'undefined' ? localStorage : undefined,

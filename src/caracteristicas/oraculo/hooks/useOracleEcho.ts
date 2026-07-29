@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/compartido/lib/supabaseClient';
 import { useAcademyId } from '@/caracteristicas/academia/AcademyContext';
+import { SUPABASE_URL } from '@/lib/env';
 
 interface EchoMessage {
   role: 'oracle' | 'user';
@@ -47,7 +48,7 @@ export function useOracleEcho() {
         throw new Error('No authenticated');
       }
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/oracle-echo`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/oracle-echo`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
