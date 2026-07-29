@@ -1,4 +1,4 @@
-name: Deploy to Vercel + Supabase
+name: Deploy PaaS to Vercel
 
 on:
   push:
@@ -12,7 +12,7 @@ env:
   VITE_SUPABASE_PROJECT_ID: naikdjreibbugblihgwl
 
 jobs:
-  deploy-vercel:
+  deploy-paas:
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -28,19 +28,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build PaaS
         run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_PROJECT_ID: ${{ env.VITE_SUPABASE_PROJECT_ID }}
+          VITE_APP_MODE: paas
 
-      - name: Deploy to Vercel
+      - name: Deploy PaaS to Vercel
         run: |
           npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }} \
+            --project=lagrange-lab-1 \
             --build-env VITE_SUPABASE_URL=${{ env.VITE_SUPABASE_URL }} \
             --build-env VITE_SUPABASE_PUBLISHABLE_KEY=${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }} \
-            --build-env VITE_SUPABASE_PROJECT_ID=${{ env.VITE_SUPABASE_PROJECT_ID }}
+            --build-env VITE_SUPABASE_PROJECT_ID=${{ env.VITE_SUPABASE_PROJECT_ID }} \
+            --build-env VITE_APP_MODE=paas
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

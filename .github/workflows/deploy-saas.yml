@@ -1,0 +1,49 @@
+name: Deploy SaaS to Vercel
+
+on:
+  push:
+    branches:
+      - feat/saas
+  workflow_dispatch:
+
+env:
+  VITE_SUPABASE_URL: https://naikdjreibbugblihgwl.supabase.co
+  VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
+  VITE_SUPABASE_PROJECT_ID: naikdjreibbugblihgwl
+
+jobs:
+  deploy-saas:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build SaaS
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ env.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PROJECT_ID: ${{ env.VITE_SUPABASE_PROJECT_ID }}
+          VITE_APP_MODE: saas
+
+      - name: Deploy SaaS to Vercel
+        run: |
+          npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }} \
+            --project=lagrange-universidad \
+            --build-env VITE_SUPABASE_URL=${{ env.VITE_SUPABASE_URL }} \
+            --build-env VITE_SUPABASE_PUBLISHABLE_KEY=${{ env.VITE_SUPABASE_PUBLISHABLE_KEY }} \
+            --build-env VITE_SUPABASE_PROJECT_ID=${{ env.VITE_SUPABASE_PROJECT_ID }} \
+            --build-env VITE_APP_MODE=saas
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_UNIVERSIDAD }}
