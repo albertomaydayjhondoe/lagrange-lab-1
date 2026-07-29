@@ -7,6 +7,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from './client'
 import type { Session, User } from '@supabase/supabase-js'
+import { SUPABASE_URL } from '../env'
 
 /**
  * Hook para obtener la sesión actual
@@ -692,7 +693,7 @@ export const studentApi = {
       throw new Error('Not authenticated')
     }
 
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/student-oracle`, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/student-oracle`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -727,7 +728,7 @@ export const studentApi = {
       throw new Error('Not authenticated')
     }
 
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ingest-material`, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/ingest-material`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -754,7 +755,7 @@ export const studentApi = {
       throw new Error('Not authenticated')
     }
 
-    let url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-subject`
+    let url = `${SUPABASE_URL}/functions/v1/manage-subject`
     if (params?.id) {
       url += `/${params.id}`
       delete params.id

@@ -9,6 +9,7 @@ import { Sparkles, Send, Radio, CloudFog, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAcademy, useAcademyTheme } from '@/caracteristicas/academia/AcademyContext';
 import { useUserRole } from '@/caracteristicas/academia/hooks/useAcademyRole';
+import { SUPABASE_URL } from '@/lib/env';
 
 type DisplayQuestion = SocraticQuestion | AIQuestion;
 
@@ -96,7 +97,7 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fog-teaser`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/fog-teaser`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +148,7 @@ export function SocraticOracle({ activeAxis, selectedNodeId, onQuestionGenerated
       const currentQuestion = isAIQuestion(question) ? question.pregunta : question.texto;
       const silenceDuration = Date.now() - lastActivityRef.current;
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/oracle-echo`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/oracle-echo`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

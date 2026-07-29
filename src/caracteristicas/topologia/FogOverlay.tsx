@@ -7,6 +7,7 @@ import { Input } from '@/compartido/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/compartido/ui/dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/compartido/lib/supabaseClient';
+import { SUPABASE_URL } from '@/lib/env';
 
 interface FogOverlayProps {
   activeAxis?: string | null;
@@ -45,7 +46,7 @@ export function FogOverlay({ activeAxis, dominantAxis, proximityToCenter = 0.5 }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fog-teaser`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/fog-teaser`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
