@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquitectura Lagrange Lab - 3 Niveles de Soberanía</title>
+    
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --paas-primary: #1d3557;
+            --paas-secondary: #264653;
+            --saas-primary: #457b9d;
+            --saas-secondary: #a8dadc;
+            --student-primary: #f1faee;
+            --accent-red: #e63946;
+            --accent-orange: #f4a261;
+            --bg-light: #f8f9fa;
+            --text-dark: #1d1d1d;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, var(--bg-light) 0%, #e9ecef 100%);
+            min-height: 100vh;
+            color: var(--text-dark);
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        header h1 {
+            font-size: 2rem;
+            color: var(--paas-primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        header p {
+            color: #6c757d;
+            font-size: 1.1rem;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .legend-paas {
+            background: var(--paas-primary);
+            color: white;
+        }
+        
+        .legend-saas {
+            background: var(--saas-primary);
+            color: white;
+        }
+        
+        .legend-student {
+            background: var(--saas-secondary);
+            color: var(--text-dark);
+        }
+        
+        .legend-dash {
+            background: var(--accent-red);
+            color: white;
+        }
+        
+        .legend-ddot {
+            background: var(--accent-orange);
+            color: white;
+        }
+        
+        .mermaid-container {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow-x: auto;
+        }
+        
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+        
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .legend {
+                gap: 1rem;
+            }
+            
+            .mermaid-container {
+                padding: 1rem;
+            }
+        }
+        
+        /* Info Cards */
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .info-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border-left: 4px solid;
+        }
+        
+        .info-card.paas {
+            border-color: var(--paas-primary);
+        }
+        
+        .info-card.saas {
+            border-color: var(--saas-primary);
+        }
+        
+        .info-card.student {
+            border-color: var(--saas-secondary);
+        }
+        
+        .info-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .info-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .info-card li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        
+        .info-card li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--saas-primary);
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1.5rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏗️ Arquitectura Lagrange Lab</h1>
+            <p>Arquitectura de 3 Niveles con Soberanía Diferenciada</p>
+            
+            <div class="legend">
+                <div class="legend-item legend-paas">
+                    <span>📦</span> PaaS — Nivel 1
+                </div>
+                <div class="legend-item legend-saas">
+                    <span>🏛️</span> SaaS — Nivel 2
+                </div>
+                <div class="legend-item legend-student">
+                    <span>🎓</span> Estudiante — Nivel 3
+                </div>
+                <div class="legend-item legend-dash">
+                    <span>━━━</span> Flujo de datos
+                </div>
+                <div class="legend-item legend-ddot">
+                    <span>- · -</span> Config/Control
+                </div>
+            </div>
+        </header>
+        
+        <div class="mermaid-container">
+            <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': { 
+    'primaryColor': '#1d3557',
+    'primaryTextColor': '#fff',
+    'primaryBorderColor': '#1d3557',
+    'lineColor': '#457b9d',
+    'secondaryColor': '#457b9d',
+    'tertiaryColor': '#a8dadc',
+    'fontFamily': 'Inter, system-ui, sans-serif',
+    'fontSize': '14px'
+}}%%
+flowchart TB
+    %% ===== ESTILOS =====
+    classDef paas fill:#1d3557,color:#fff,stroke:#0d1b2a,stroke-width:3px
+    classDef paas-light fill:#264653,color:#fff,stroke:#1d3557
+    classDef saas fill:#457b9d,color:#fff,stroke:#1d3557,stroke-width:2px
+    classDef saas-light fill:#a8dadc,color:#111,stroke:#457b9d
+    classDef student fill:#f1faee,color:#111,stroke:#1d3557,stroke-width:2px
+    classDef connector stroke:#e63946,color:#e63946,stroke-width:2px
+    classDef ui-panel fill:#2a9d8f,color:#fff,stroke:#264653
+
+    %% ===== TÍTULO =====
+    subgraph TITLE["🏗️ ARQUITECTURA LAGRANGE LAB<br/>SOBERANÍA MULTINIVEL"]
+        direction LR
+        T1["<b>PaaS</b><br/>Soberanía de Plataforma"] 
+        T2["<b>SaaS</b><br/>Soberanía de Academia"]
+        T3["<b>Estudiante</b><br/>Soberanía de Portfolio"]
+        T1 --> T2 --> T3
+        style T1 fill:#1d3557,color:#fff
+        style T2 fill:#457b9d,color:#fff
+        style T3 fill:#a8dadc,color:#111
+    end
+
+    %% ===== NIVEL 1: PaaS - Soberanía de Plataforma =====
+    subgraph L1["<b>📦 NIVEL 1 — PaaS</b><br/>Soberanía de Plataforma<br/><sub>super-admin · Alberto</sub>"]
+        direction TB
+        L1UI["<b>🖥️ Panel de Plataforma</b><br/>super-admin · Alberto"]
+        L1A["<b>⚙️ Provisión de Tenants</b><br/>core/tenancy"]
+        L1B["<b>🎨 Branding / White-label</b><br/>frontend por tenant"]
+        L1C["<b>⚡ Core/Runtime</b><br/>llm-gateway · rag-engine · function-registry"]
+        L1D["<b>📋 Planes y Límites</b><br/>features activadas por academia"]
+        
+        L1UI --> L1A
+        L1UI --> L1B
+        L1UI --> L1C
+        L1UI --> L1D
+    end
+
+    %% ===== NIVEL 2: SaaS - Soberanía de Academia =====
+    subgraph L2["<b>🏛️ NIVEL 2 — SaaS</b><br/>Soberanía de Academia<br/><sub>Academia Lexis · tutor/owner</sub>"]
+        direction TB
+        L2UI["<b>🖥️ Panel de Academia</b><br/>rol: tutor/owner de tenant"]
+        L2A["<b>👥 Alta/Baja de Estudiantes</b><br/>academy_members"]
+        L2B["<b>📚 Gestión de Asignaturas</b><br/>subjects (scope academy_id)"]
+        L2C["<b>📚 Corpus RAG de Asignaturas</b><br/>servido y gestionado por el centro"]
+        L2D["<b>🔓 Activación de Features</b><br/>dentro del plan asignado por Nivel 1"]
+        
+        L2UI --> L2A
+        L2UI --> L2B
+        L2UI --> L2C
+        L2UI --> L2D
+    end
+
+    %% ===== NIVEL 3: Estudiante - Soberanía de Portfolio =====
+    subgraph L3["<b>🎓 NIVEL 3 — Estudiante</b><br/>Soberanía de Portfolio Propio<br/><sub>alumno</sub>"]
+        direction TB
+        L3UI["<b>🖥️ Mi Portfolio</b><br/>rol: alumno"]
+        L3A["<b>📝 Selección de Asignaturas</b><br/>a cursar (subset de L2B)"]
+        L3B["<b>📝 Notas Personales</b><br/>Aportar Apuntes (privado, opcional)"]
+        L3C["<b>🔮 Historial Q&A del Oráculo</b><br/>sobre el corpus del centro"]
+        L3D["<b>📂 Portfolio Personal</b><br/>corpus del centro + notas propias<br/>(no visible a otros alumnos)"]
+        
+        L3UI --> L3A
+        L3UI --> L3B
+        L3UI --> L3C
+        L3UI --> L3D
+    end
+
+    %% ===== CONEXIONES L1 → L2 =====
+    L1D -. "<b>define límites del plan</b>" .-> L2UI
+    L1C -. "<b>sirve el motor a</b>" .-> L2UI
+    L1B -. "<b>aplica marca/tema a</b>" .-> L2UI
+
+    %% ===== CONEXIONES L2 → L3 =====
+    L2B -. "<b>expone catálogo de asignaturas</b>" .-> L3A
+    L2C -. "<b>sirve el corpus base para el Oráculo</b>" .-> L3C
+    L2C -. "<b>se compone en</b>" .-> L3D
+    L2D -. "<b>determina qué ve el alumno</b>" .-> L3UI
+
+    %% ===== CONEXIONES L3 → L2 (retroalimentación) =====
+    L3B -. "<b>enriquece solo su propio portfolio</b>" .-> L3D
+    L3C -. "<b>queda auditable por</b>" .-> L2UI
+
+    %% ===== CONEXIONES ENTRE NIVELES =====
+    L1 -. "<b>provisiona tenant</b>" .-> L2
+    L2 -. "<b>credenciales de acceso</b>" .-> L3
+
+    %% Aplicar estilos
+    class L1UI,L1A,L1B,L1C,L1D paas
+    class L2UI,L2A,L2B,L2C,L2D saas
+    class L3UI,L3A,L3B,L3C,L3D student
+    class TITLE ui-panel
+
+    %% ===== LEYENDA =====
+    subgraph LEGEND["<b>🔑 LEYENDA</b>"]
+        direction LR
+        L_PaaS["<b>PaaS</b><br/>Nivel 1"] 
+        L_SaaS["<b>SaaS</b><br/>Nivel 2"] 
+        L_Est["<b>Estudiante</b><br/>Nivel 3"]
+        L_Dash["━━━ →<br/>Flujo de datos"]
+        L_DDot["- · - →<br/>Config/Control"]
+        
+        style L_PaaS fill:#1d3557,color:#fff
+        style L_SaaS fill:#457b9d,color:#fff
+        style L_Est fill:#a8dadc,color:#111
+        style L_Dash fill:#e63946,color:#fff
+        style L_DDot fill:#f4a261,color:#fff
+    end
+            </div>
+        </div>
+        
+        <div class="info-cards">
+            <div class="info-card paas">
+                <h3>📦 Nivel 1 — PaaS</h3>
+                <ul>
+                    <li>Gestión centralizada de tenants</li>
+                    <li>Motor RAG único compartido</li>
+                    <li>White-label por academia</li>
+                    <li>Planes y feature flags</li>
+                    <li>Super-admin: Alberto</li>
+                </ul>
+            </div>
+            
+            <div class="info-card saas">
+                <h3>🏛️ Nivel 2 — SaaS</h3>
+                <ul>
+                    <li>Gestión de estudiantes</li>
+                    <li>Corpus RAG propio</li>
+                    <li>Asignaturas configurables</li>
+                    <li>Auditoría de actividad</li>
+                    <li>Academia Lexis ejemplo</li>
+                </ul>
+            </div>
+            
+            <div class="info-card student">
+                <h3>🎓 Nivel 3 — Estudiante</h3>
+                <ul>
+                    <li>Portfolio personal privado</li>
+                    <li>Notas propias enrichecen corpus</li>
+                    <li>Q&A con Oráculo local</li>
+                    <li>Selección de asignaturas</li>
+                    <li>Soberanía de datos propios</li>
+                </ul>
+            </div>
+        </div>
+        
+        <footer>
+            <p>🚀 Lagrange Lab — Arquitectura PaaS/SaaS/Estudiante con Soberanía de Datos</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 20
+            },
+            themeVariables: {
+                primaryColor: '#1d3557',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#1d3557',
+                lineColor: '#457b9d',
+                secondaryColor: '#457b9d',
+                tertiaryColor: '#a8dadc'
+            }
+        });
+    </script>
+</body>
+</html>
