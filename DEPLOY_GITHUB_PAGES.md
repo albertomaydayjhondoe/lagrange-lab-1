@@ -23,172 +23,48 @@ cd TU_REPO
 npm install
 ```
 
-## Paso 3: Crear archivo .env.production
+## Paso 3: Build y Deploy
 
-Crea un archivo `.env.production` en la raíz del proyecto:
-
-```bash
-# .env.production
-VITE_SUPABASE_URL=https://naikdjreibbugblihgwl.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
-VITE_SUPABASE_PROJECT_ID=naikdjreibbugblihgwl
-```
-
-## Paso 4: Configurar vite.config.ts para GitHub Pages
-
-Actualiza `vite.config.ts`:
-
-```typescript
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
-
-export default defineConfig(({ mode }) => ({
-  // IMPORTANTE: Cambia 'TU_REPO' por el nombre de tu repositorio
-  base: mode === 'production' ? '/TU_REPO/' : '/',
-  server: {
-    host: "::",
-    port: 8080,
-  },
-  plugins: [react()].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: false,
-  }
-}));
-```
-
-## Paso 5: Build de Producción
+### Opción A: Script automatizado (Recomendado)
 
 ```bash
-npm run build
+./deploy-ghpages.sh
 ```
 
-Esto generará la carpeta `dist/` con los archivos estáticos.
+### Opción B: Manual
 
-## Paso 6: Desplegar en GitHub Pages
-
-### Opción A: Usando gh-pages (Recomendado)
-
-1. Instalar gh-pages:
 ```bash
+# Build para GitHub Pages (con base path /lagrange-lab-1/)
+npm run build:ghpages
+
+# Copiar archivos de github-pages/ a dist/
+cp -r github-pages/* dist/
+
+# Desplegar (asegúrate de que gh-pages esté instalado)
 npm install --save-dev gh-pages
+npm run deploy:ghpages
 ```
 
-2. Añadir script en package.json:
-```json
-{
-  "scripts": {
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
-  }
-}
-```
-
-3. Ejecutar:
-```bash
-npm run deploy
-```
-
-### Opción B: GitHub Actions (Automático)
-
-Crea el archivo `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-```
-
-### Configurar Secrets en GitHub:
+## Paso 4: Configurar GitHub Pages en GitHub
 
 1. Ve a tu repositorio en GitHub
-2. Settings → Secrets and variables → Actions
-3. Añade estos secrets:
+2. Ve a Settings → Pages
+3. Source: selecciona "Deploy from a branch" → **gh-pages** / (root)
+4. Guarda los cambios
 
-| Secret Name | Value |
-|-------------|-------|
-| `VITE_SUPABASE_URL` | `https://naikdjreibbugblihgwl.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc` |
-| `VITE_SUPABASE_PROJECT_ID` | `naikdjreibbugblihgwl` |
-
-## Paso 7: Configurar GitHub Pages
-
-1. Ve a Settings → Pages en tu repositorio
-2. Source: selecciona "GitHub Actions" (si usas Actions) o "Deploy from a branch" → gh-pages (si usas gh-pages)
-3. Guarda los cambios
-
-## Paso 8: Configurar Supabase para el nuevo dominio
+## Paso 5: Configurar Supabase para el nuevo dominio
 
 Añade tu dominio de GitHub Pages en la configuración de Supabase:
 
 1. Ve a https://supabase.com/dashboard/project/naikdjreibbugblihgwl/auth/url-configuration
-2. En "Site URL", añade: `https://TU_USUARIO.github.io/TU_REPO`
-3. En "Redirect URLs", añade: `https://TU_USUARIO.github.io/TU_REPO/**`
+2. En "Site URL", añade: `https://albertomaydayjhondoe.github.io/lagrange-lab-1`
+3. En "Redirect URLs", añade: `https://albertomaydayjhondoe.github.io/lagrange-lab-1/**`
 
 ## 🔗 URLs Importantes
 
 | Recurso | URL |
 |---------|-----|
+| GitHub Pages | https://albertomaydayjhondoe.github.io/lagrange-lab-1 |
 | Supabase Dashboard | https://supabase.com/dashboard/project/naikdjreibbugblihgwl |
 | Edge Functions | https://naikdjreibbugblihgwl.supabase.co/functions/v1/ |
 | Storage | https://naikdjreibbugblihgwl.supabase.co/storage/v1/ |
@@ -197,11 +73,10 @@ Añade tu dominio de GitHub Pages en la configuración de Supabase:
 ## 🔧 Edge Functions Disponibles
 
 - `socratic-oracle` - Generación de respuestas del oráculo
-- `generate-narrative` - Generación de narrativas
-- `elevenlabs-tts` - Síntesis de voz
-- `ai-nodes`, `ai-edges`, `ai-questions`, `ai-episodes` - IA estructural
-- `ai-curate-text`, `ai-dialogue-summary` - Curación de texto
-- `podcast-storage` - Almacenamiento de podcasts
+- `tutoring-oracle` - Tutoría con IA socrático
+- `external-research` - Investigación externa con Tavily
+- `book-session`, `create-session`, `list-sessions`, `cancel-booking` - Gestión de tutorías
+- `process-payment` - Procesamiento de pagos
 
 ## ⚠️ Notas Importantes
 
@@ -209,10 +84,9 @@ Añade tu dominio de GitHub Pages en la configuración de Supabase:
 2. **RLS está habilitado** - Todas las tablas tienen políticas de seguridad
 3. **Edge Functions son públicas** - Configuradas con `verify_jwt = false`
 4. **El backend sigue funcionando** - Supabase es independiente del proveedor de IA
+5. **GitHub Pages usa hash routing** - Las rutas como `/tutorias` se convierten en `/#/tutorias`
 
 ## 🧪 Verificar Despliegue
-
-Después de desplegar, verifica:
 
 ```bash
 # Probar conexión a Supabase

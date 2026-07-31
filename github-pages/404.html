@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Academia Lexis</title>
+  <script>
+    // GitHub Pages SPA fallback
+    // This works because GitHub Pages serves 404.html for all non-existent routes
+    // We redirect to the index.html with the path in the hash
+    
+    var path = window.location.pathname + window.location.search;
+    var basePath = '/lagrange-lab-1';
+    
+    // Remove base path if present
+    var cleanPath = path;
+    if (cleanPath.startsWith(basePath)) {
+      cleanPath = cleanPath.substring(basePath.length) || '/';
+    }
+    
+    // Remove trailing slash except for root
+    if (cleanPath !== '/' && cleanPath.endsWith('/')) {
+      cleanPath = cleanPath.slice(0, -1);
+    }
+    
+    // Store the route for the app to pick up
+    if (cleanPath !== '/') {
+      sessionStorage.setItem('lagrange_route', cleanPath);
+    }
+    
+    // Redirect to index with hash routing
+    window.location.replace(basePath + '/#' + cleanPath);
+  </script>
+</head>
+<body>
+  <div style="font-family: system-ui, sans-serif; padding: 40px; text-align: center;">
+    <h1>Academia Lexis</h1>
+    <p>Loading application...</p>
+    <p style="color: #666; font-size: 14px;">Redirecting...</p>
+  </div>
+</body>
+</html>
