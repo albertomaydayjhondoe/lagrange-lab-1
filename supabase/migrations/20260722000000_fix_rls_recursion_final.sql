@@ -60,12 +60,14 @@ GRANT EXECUTE ON FUNCTION public.is_academy_owner_or_admin(UUID) TO authenticate
 -- =================================================================
 
 -- SELECT: Usuario puede ver sus propias membresías
+DROP POLICY IF EXISTS "Members can view own memberships" ON public.academy_members;
 CREATE POLICY "Members can view own memberships"
 ON public.academy_members
 FOR SELECT
 USING (user_id = auth.uid());
 
 -- INSERT: Usuario puede crear su propia membresía (como member, no owner/admin)
+DROP POLICY IF EXISTS "Users can insert own membership" ON public.academy_members;
 CREATE POLICY "Users can insert own membership"
 ON public.academy_members
 FOR INSERT
@@ -75,6 +77,7 @@ WITH CHECK (
 );
 
 -- UPDATE: Solo puede actualizar su propia membresía (sin cambiar role a owner)
+DROP POLICY IF EXISTS "Members can update own membership" ON public.academy_members;
 CREATE POLICY "Members can update own membership"
 ON public.academy_members
 FOR UPDATE
@@ -85,6 +88,7 @@ WITH CHECK (
 );
 
 -- DELETE: Usuario puede eliminar su propia membresía
+DROP POLICY IF EXISTS "Members can delete own membership" ON public.academy_members;
 CREATE POLICY "Members can delete own membership"
 ON public.academy_members
 FOR DELETE
@@ -95,6 +99,7 @@ USING (user_id = auth.uid());
 -- =================================================================
 -- Policy separada para que owners/admins vean todos los miembros
 -- Esta usa la función sin recursión
+DROP POLICY IF EXISTS "Owners admins can view all memberships" ON public.academy_members;
 CREATE POLICY "Owners admins can view all memberships"
 ON public.academy_members
 FOR SELECT
@@ -108,6 +113,7 @@ USING (
 );
 
 -- Owners/admins pueden insertar nuevos miembros
+DROP POLICY IF EXISTS "Owners admins can insert members" ON public.academy_members;
 CREATE POLICY "Owners admins can insert members"
 ON public.academy_members
 FOR INSERT
@@ -121,6 +127,7 @@ WITH CHECK (
 );
 
 -- Owners/admins pueden actualizar miembros
+DROP POLICY IF EXISTS "Owners admins can update members" ON public.academy_members;
 CREATE POLICY "Owners admins can update members"
 ON public.academy_members
 FOR UPDATE
@@ -134,6 +141,7 @@ USING (
 );
 
 -- Owners/admins pueden eliminar miembros
+DROP POLICY IF EXISTS "Owners admins can delete members" ON public.academy_members;
 CREATE POLICY "Owners admins can delete members"
 ON public.academy_members
 FOR DELETE
