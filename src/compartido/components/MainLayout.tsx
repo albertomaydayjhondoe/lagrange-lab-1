@@ -105,7 +105,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                 <span className="font-serif text-lg text-primary">λ</span>
               </div>
-              <span className="font-serif text-lg tracking-wide hidden sm:inline">Lagrange Lab</span>
+              <span className="font-serif text-lg tracking-wide hidden sm:inline">Academia Lexis</span>
             </Link>
 
             {/* Desktop Navigation */}

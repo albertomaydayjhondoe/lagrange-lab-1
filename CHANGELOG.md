@@ -4,6 +4,35 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [2.0.0] - 2026-07-31
+
+### Added
+
+#### Academia Lexis MVP
+- **Rebranding**: Todo el UI ahora muestra "Academia Lexis"
+- **Feature Flags**: Sistema de flags para módulos fuera de scope
+  - `VITE_FEATURE_PODCAST`
+  - `VITE_FEATURE_TOPOLOGIA`
+  - `VITE_FEATURE_RESEARCH`
+  - `VITE_FEATURE_PITAGORAS`
+  - `VITE_FEATURE_TUTORIAS_TUTOR`
+  - `VITE_FEATURE_ADMIN_AVANZADO`
+
+- **Placeholder Components**: Módulos fuera de scope muestran "Próximamente en Academia Lexis"
+  - Podcast, Topología, Research Lab, Pitágoras Lab
+  - Tutorías con tutor humano, Panel Admin avanzado
+
+- **Seed Academia Lexis PAAU**: Materias de preparación para selectividad
+  - Lengua Castellana, Historia de España
+  - Matemáticas, Filosofía, Inglés
+  - Latín, Economía, Física
+
+### Changed
+
+- **UI**: "Lagrange" → "Academia Lexis" en toda la navegación
+- **Rutas legacy**: Ya no redirigen a /academies, muestran placeholders
+- **README**: Actualizado con estado MVP
+
 ## [1.0.0] - 2026-07-27
 
 ### Added

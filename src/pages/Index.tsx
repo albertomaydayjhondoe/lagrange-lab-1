@@ -47,7 +47,7 @@ const Index = () => {
               className="text-4xl md:text-5xl lg:text-7xl xl:text-8xl font-serif tracking-tight mb-4 md:mb-6"
             >
               <span className="text-foreground">Sistema</span>{' '}
-              <span className="text-shimmer">Lagrange</span>
+              <span className="text-shimmer">Academia Lexis</span>
             </motion.h1>
 
             <motion.p
@@ -190,7 +190,7 @@ const Index = () => {
       <footer className="py-8 md:py-12 px-4 md:px-6 border-t border-border/50">
         <div className="container mx-auto text-center">
           <p className="text-muted-foreground font-serif text-xs md:text-sm">
-            Sistema Lagrange · Un artefacto de resistencia cognitiva
+            Academia Lexis · Academia de preparación multidisciplinar
           </p>
         </div>
       </footer>

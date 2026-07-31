@@ -210,7 +210,7 @@ export function LagrangeNav() {
                 </span>
               </div>
               <span className="font-serif text-lg md:text-xl tracking-wide" style={{ color: theme.textColor }}>
-                Lagrange
+                Academia Lexis
               </span>
             </Link>
 

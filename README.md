@@ -1,46 +1,53 @@
-# Lagrange Lab
+# Academia Lexis
 
-> **PaaS de universidad multidisciplinar** — múltiples academias-inquilino, cada una con sus propias materias y corpus, todas servidas por el **MISMO motor de oráculo socrático**.
+> **Academia de preparación multidisciplinar** вҖ” Secundaria y oposiciones con oráculo IA socrático y biblioteca RAG para el estudio eficiente.
 
 ---
 
-## CONCEPTO NO NEGOCIABLE
+## MVP ACADEMIA LEXIS - Estado Actual
 
-**El oráculo aplica fricción cognitiva socrática, no es un chatbot de resúmenes.**
+> **El oráculo aplica fricción cognitiva socrática, no es un chatbot de resúmenes.**
 
-- Preguntas que **incomodan** en vez de complacer
-- El "Primer Mandamiento" de `architectPrompt.ts` es inviolable
-- Capa viva: mapa que muta, niebla, eco del oráculo, radio ambiental
-- Si algún cambio suaviza o elimina esa fricción, **detente y repórtalo**
+### Funcionalidad Operativa (Sprint 11 completado):
+- Autenticación (registro/login)
+- Catálogo de academia única "Academia Lexis"
+- Oráculo Socrático contra corpus PAAU
+- Biblioteca RAG / Aportar Apuntes
+
+### Módulos en "Próximamente":
+- Podcast, Topología, Research Lab, Pitágoras Lab
+- Tutorías con tutor humano, Panel Admin avanzado
+
+> **Los módulos fuera de scope se muestran como placeholders "Próximamente en Academia Lexis" en el menú, sin llamadas reales a Supabase.**
 
 ---
 
 ## Arquitectura
 
 ```
-                    MOTOR ÚNICO (El Oráculo)
-                    ────────────────────────
-  architectPrompt.ts ──→ getEmbedding() ──→ match_corpus_fragments()
-                               ↓
-                    socratic-oracle (UNA función)
-                               │
-         ┌────────────────────┼────────────────────┐
-         ↓                    ↓                    ↓
-  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-  │  Sócrates   │    │   Newton    │    │    Curie    │
-  │  corpus_A   │    │  corpus_B  │    │  corpus_C   │
-  │  (aislado) │    │  (aislado) │    │  (aislado) │
-  └─────────────┘    └─────────────┘    └─────────────┘
+                    MOTOR ГҡNICO (El OrГЎculo)
+                    в”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җ
+  architectPrompt.ts в”Җв”ҖвҶ’ getEmbedding() в”Җв”ҖвҶ’ match_corpus_fragments()
+                               вҶ“
+                    socratic-oracle (UNA funciГіn)
+                               в”Ӯ
+         в”Ңв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”јв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”җ
+         вҶ“                    вҶ“                    вҶ“
+  в”Ңв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”җ    в”Ңв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”җ    в”Ңв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”җ
+  в”Ӯ  SГіcrates   в”Ӯ    в”Ӯ   Newton    в”Ӯ    в”Ӯ    Curie    в”Ӯ
+  в”Ӯ  corpus_A   в”Ӯ    в”Ӯ  corpus_B  в”Ӯ    в”Ӯ  corpus_C   в”Ӯ
+  в”Ӯ  (aislado) в”Ӯ    в”Ӯ  (aislado) в”Ӯ    в”Ӯ  (aislado) в”Ӯ
+  в””в”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”ҳ    в””в”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”ҳ    в””в”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”Җв”ҳ
 ```
 
-### Motor Único
+### Motor Гҡnico
 
-`supabase/functions/_shared/architectPrompt.ts` es la **ÚNICA fuente** del "Primer Mandamiento". Las academias pueden personalizar el tono via `oracle_persona_prompt`, pero nunca bifurcan el motor.
+`supabase/functions/_shared/architectPrompt.ts` es la **ГҡNICA fuente** del "Primer Mandamiento". Las academias pueden personalizar el tono via `oracle_persona_prompt`, pero nunca bifurcan el motor.
 
 ### Aislamiento Multi-Tenant
 
 - RLS filtra `corpus_fragments` por `academy_id`
-- `platform_admins` son el único rol transversal
+- `platform_admins` son el Гәnico rol transversal
 - Fallback a Wikipedia (si similarity < 0.75) con procedencia marcada
 
 ---
@@ -49,21 +56,21 @@
 
 ```
 lagrange-lab-1/
-├── src/
-│   ├── pages/
-│   │   ├── OraclePage.tsx      # Oráculo (protagonista)
-│   │   ├── RAGPage.tsx        # Biblioteca RAG
-│   │   └── AcademiesPage.tsx  # Gestión + ingesta
-│   └── compartido/components/
-│       └── MainLayout.tsx     # 5 pestañas: Oráculo, Biblioteca, Mapa, Academias, Config
-├── supabase/functions/
-│   ├── socratic-oracle/      # UNA función para TODAS
-│   ├── tutoring-oracle/       # UNA función
-│   └── _shared/
-│       ├── architectPrompt.ts # Primer Mandamiento
-│       └── corpusRetrieval.ts  # RAG con filtrado
-└── docs/
-    └── ARCHITECTURE.md        # Diagrama completo
+в”ңв”Җв”Җ src/
+в”Ӯ   в”ңв”Җв”Җ pages/
+в”Ӯ   в”Ӯ   в”ңв”Җв”Җ OraclePage.tsx      # OrГЎculo (protagonista)
+в”Ӯ   в”Ӯ   в”ңв”Җв”Җ RAGPage.tsx        # Biblioteca RAG
+в”Ӯ   в”Ӯ   в””в”Җв”Җ AcademiesPage.tsx  # GestiГіn + ingesta
+в”Ӯ   в””в”Җв”Җ compartido/components/
+в”Ӯ       в””в”Җв”Җ MainLayout.tsx     # 5 pestaГұas: OrГЎculo, Biblioteca, Mapa, Academias, Config
+в”ңв”Җв”Җ supabase/functions/
+в”Ӯ   в”ңв”Җв”Җ socratic-oracle/      # UNA funciГіn para TODAS
+в”Ӯ   в”ңв”Җв”Җ tutoring-oracle/       # UNA funciГіn
+в”Ӯ   в””в”Җв”Җ _shared/
+в”Ӯ       в”ңв”Җв”Җ architectPrompt.ts # Primer Mandamiento
+в”Ӯ       в””в”Җв”Җ corpusRetrieval.ts  # RAG con filtrado
+в””в”Җв”Җ docs/
+    в””в”Җв”Җ ARCHITECTURE.md        # Diagrama completo
 ```
 
 ---
@@ -91,17 +98,17 @@ VITE_SUPABASE_PUBLISHABLE_KEY=...
 
 ## Conceptos Clave
 
-| Concepto | Descripción |
+| Concepto | DescripciГіn |
 |---------|-------------|
 | **Academia** | Tenant aislado con corpus propio |
-| **Materia** | Átomo único: eje del oráculo + materia de tutoría |
-| **Motor Único** | Una Edge Function sirve a todas las academias |
+| **Materia** | ГҒtomo Гәnico: eje del orГЎculo + materia de tutorГӯa |
+| **Motor Гҡnico** | Una Edge Function sirve a todas las academias |
 | **Capa Viva** | Mapa mutante, niebla, eco, radio |
 
 ---
 
 ## Deploy
 
-- **Frontend**: Vercel (automático via GitHub)
+- **Frontend**: Vercel (automГЎtico via GitHub)
 - **Backend**: Supabase Edge Functions
 - **Self-hosted**: Docker Compose (`README.docker.md`)

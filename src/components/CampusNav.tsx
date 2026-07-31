@@ -279,7 +279,7 @@ export function CampusNav() {
               className="font-serif text-lg md:text-xl tracking-wide hidden sm:inline"
               style={{ color: theme.textColor }}
             >
-              Lagrange Lab
+              Academia Lexis
             </span>
           </Link>
 
