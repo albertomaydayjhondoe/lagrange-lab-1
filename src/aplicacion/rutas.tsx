@@ -1,24 +1,43 @@
 import { Routes, Route } from "react-router-dom";
 import NotFound from "@/pages/NotFound";
 
-// Lexis Minimalist Design
-import Index from "@/pages/Index";
+// PAAU - Academia Lexis
+import PAAUPage from "@/pages/PAAUPage";
 import { OraclePage } from "@/pages/OraclePage";
 import { RAGPage } from "@/pages/RAGPage";
 import Configuracion from "@/pages/Configuracion";
 import AuthPage from "@/caracteristicas/autenticacion/Auth";
+import Oraculo from "@/pages/Oraculo";
+import AportarApuntes from "@/pages/AportarApuntes";
+
+// Campus Layout
+import CampusNav from "@/components/CampusNav";
 
 // Placeholder pages
 import { ComingSoonPlaceholder } from "@/components/ComingSoonPlaceholder";
-import { Map, FlaskConical, Calculator, Radio, Settings } from "lucide-react";
+import { Map, FlaskConical, Calculator, Radio, Settings, Brain } from "lucide-react";
+
+// Layout wrapper for campus pages
+function CampusLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <CampusNav />
+      <main className="pt-16">
+        {children}
+      </main>
+    </>
+  );
+}
 
 /**
- * RUTAS - Academia Lexis (Minimalist Design)
+ * RUTAS - Academia Lexis PAAU
  * 
  * Arquitectura de navegación:
- * /                     → Página principal minimalista (Index)
+ * /                     → Página principal PAAU (Academia Lexis)
  * /auth                → Login/Registro
- * /oracle              → Oráculo Socrático
+ * /carrera/:slug/oraculo → Oráculo Socrático por academia
+ * /carrera/:slug/materia/:id/aportar → Aportar apuntes
+ * /oracle              → Oráculo Socrático (legacy)
  * /library, /rag       → Biblioteca RAG
  * /config, /settings   → Configuración
  * 
@@ -28,15 +47,19 @@ import { Map, FlaskConical, Calculator, Radio, Settings } from "lucide-react";
 export function Rutas() {
   return (
     <Routes>
-      {/* ============ NAVEGACIÓN PRINCIPAL LEXIS ============ */}
+      {/* ============ NAVEGACIÓN PRINCIPAL PAAU ============ */}
       
-      {/* Raíz: Página principal minimalista */}
-      <Route path="/" element={<Index />} />
+      {/* Raíz: Página principal PAAU */}
+      <Route path="/" element={<PAAUPage />} />
       
       {/* Auth */}
       <Route path="/auth" element={<AuthPage />} />
       
-      {/* Oráculo Socrático */}
+      {/* Rutas de Carrera/Academia */}
+      <Route path="/carrera/:slug/oraculo" element={<CampusLayout><Oraculo /></CampusLayout>} />
+      <Route path="/carrera/:slug/materia/:materiaId/aportar" element={<CampusLayout><AportarApuntes /></CampusLayout>} />
+      
+      {/* Legacy: Oráculo principal */}
       <Route path="/oracle" element={<OraclePage />} />
       <Route path="/oracle/:mode" element={<OraclePage />} />
       
