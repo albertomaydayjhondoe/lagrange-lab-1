@@ -1,0 +1,152 @@
+%%{init: {'theme': 'base', 'themeVariables': { 
+    'primaryColor': '#1d3557',
+    'primaryTextColor': '#fff',
+    'primaryBorderColor': '#1d3557',
+    'lineColor': '#457b9d',
+    'secondaryColor': '#457b9d',
+    'tertiaryColor': '#a8dadc',
+    'fontFamily': 'system-ui, -apple-system, sans-serif'
+}}%%
+flowchart TB
+    %% ===== ESTILOS =====
+    classDef entry fill:#1d3557,color:#fff,stroke:#0d1b2a,stroke-width:3px
+    classDef admin fill:#457b9d,color:#fff,stroke:#1d3557
+    classDef learning fill:#2ecc71,color:#fff,stroke:#27ae60
+    classDef module fill:#9b59b6,color:#fff,stroke:#8e44ad
+    classDef current fill:#3498db,color:#fff,stroke:#2980b9
+    classDef target fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,dashed:1
+
+    %% ===== TÍTULO CONTRATO =====
+    subgraph CONTRACT["🎯 CONTRATO: Navegación de 2 Puntos"]
+        direction LR
+        C1["<b>PUNTO 1:</b><br/>Soberanía Administrativa<br/>(Plataforma + Centro)"]
+        C2["<b>PUNTO 2:</b><br/>Aprendizaje<br/>(Alumno + Centro supervisión)"]
+        C1 --> C2
+        style C1 fill:#1d3557,color:#fff
+        style C2 fill:#2ecc71,color:#fff
+    end
+
+    %% ===== PUNTO 1: SOBERANÍA ADMINISTRATIVA =====
+    subgraph ADMIN_ENTRY["<b>🏛️ PUNTO 1: SOBERANÍA ADMINISTRATIVA</b><br/><sub>SoberaniaNav (nuevo componente)</sub>"]
+        direction TB
+        
+        ADMIN_SELECT["<b>Selector de Rol</b><br/>¿Plataforma o Centro?"]
+        
+        subgraph PLATFORM_ADMIN["<b>📦 Nivel PaaS — Plataforma</b><br/><sub>Super-admin ve todo</sub>"]
+            direction TB
+            P_PROVISION["⚙️ Provisión<br/>Crear/gestionar centros"]
+            P_PLANS["📋 Planes<br/>Planes y límites por centro"]
+            P_AUDIT["📊 Auditoría Global<br/>Agregados de todos los centros"]
+            P_BRANDING["🎨 Branding<br/>White-label por centro"]
+            
+            P_PROVISION --> P_PLANS
+            P_PLANS --> P_AUDIT
+            P_AUDIT --> P_BRANDING
+        end
+        
+        subgraph ACADEMY_ADMIN["<b>🏛️ Nivel SaaS — Centro</b><br/><sub>Tutor/Owner gestiona su academia</sub>"]
+            direction TB
+            A_MEMBERS["👥 Miembros<br/>Alta/baja de estudiantes"]
+            A_SUBJECTS["📚 Asignaturas<br/>Gestión de materias"]
+            A_CORPUS["📚 Corpus RAG<br/>Subir materiales por asignatura"]
+            A_FEATURES["🔓 Features<br/>Activar módulos dentro del plan"]
+            A_STATS["📈 Estadísticas<br/>Auditoría agregada (no bruto)"]
+            
+            A_MEMBERS --> A_SUBJECTS
+            A_SUBJECTS --> A_CORPUS
+            A_CORPUS --> A_FEATURES
+            A_FEATURES --> A_STATS
+        end
+        
+        ADMIN_SELECT -. "Rol: super-admin<br/>(Plataforma)" .-> PLATFORM_ADMIN
+        ADMIN_SELECT -. "Rol: owner/tutor<br/>(Centro)" .-> ACADEMY_ADMIN
+    end
+
+    %% ===== PUNTO 2: APRENDIZAJE =====
+    subgraph LEARNING_ENTRY["<b>🎓 PUNTO 2: APRENDIZAJE</b><br/><sub>AprendizajeNav (nuevo componente, reemplaza CampusNav)</sub>"]
+        direction TB
+        
+        LEARN_SELECT["<b>Selector de Academia</b><br/>Elegir academia activa"]
+        
+        subgraph STUDENT_LEARNING["<b>🎓 Espacio del Alumno</b><br/><sub>Todo el proceso de aprendizaje</sub>"]
+            direction LR
+            
+            L_SUBJECTS["📖 Asignaturas<br/>Seleccionar materias a cursar"]
+            L_ORACLE["🔮 Oráculo<br/>Consulta socrática (IO)"]
+            L_PORTFOLIO["📂 Portfolio<br/>Historial + notas propias"]
+            
+            subgraph LEARN_MODULES["<b>🔗 Módulos Integrados</b><br/><sub>Dentro del mismo espacio</sub>"]
+                direction TB
+                LM_PODCAST["🎙️ Podcast<br/>Radio + episodios"]
+                LM_TOPO["🗺️ Topología<br/>Mapa del conocimiento"]
+                LM_RESEARCH["🔬 Research<br/>Investigación académica"]
+                LM_PITAGORAS["🧮 Pitágoras<br/>Lab matemático"]
+                LM_TUTORIAS["👨‍🏫 Tutorías<br/>Sesiones + chat IA"]
+            end
+            
+            L_SUBJECTS --> L_ORACLE
+            L_ORACLE --> L_PORTFOLIO
+            L_ORACLE --> LM_PODCAST
+            L_ORACLE --> LM_TOPO
+            L_ORACLE --> LM_RESEARCH
+            L_ORACLE --> LM_PITAGORAS
+            L_ORACLE --> LM_TUTORIAS
+        end
+        
+        subgraph SUPERVISION["<b>👁️ Modo Supervisión (Centro)</b><br/><sub>Centro ve agregados del alumno</sub>"]
+            direction TB
+            S_STATS["📊 Estadísticas<br/>Progreso agregado"]
+            S_FEEDBACK["💬 Feedback<br/>Comentarios en sesiones"]
+            S_REPORTS["📋 Reportes<br/>Resumen por estudiante"]
+        end
+        
+        LEARN_SELECT --> STUDENT_LEARNING
+        STUDENT_LEARNING -. "Centro en<br/>modo supervisión" .-> SUPERVISION
+    end
+
+    %% ===== FLUJO IO (intocable) =====
+    subgraph IO_FLOW["<b>🔄 FLUJO IO (principio de producto)</b><br/><sub>Centro → Alumno → Centro (auditoría agregada)</sub>"]
+        direction LR
+        IO_UPLOAD["📤 Centro sube corpus<br/>por asignatura"]
+        IO_ORACLE["🔮 Oráculo procesa<br/>pregunta → pregunta socrática"]
+        IO_HISTORY["📝 Historial acumula<br/>en portfolio del alumno"]
+        IO_AUDIT["📊 Centro аудит<br/>agregados, NO material bruto"]
+        
+        IO_UPLOAD --> IO_ORACLE
+        IO_ORACLE --> IO_HISTORY
+        IO_HISTORY --> IO_AUDIT
+        
+        style IO_UPLOAD fill:#f39c12,color:#fff
+        style IO_ORACLE fill:#2ecc71,color:#fff
+        style IO_HISTORY fill:#3498db,color:#fff
+        style IO_AUDIT fill:#9b59b6,color:#fff
+    end
+
+    %% ===== CONEXIONES =====
+    ADMIN_ENTRY -. "Centro sube corpus<br/>(flujo IO)" .-> IO_UPLOAD
+    LEARNING_ENTRY -. "Alumno consulta<br/>(flujo IO)" .-> IO_ORACLE
+    IO_AUDIT -. "Centro аудит<br/>resultados" .-> ADMIN_ENTRY
+
+    %% Aplicar estilos
+    class CONTRACT entry
+    class ADMIN_ENTRY,ADMIN_SELECT,PLATFORM_ADMIN,ACADEMY_ADMIN admin
+    class LEARNING_ENTRY,LEARN_SELECT,STUDENT_LEARNING,SUPERVISION learning
+    class LM_PODCAST,LM_TOPO,LM_RESEARCH,LM_PITAGORAS,LM_TUTORIAS module
+    class P_PROVISION,P_PLANS,P_AUDIT,P_BRANDING,A_MEMBERS,A_SUBJECTS,A_CORPUS,A_FEATURES,A_STATS admin
+    class L_SUBJECTS,L_ORACLE,L_PORTFOLIO,S_STATS,S_FEEDBACK,S_REPORTS learning
+    class IO_FLOW,IO_UPLOAD,IO_ORACLE,IO_HISTORY,IO_AUDIT module
+
+    %% ===== ESTADO ACTUAL vs. CONTRATO =====
+    subgraph COMPARISON["<b>📊 ESTADO ACTUAL vs. CONTRATO</b>"]
+        direction TB
+        COMP_HEADER["| Componente | Contrato | Actual | Acción |"]
+        COMP_HEADER2["|------------|----------|--------|--------|"]
+        COMP1["| Nav 2 puntos | SoberaniaNav + AprendizajeNav | CampusNav + LagrangeNav | Rediseñar |"]
+        COMP2["| Panel L1 | Super-admin completo | NO EXISTE | Crear |"]
+        COMP3["| Panel L2 | Admin unificado | Admin.tsx disperso | Unificar |"]
+        COMP4["| Módulos L3 | Integrados en Aprendizaje | Placeholders sueltos | Conectar |"]
+        COMP5["| Portfolio | Espacio consolidado | Fragmentado en /perfil | Consolidar |"]
+        
+        style COMP_HEADER fill:#1d3557,color:#fff
+        style COMP1,COMP2,COMP3,COMP4,COMP5 fill:#e74c3c,color:#fff
+    end

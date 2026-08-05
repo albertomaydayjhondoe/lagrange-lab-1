@@ -1,0 +1,168 @@
+%%{init: {'theme': 'base', 'themeVariables': { 
+    'primaryColor': '#1d3557',
+    'primaryTextColor': '#fff',
+    'primaryBorderColor': '#1d3557',
+    'lineColor': '#457b9d',
+    'secondaryColor': '#457b9d',
+    'tertiaryColor': '#a8dadc',
+    'fontFamily': 'system-ui, -apple-system, sans-serif'
+}}%%
+flowchart TB
+    %% ===== ESTILOS =====
+    classDef root fill:#1d3557,color:#fff,stroke:#0d1b2a,stroke-width:4px
+    classDef tree fill:#457b9d,color:#fff,stroke:#1d3557
+    classDef route fill:#2ecc71,color:#fff,stroke:#27ae60
+    classDef component fill:#3498db,color:#fff,stroke:#2980b9
+    classDef endpoint fill:#9b59b6,color:#fff,stroke:#8e44ad
+    classDef legacy fill:#f39c12,color:#fff,stroke:#e67e22
+    classDef redirect stroke:#e74c3c,color:#fff,stroke-width:2px,stroke-dash:5
+
+    %% ===== TÍTULO ==========
+    subgraph TITLE["🎯 CONTRATO DE RUTAS — Academia Lexis (FINAL)"]
+        direction LR
+        T1["<b>2 Árboles Raíz:</b> /soberania/* + /aprendizaje/*"]
+        T2["<b>RoleGate centralizado</b> en /"]
+        style T1 fill:#1d3557,color:#fff
+        style T2 fill:#457b9d,color:#fff
+    end
+
+    %% ===== RAÍZ: RoleGate ==========
+    subgraph ROOT["<b>🏠 RAÍZ: /</b><br/><sub>RoleGate decide redirección</sub>"]
+        direction TB
+        RG_START["<b>Inicio</b><br/>/"]
+        RG_CHECK["<b>RoleGate</b><br/>¿platform_admin | owner | tutor?"]
+        
+        RG_PLATFORM["platform_admin<br/>→ /soberania"]
+        RG_SOBERANIA["owner | tutor<br/>→ /soberania"]
+        RG_LEARNING["student<br/>→ /aprendizaje"]
+        RG_GUEST["guest<br/>→ PAAUPage (público)"]
+        
+        RG_CHECK -->|"Sí|Si"| RG_PLATFORM
+        RG_CHECK -->|"owner/tutor"| RG_SOBERANIA
+        RG_CHECK -->|"student"| RG_LEARNING
+        RG_CHECK -->|"guest"| RG_GUEST
+    end
+
+    %% ===== ÁRBOL 1: SOBERANÍA ADMINISTRATIVA ==========
+    subgraph SOBERANIA["<b>🌳 ÁRBOL 1: SOBERANÍA ADMINISTRATIVA</b><br/><sub>/soberania/*</sub>"]
+        direction TB
+        
+        subgraph SOB_ROOT["<b>Raíz</b>"]
+            SOB_DASH["/soberania<br/>Configuracion.tsx"]
+        end
+        
+        subgraph SOB_CENTRO["<b>Centro (owner/tutor)</b>"]
+            SOB_CENTRO_ROUTE["/soberania/centro<br/>Admin.tsx"]
+            SOB_CORPUS["/soberania/corpus<br/>RAGSourcesEditor.tsx"]
+            SOB_AUDIT["/soberania/auditoria<br/>SoberaniaAuditoria.tsx ⚠️"]
+        end
+        
+        subgraph SOB_PLATFORM["<b>Plataforma (platform_admin)</b>"]
+            SOB_PLAT["/soberania/plataforma<br/>ComingSoonPlaceholder"]
+        end
+        
+        SOB_DASH --> SOB_CENTRO_ROUTE
+        SOB_DASH --> SOB_CORPUS
+        SOB_DASH --> SOB_AUDIT
+        SOB_DASH --> SOB_PLAT
+    end
+
+    %% ===== ÁRBOL 2: APRENDIZAJE ==========
+    subgraph APRENDIZAJE["<b>🌳 ÁRBOL 2: APRENDIZAJE</b><br/><sub>/aprendizaje/*</sub>"]
+        direction TB
+        
+        subgraph APR_CORE["<b>🔷 CORE (núcleo funcional)</b>"]
+            APR_ROOT["/aprendizaje<br/>Bienvenida.tsx / MisMaterias.tsx"]
+            APR_ASIGN["/aprendizaje/:slug/asignatura<br/>MisMaterias.tsx ✅"]
+            APR_ORACLE["/aprendizaje/:slug/oraculo<br/>Oraculo.tsx ✅<br/><sub>→ socratic-oracle RPC</sub>"]
+            APR_APORTAR["/aprendizaje/:slug/materia/:id/aportar<br/>AportarApuntes.tsx ✅<br/><sub>→ corpus_fragments (privado)</sub>"]
+            APR_PROFILE["/aprendizaje/perfil<br/>AcademyProfile.tsx ✅<br/><sub>→ saved_dialogues</sub>"]
+        end
+        
+        subgraph APR_MODULES["<b>🔶 MÓDULOS AVANZADOS</b>"]
+            APR_PODCAST["/aprendizaje/:slug/podcast<br/>Podcast.tsx ✅"]
+            APR_TOPO["/aprendizaje/:slug/topologia<br/>MapaDeLagrange.tsx ✅"]
+            APR_RESEARCH["/aprendizaje/:slug/research<br/>ResearchLab.tsx ✅"]
+            APR_PITAGORAS["/aprendizaje/:slug/pitagoras<br/>PitagorasLab.tsx ✅"]
+            APR_TUTORIAS["/aprendizaje/:slug/tutorias<br/>Tutorias.tsx ✅"]
+        end
+        
+        APR_ROOT --> APR_ASIGN
+        APR_ASIGN --> APR_ORACLE
+        APR_ORACLE --> APR_APORTAR
+        APR_ORACLE --> APR_PROFILE
+        APR_ASIGN --> APR_MODULES
+    end
+
+    %% ===== REDIRECTS LEGACY ==========
+    subgraph LEGACY["<b>📜 REDIRECTS LEGACY → NUEVAS RUTAS</b><br/><sub>Mantienen compatibilidad, no rompen enlaces</sub>"]
+        direction TB
+        
+        LEG_AUTH["/auth → /auth"]
+        LEG_ORACLE["/oracle → /aprendizaje"]
+        LEG_RAG["/library, /rag → /aprendizaje"]
+        LEG_ACADEMIES["/academies → /aprendizaje"]
+        LEG_PERFIL["/perfil → /aprendizaje/perfil"]
+        LEG_CARRERA["/carrera/:slug/oraculo<br/>→ /aprendizaje/:slug/oraculo"]
+        LEG_CORPUS["/carrera/:slug/materia/:id/aportar<br/>→ /aprendizaje/:slug/materia/:id/aportar"]
+        LEG_ADVANCED["/research, /podcast, /pitagoras,<br/>/topologia, /map, /tutorias<br/>→ /aprendizaje/:slug/*"]
+        LEG_ADMIN["/admin → /soberania"]
+    end
+
+    %% ===== CONEXIONES FLUJO IO ==========
+    subgraph IO_FLOW["<b>🔄 FLUJO IO (principio de producto)</b>"]
+        direction LR
+        IO_CORPUS["📤 Centro sube corpus<br/>(/soberania/corpus)"]
+        IO_ORACLE["🔮 Oráculo procesa<br/>(/aprendizaje/:slug/oraculo)"]
+        IO_PORTFOLIO["📝 Portfolio acumula<br/>(/aprendizaje/perfil)"]
+        IO_AUDIT["📊 Auditoría agregada<br/>(/soberania/auditoria)"]
+        
+        IO_CORPUS -->|"alimenta"| IO_ORACLE
+        IO_ORACLE -->|"guarda historial"| IO_PORTFOLIO
+        IO_PORTFOLIO -->|"solo counts<br/>NUNCA bruto"| IO_AUDIT
+        
+        style IO_CORPUS fill:#f39c12,color:#fff
+        style IO_ORACLE fill:#2ecc71,color:#fff
+        style IO_PORTFOLIO fill:#3498db,color:#fff
+        style IO_AUDIT fill:#9b59b6,color:#fff
+    end
+
+    %% Aplicar estilos
+    class ROOT,SOBERANIA,APRENDIZAJE,LEGACY root
+    class SOB_ROOT,SOB_CENTRO,SOB_PLATFORM,APR_CORE,APR_MODULES tree
+    class SOB_DASH,SOB_CENTRO_ROUTE,SOB_CORPUS,SOB_AUDIT,SOB_PLAT route
+    class APR_ROOT,APR_ASIGN,APR_ORACLE,APR_APORTAR,APR_PROFILE route
+    class APR_PODCAST,APR_TOPO,APR_RESEARCH,APR_PITAGORAS,APR_TUTORIAS route
+    class LEG_AUTH,LEG_ORACLE,LEG_RAG,LEG_ACADEMIES,LEG_PERFIL,LEG_CARRERA,LEG_CORPUS,LEG_ADVANCED,LEG_ADMIN legacy
+    class IO_FLOW endpoint
+
+    %% ===== TABLA DE MAPEO ==========
+    subgraph TABLE["<b>📋 TABLA DE MAPEO RUTA → COMPONENTE → ENDPOINT</b>"]
+        direction TB
+        T_HEADER["| Ruta | Componente | Endpoint |"]
+        T_HEADER2["|-----|------------|----------|"]
+        T1["| /aprendizaje | Bienvenida.tsx | academy_members |"]
+        T2["| /aprendizaje/:slug/asignatura | MisMaterias.tsx | subjects (academy_id) |"]
+        T3["| /aprendizaje/:slug/oraculo | Oraculo.tsx | socratic-oracle RPC |"]
+        T4["| /aprendizaje/:slug/materia/:id/aportar | AportarApuntes.tsx | corpus_fragments (privado) |"]
+        T5["| /aprendizaje/perfil | AcademyProfile.tsx | saved_dialogues |"]
+        T6["| /soberania | Configuracion.tsx | — |"]
+        T7["| /soberania/centro | Admin.tsx | academy_members |"]
+        T8["| /soberania/corpus | RAGSourcesEditor.tsx | corpus_fragments (centro) |"]
+        T9["| /soberania/auditoria | SoberaniaAuditoria.tsx | agregados ONLY ⚠️ |"]
+        
+        style T_HEADER fill:#1d3557,color:#fff
+        style T9 fill:#e74c3c,color:#fff
+    end
+
+    %% ===== VERIFICACIÓN ==========
+    subgraph VERIFY["<b>✅ VERIFICACIÓN DE CONTRATO</b>"]
+        direction TB
+        V1["✅ 2 árboles raíz: /soberania/* + /aprendizaje/*"]
+        V2["✅ RoleGate centralizado en / (no duplicado)"]
+        V3["✅ socratic-oracle filtra por academy_id (verificado)"]
+        V4["✅ Auditoría SOLO agregados (nunca contenido bruto)"]
+        V5["✅ Redirects legacy → nuevas rutas (compatibilidad)"]
+        
+        style V1,V2,V3,V4,V5 fill:#2ecc71,color:#fff
+    end

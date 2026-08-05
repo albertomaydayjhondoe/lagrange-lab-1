@@ -4,6 +4,35 @@
 
 ---
 
+## Sprint 1 - Auditoría y Mermaid Real (RECTOR)
+
+### Completado:
+- ✅ `AUDITORIA_ARQUITECTURA.md` — Documento de auditoría completo
+- ✅ `flowchart_actual.mmd` — Mermaid del estado real del código
+
+### Hallazgos del Sprint 1:
+
+**Estado actual:**
+- 6 módulos en modo placeholder (Podcast, Topología, Research, Pitágoras, Tutorías, Admin)
+- Todos controlados por feature flags en `.env`
+- Componentes reales existen pero no ruteados
+
+**Divergencias críticas:**
+1. ❌ L1 (PaaS): Panel super-admin NO EXISTE
+2. ❌ Navegación de 2 puntos NO EXISTE
+3. ⚠️ L2 (SaaS): Admin disperso entre academias
+4. ⚠️ L3 (Estudiante): Portfolio no consolidado
+
+**Edge Functions verificadas:**
+- 14 funciones reales implementadas
+- 6 funciones posiblemente dummy (requieren verificación)
+
+**Tablas Supabase:**
+- 12 tablas funcionales con RLS
+- 1 tabla (podcast_episodes) requiere RLS adicional
+
+---
+
 ## Sprint 7 - Infraestructura y Deploy
 
 ### Estado: ✅ VERIFICADO
@@ -118,4 +147,53 @@ El Management API de Supabase no permite ejecutar `ALTER TABLE DISABLE ROW LEVEL
 
 ---
 
-**Última actualización:** 2026-07-31
+**Última actualización:** 2026-08-05 (RECTOR Sprint 1-2 completado)
+
+---
+
+## Sprint RECTOR Refactor - Navegación 2 Árboles
+
+### Completado (Refactor de rutas.tsx):
+- ✅ `RoleGate.tsx` — Guard centralizado de roles (UN SOLO PUNTO)
+- ✅ `rutas.tsx` — Refactorizado según mapeo exacto
+- ✅ `SoberaniaAuditoria.tsx` — Vista de auditoría (solo agregados)
+- ✅ `flowchart_rutas_final.mmd` — Mermaid de rutas actualizado
+- ✅ `LEGACY_REDIRECTS.md` — Tabla de redirects legacy
+
+### Arquitectura Final:
+
+**ÁRBOL 1: /soberania/* (Soberanía Administrativa)**
+- `/soberania` → Configuracion.tsx (raíz)
+- `/soberania/centro` → Admin.tsx (miembros, roles)
+- `/soberania/corpus` → RAGSourcesEditor.tsx
+- `/soberania/auditoria` → SoberaniaAuditoria.tsx (⚠️ SOLO agregados)
+
+**ÁRBOL 2: /aprendizaje/* (Espacio del Alumno)**
+- `/aprendizaje` → Bienvenida.tsx / MisMaterias.tsx
+- `/aprendizaje/:slug/asignatura` → MisMaterias.tsx
+- `/aprendizaje/:slug/oraculo` → Oraculo.tsx → socratic-oracle RPC
+- `/aprendizaje/:slug/materia/:id/aportar` → AportarApuntes.tsx (privado)
+- `/aprendizaje/perfil` → AcademyProfile.tsx
+
+### RoleGate (UN SOLO PUNTO de guard):
+```
+/ → platform_admin → /soberania
+/ → owner/tutor → /soberania
+/ → student → /aprendizaje
+/ → guest → PAAUPage (público)
+```
+
+### Flujo IO (principio de producto):
+```
+Centro sube corpus (/soberania/corpus) → Oráculo (/aprendizaje/:slug/oraculo) → Portfolio (/aprendizaje/perfil) → Auditoría (/soberania/auditoria)
+                                                                         ↑ NUNCA bruto solo counts
+```
+
+### Redirects Legacy (20 rutas):
+| Legacy | → | Nuevo |
+|--------|---|-------|
+| /oracle | → | /aprendizaje |
+| /perfil | → | /aprendizaje/perfil |
+| /admin | → | /soberania |
+| /carrera/:slug/oraculo | → | /aprendizaje/:slug/oraculo |
+| /research, /podcast, etc. | → | /aprendizaje/:slug/* |

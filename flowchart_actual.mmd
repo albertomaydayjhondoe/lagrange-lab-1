@@ -1,0 +1,129 @@
+%%{init: {'theme': 'base', 'themeVariables': { 
+    'primaryColor': '#1d3557',
+    'primaryTextColor': '#fff',
+    'primaryBorderColor': '#1d3557',
+    'lineColor': '#457b9d',
+    'secondaryColor': '#457b9d',
+    'tertiaryColor': '#a8dadc',
+    'fontFamily': 'system-ui, -apple-system, sans-serif'
+}}%%
+flowchart TB
+    %% ===== ESTILOS =====
+    classDef functional fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px
+    classDef navpoint fill:#1d3557,color:#fff,stroke:#0d1b2a,stroke-width:3px
+    classDef component fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px
+    classDef function fill:#9b59b6,color:#fff,stroke:#8e44ad,stroke-width:2px
+    classDef database fill:#1abc9c,color:#fff,stroke:#16a085,stroke-width:2px
+
+    %% ===== TÍTULO ==========
+    subgraph TITLE["🏗️ ARQUITECTURA ACTUAL — Academia Lexis (RECTOR Sprint 1-2)"]
+        direction LR
+        T1["<b>ESTADO:</b> MVP + Navegación 2 Puntos + Módulos Habilitados"]
+        style T1 fill:#2c3e50,color:#fff
+    end
+
+    %% ===== PUNTO 1: SOBERANÍA ADMINISTRATIVA ======
+    subgraph PUNTO1["<b>🏛️ PUNTO 1: SOBERANÍA ADMINISTRATIVA</b><br/><sub>SoberaniaNav + SoberaniaLayout</sub>"]
+        direction TB
+        
+        P1_SELECT["<b>Selector de Rol</b><br/>¿Plataforma o Centro?"]
+        
+        subgraph P1_PLATFORM["<b>📦 Nivel PaaS — Plataforma</b><br/><sub>/plataforma/*</sub>"]
+            P1_DASH["Dashboard"]
+            P1_CENTROS["Centros"]
+            P1_PLANES["Planes"]
+            P1_AUDIT["Auditoría"]
+            P1_SETTINGS["Configuración"]
+        end
+        
+        subgraph P1_CENTRO["<b>🏛️ Nivel SaaS — Centro</b><br/><sub>/centro/:slug/*</sub>"]
+            P1_ADMIN["Dashboard"]
+            P1_MEMBERS["Miembros"]
+            P1_SUBJECTS["Asignaturas"]
+            P1_CORPUS["Corpus RAG"]
+            P1_STATS["Estadísticas"]
+            P1_FEATURES["Features"]
+        end
+        
+        P1_SELECT -. "super-admin<br/>(is_platform_admin)" .-> P1_PLATFORM
+        P1_SELECT -. "owner/admin<br/>(is_academy_admin)" .-> P1_CENTRO
+    end
+
+    %% ===== PUNTO 2: APRENDIZAJE ======
+    subgraph PUNTO2["<b>🎓 PUNTO 2: APRENDIZAJE</b><br/><sub>AprendizajeNav + AprendizajeLayout</sub>"]
+        direction TB
+        
+        P2_HOME["<b>Home</b><br/>/aprendizaje/:slug"]
+        
+        subgraph P2_CORE["<b>🔷 Módulos Core</b><br/><sub>Siempre visibles</sub>"]
+            P2_ASIGNATURAS["Asignaturas"]
+            P2_ORACLE["Oráculo Socrático"]
+            P2_PORTFOLIO["Portfolio"]
+        end
+        
+        subgraph P2_ADVANCED["<b>🔶 Módulos Avanzados</b><br/><sub>Si feature flag = true</sub>"]
+            P2_PODCAST["🎙️ Podcast ✅<br/>VITE_FEATURE_PODCAST"]
+            P2_TOPO["🗺️ Topología ✅<br/>VITE_FEATURE_TOPOLOGIA"]
+            P2_RESEARCH["🔬 Research ✅<br/>VITE_FEATURE_RESEARCH"]
+            P2_PITAGORAS["🧮 Pitágoras ✅<br/>VITE_FEATURE_PITAGORAS"]
+            P2_TUTORIAS["👨‍🏫 Tutorías ✅<br/>VITE_FEATURE_TUTORIAS_TUTOR"]
+        end
+        
+        P2_HOME --> P2_CORE
+        P2_HOME --> P2_ADVANCED
+        P2_ORACLE --> P2_PORTFOLIO
+    end
+
+    %% ===== RUTAS LEGACY (compatibilidad) ======
+    subgraph LEGACY["<b>📜 RUTAS LEGACY</b><br/><sub>Redirigen a nueva estructura</sub>"]
+        L_ORACLE["/carrera/:slug/oraculo<br/>(Oraculo.tsx)"]
+        L_RAG["/library, /rag<br/>(RAGPage.tsx)"]
+        L_PODCAST["/podcast"]
+        L_TOPO["/map, /topologia"]
+        L_RESEARCH["/research, /lab"]
+        L_PITAGORAS["/pitagoras, /pitagoras-lab"]
+        L_ADMIN["/admin"]
+        
+        L_PODCAST -. "Conecta a<br/>P2_PODCAST" .-> P2_PODCAST
+        L_TOPO -. "Conecta a<br/>P2_TOPO" .-> P2_TOPO
+        L_RESEARCH -. "Conecta a<br/>P2_RESEARCH" .-> P2_RESEARCH
+        L_PITAGORAS -. "Conecta a<br/>P2_PITAGORAS" .-> P2_PITAGORAS
+        L_ADMIN -. "Conecta a<br/>P1_CENTRO" .-> P1_CENTRO
+    end
+
+    %% ===== CONEXIONES PUNTOS =====
+    PUNTO1 -. "Centro sube corpus<br/>(flujo IO)" .-> P2_ORACLE
+    PUNTO2 -. "Alumno consulta<br/>(flujo IO)" .-> P2_ORACLE
+
+    %% Aplicar estilos
+    class TITLE,PUNTO1,PUNTO2,LEGACY navpoint
+    class P1_PLATFORM,P1_CENTRO,P2_CORE,P2_ADVANCED component
+    class P1_DASH,P1_CENTROS,P1_PLANES,P1_AUDIT,P1_SETTINGS,P1_ADMIN,P1_MEMBERS,P1_SUBJECTS,P1_CORPUS,P1_STATS,P1_FEATURES functional
+    class P2_HOME,P2_ASIGNATURAS,P2_ORACLE,P2_PORTFOLIO,P2_PODCAST,P2_TOPO,P2_RESEARCH,P2_PITAGORAS,P2_TUTORIAS functional
+    class P1_SELECT,L_ORACLE,L_RAG,L_PODCAST,L_TOPO,L_RESEARCH,L_PITAGORAS,L_ADMIN component
+
+    %% ===== LEYENDA =====
+    subgraph LEGEND["<b>🔑 LEYENDA</b>"]
+        direction LR
+        L_NEW["🆕 NUEVO<br/>Implementado en RECTOR"]
+        L_FUNC["✅ ACTIVO<br/>Feature flag = true"]
+        L_CONN["--- →<br/>Conexión"]
+        
+        style L_NEW fill:#1d3557,color:#fff
+        style L_FUNC fill:#2ecc71,color:#fff
+        style L_CONN fill:#3498db,color:#fff
+    end
+
+    %% ===== CAMBIOS vs. SPRINT 1 ======
+    subgraph CHANGES["<b>📊 CAMBIOS vs. SPRINT 1</b>"]
+        direction TB
+        C1["✅ Navegación 2 puntos implementada"]
+        C2["✅ Feature flags todos en true"]
+        C3["✅ Componentes reales ruteados"]
+        C4["✅ Rutas legacy redireccionan a nuevo esquema"]
+        
+        style C1 fill:#2ecc71,color:#fff
+        style C2 fill:#2ecc71,color:#fff
+        style C3 fill:#2ecc71,color:#fff
+        style C4 fill:#2ecc71,color:#fff
+    end
