@@ -1,0 +1,30 @@
+{
+  "lint": {
+    "exclude": [
+      "node_modules/",
+      "dist/",
+      "src/",
+      "docs/",
+      "github-pages/",
+      ".agents/",
+      "*.config.ts",
+      "*.config.js"
+    ],
+    "rules": {
+      "exclude": [
+        "no-explicit-any",
+        "no-import-prefix",
+        "no-case-declarations",
+        "require-await",
+        "no-control-regex"
+      ]
+    }
+  },
+  "fmt": {
+    "exclude": [
+      "node_modules/",
+      "dist/",
+      "src/"
+    ]
+  }
+}

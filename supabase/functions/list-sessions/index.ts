@@ -37,7 +37,7 @@ serve(async (req) => {
 
     // Get user if authenticated
     let userId: string | null = null;
-    let userRole: string | null = null;
+    let _userRole: string | null = null;
     
     if (authHeader) {
       const { data: { user } } = await supabase.auth.getUser();
@@ -49,7 +49,7 @@ serve(async (req) => {
           .select('role')
           .eq('id', userId)
           .single();
-        userRole = profile?.role || null;
+        _userRole = profile?.role || null;
       }
     }
 

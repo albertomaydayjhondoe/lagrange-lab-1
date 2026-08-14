@@ -210,7 +210,7 @@ async function generateAndValidateQuestion(
                       content.match(/```\n?([\s\S]*?)\n?```/) ||
                       [null, content];
     parsedQuestion = JSON.parse(jsonMatch[1] || content);
-  } catch (parseError) {
+  } catch {
     console.error("Error parsing AI response:", content);
     // Fallback: create structured response from raw text
     parsedQuestion = {

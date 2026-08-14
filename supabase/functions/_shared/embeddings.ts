@@ -21,7 +21,6 @@ export async function getEmbedding(
   apiKey: string,
   model: string = AI_EMBEDDING_MODEL
 ): Promise<number[]> {
-  const startTime = Date.now();
   
   const response = await fetch(`${AI_GATEWAY_URL}/embeddings`, {
     method: "POST",
@@ -86,7 +85,6 @@ export async function generateEmbedding(
   apiKey: string,
   model: string = AI_EMBEDDING_MODEL
 ): Promise<EmbeddingResult> {
-  const startTime = Date.now();
   
   const response = await fetch(`${AI_GATEWAY_URL}/embeddings`, {
     method: "POST",

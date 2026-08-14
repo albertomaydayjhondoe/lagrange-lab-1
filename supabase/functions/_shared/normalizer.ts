@@ -24,7 +24,6 @@ import {
   parseVideo, 
   parseImagen,
   getMimeType,
-  detectFileType,
   ParseResult 
 } from './parsers.ts';
 

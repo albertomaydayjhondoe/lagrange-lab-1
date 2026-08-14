@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.run/@supabase/supabase-js@2";
 import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
-import { validateAcademyMembership, formatAxesForPrompt, validateEje } from "../_shared/academyContext.ts";
+import { validateAcademyMembership } from "../_shared/academyContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -158,7 +158,7 @@ serve(async (req) => {
       );
     }
 
-    const { action, academyId: requestedAcademyId, eje, nivel, count, context } = validatedInput;
+    const { action, academyId: requestedAcademyId, count, context } = validatedInput;
     
     const AI_API_KEY = Deno.env.get("AI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");

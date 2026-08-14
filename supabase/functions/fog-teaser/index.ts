@@ -61,7 +61,6 @@ serve(async (req) => {
     const input = body as Record<string, unknown>;
     const activeAxis = input.activeAxis as string | undefined;
     const proximityToCenter = input.proximityToCenter as number | undefined; // 0-1, closer to center = more transparent fog
-    const dominantAxis = input.dominantAxis as string | undefined;
 
     const AI_API_KEY = Deno.env.get("AI_API_KEY");
     if (!AI_API_KEY) {

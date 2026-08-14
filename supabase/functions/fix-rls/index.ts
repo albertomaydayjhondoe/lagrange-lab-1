@@ -93,19 +93,6 @@ serve(async (req: Request): Promise<Response> => {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    // Step 1: Drop old RLS policies
-    const dropPoliciesSQL = `
-      DROP POLICY IF EXISTS "Authenticated users can read corpus fragments" ON corpus_fragments;
-      DROP POLICY IF EXISTS "Service role can manage corpus fragments" ON corpus_fragments;
-    `;
-
-    // Step 2: Create permissive policies
-    const createPoliciesSQL = `
-      CREATE POLICY "Public read corpus fragments" ON corpus_fragments FOR SELECT TO authenticated, anon, service_role USING (true);
-      CREATE POLICY "Service role can insert corpus" ON corpus_fragments FOR INSERT TO service_role WITH CHECK (true);
-      CREATE POLICY "Service role can update corpus" ON corpus_fragments FOR UPDATE TO service_role USING (true) WITH CHECK (true);
-    `;
-
     // Step 3: Insert RAG fragments using upsert
     const { data: insertedData, error: insertError } = await supabaseAdmin
       .from('corpus_fragments')

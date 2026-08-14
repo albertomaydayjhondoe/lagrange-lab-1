@@ -81,7 +81,7 @@ async function verifyAuth(supabaseUrl: string, supabaseKey: string, authorizatio
 }
 
 // Validar límites del plan
-async function checkPlanLimits(supabase: any, studentId: string, sourceType: SourceType): Promise<{ allowed: boolean; error?: string }> {
+async function checkPlanLimits(supabase: any, studentId: string, _sourceType: SourceType): Promise<{ allowed: boolean; error?: string }> {
   const { data: student } = await supabase
     .from('students')
     .select('plan_type, plan_limits')
@@ -92,10 +92,8 @@ async function checkPlanLimits(supabase: any, studentId: string, sourceType: Sou
     return { allowed: false, error: 'Estudiante no encontrado' }
   }
 
-  const limits = student.plan_limits || {}
-
   // Verificar límite de materiales por asignatura
-  const { count: materialsCount } = await supabase
+  await supabase
     .from('student_materials')
     .select('*', { count: 'exact', head: true })
     .eq('subject_id', studentId) // Esto debería ser por subject_id
@@ -107,29 +105,6 @@ async function checkPlanLimits(supabase: any, studentId: string, sourceType: Sou
 }
 
 // Extraer texto de diferentes formatos
-async function extractText(sourceType: SourceType, content: string, metadata?: Record<string, any>): Promise<string> {
-  switch (sourceType) {
-    case 'url':
-    case 'webpage':
-      return await extractFromUrl(content)
-    
-    case 'youtube':
-      return extractYouTubeTranscript(content, metadata)
-    
-    case 'user_input':
-    case 'class_notes':
-    case 'homework':
-      return content // Ya es texto
-    
-    case 'csv':
-      return extractCSV(content)
-    
-    default:
-      // Para PDF, DOCX, etc., esperar contenido ya extraído
-      return content
-  }
-}
-
 async function extractFromUrl(url: string): Promise<string> {
   try {
     const response = await fetch(url, {
@@ -342,8 +317,8 @@ serve(async (req) => {
 
     // Determinar el contenido a procesar
     let processedContent = content || ''
-    let finalFileUrl = fileUrl || ''
-    let mimeType = metadata?.mimeType
+    const finalFileUrl = fileUrl || ''
+    const mimeType = metadata?.mimeType
 
     // Para archivos subidos en Base64, decodificar (en producción, subir a storage)
     if (fileData) {

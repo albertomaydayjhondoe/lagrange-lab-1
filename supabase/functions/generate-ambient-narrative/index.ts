@@ -12,7 +12,6 @@ const AI_GATEWAY_URL = (Deno.env.get("AI_GATEWAY_URL") ?? "https://api.openai.co
 const AI_CHAT_MODEL = Deno.env.get("AI_CHAT_MODEL") ?? "gpt-4o-mini";
 
 // Cache ambient narratives for a day
-const AMBIENT_CACHE_MINUTES = 60 * 24; // 24 hours
 
 async function verifyAuth(req: Request): Promise<{ user: any; supabase: any; isPlatformAdmin: boolean; error?: string }> {
   const authHeader = req.headers.get('authorization');

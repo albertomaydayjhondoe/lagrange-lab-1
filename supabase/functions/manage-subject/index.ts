@@ -305,7 +305,7 @@ async function handlePatch(supabase: any, studentId: string, subjectId: string, 
     return { status: 404, body: { error: 'Asignatura no encontrada' } }
   }
 
-  let updates: Record<string, any> = { updated_at: new Date().toISOString() }
+  const updates: Record<string, any> = { updated_at: new Date().toISOString() }
   let message = ''
 
   switch (action) {

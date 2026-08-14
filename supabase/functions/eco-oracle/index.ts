@@ -12,7 +12,6 @@ const AI_GATEWAY_URL = (Deno.env.get("AI_GATEWAY_URL") ?? "https://api.openai.co
 const AI_CHAT_MODEL = Deno.env.get("AI_CHAT_MODEL") ?? "gpt-4o-mini";
 
 // Rate limiting for echoes
-const ECHO_COOLDOWN_MS = 30000; // 30 seconds between echoes
 
 async function verifyAuth(req: Request): Promise<{ user: any; error?: string }> {
   const authHeader = req.headers.get('authorization');
@@ -64,7 +63,6 @@ serve(async (req) => {
     const lastQuestion = input.lastQuestion as string | undefined;
     const academyId = input.academyId as string | undefined;
     const silenceDuration = input.silenceDuration as number | undefined;
-    const eje = input.eje as string | undefined;
     const selectedNodeId = input.selectedNodeId as string | undefined;
     const conversationHistory = input.conversationHistory as Array<{role: string; content: string}> | undefined;
 

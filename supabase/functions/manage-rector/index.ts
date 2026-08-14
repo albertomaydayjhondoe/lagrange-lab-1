@@ -75,23 +75,10 @@ async function checkCanManageAcademy(supabase: any, academyId: string, userId: s
   return !!rector
 }
 
-async function checkIsRector(supabase: any, academyId: string, userId: string): Promise<boolean> {
-  const { data: rector } = await supabase
-    .from('academia_rectors')
-    .select('id')
-    .eq('academy_id', academyId)
-    .eq('user_id', userId)
-    .eq('is_current', true)
-    .eq('is_active', true)
-    .single()
-  
-  return !!rector
-}
-
 // ================================================================
 // GET: Obtener rector de una academia
 // ================================================================
-async function handleGet(supabase: any, academyId: string, userId: string) {
+async function handleGet(supabase: any, academyId: string, _userId: string) {
   // Cualquier miembro puede ver quién es el rector
   const { data, error } = await supabase
     .from('academia_rectors')
@@ -128,7 +115,7 @@ async function handleGet(supabase: any, academyId: string, userId: string) {
 // ================================================================
 // POST: Designar nuevo rector
 // ================================================================
-async function handlePost(supabase: any, supabaseUrl: string, body: any, userId: string) {
+async function handlePost(supabase: any, _supabaseUrl: string, body: any, userId: string) {
   const { academy_id, user_id, title, decree_number, institution_oath } = body
 
   if (!academy_id || !user_id) {

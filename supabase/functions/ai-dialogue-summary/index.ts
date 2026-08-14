@@ -136,7 +136,7 @@ serve(async (req) => {
 
     // Build conversation text for summary
     let conversationText = '';
-    dialogueContent.forEach((entry, index) => {
+    dialogueContent.forEach((entry, _index) => {
       if (entry.type === 'oracle') {
         const q = entry.question;
         conversationText += `[Oráculo - Eje: ${q?.eje || 'Reflexión'}, Nivel: ${q?.nivel || 1}]\n`;

@@ -15,7 +15,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.run/@supabase/supabase-js@2";
-import { normalizeContent, SourceInput, SUPPORTED_SOURCE_TYPES } from "../_shared/normalizer.ts";
+import { normalizeContent, SUPPORTED_SOURCE_TYPES } from "../_shared/normalizer.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -191,7 +191,7 @@ async function validateAcademyAccess(
  */
 async function validateSpaceAccess(
   supabase: any,
-  userId: string,
+  _userId: string,
   spaceId: string,
   academyId: string
 ): Promise<{ valid: boolean; error?: string }> {

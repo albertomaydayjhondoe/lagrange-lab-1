@@ -212,7 +212,6 @@ serve(async (req) => {
     if (axesRes.error) throw new Error(`Error fetching axes: ${axesRes.error.message}`);
 
     const nodes = nodesRes.data || [];
-    const edges = edgesRes.data || [];
     const axes = axesRes.data || [];
     const questions = questionsRes.data || [];
     const dialogues = dialoguesRes.data || [];

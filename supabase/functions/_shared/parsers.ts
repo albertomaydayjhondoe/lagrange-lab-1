@@ -153,7 +153,9 @@ function extractPDFTextStreams(pdfContent: string): string[] {
     try {
       const text = hexToString(hex);
       if (text.trim()) streams.push(text);
-    } catch {}
+    } catch {
+      // ignore non-text streams
+    }
   }
   
   return streams;
@@ -558,7 +560,7 @@ export async function parseVideo(
   } = {}
 ): Promise<ParseResult> {
   const warnings: string[] = [];
-  const { isUrl = false, mimeType = 'video/mp4', extractSubtitles = true } = options;
+  const { isUrl = false, mimeType: _mimeType = 'video/mp4', extractSubtitles = true } = options;
   
   // Detectar si es YouTube
   const isYouTube = content.includes('youtube.com') || content.includes('youtu.be');
@@ -771,7 +773,9 @@ async function extractVideoSubtitles(
           };
         }
       }
-    } catch {}
+    } catch {
+      // ignore parse failures
+    }
   }
   
   warnings.push('No se encontraron subtítulos externos.');

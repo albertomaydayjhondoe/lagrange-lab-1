@@ -38,7 +38,6 @@ const corsHeaders = {
 // AI Configuration
 const AI_GATEWAY_URL = (Deno.env.get("AI_GATEWAY_URL") ?? "https://api.openai.com/v1").replace(/\/$/, "");
 const AI_CHAT_MODEL = Deno.env.get("AI_CHAT_MODEL") ?? "gpt-4o-mini";
-const MAX_CONTEXT_LENGTH = 4000;
 const MAX_HISTORY_LENGTH = 20;
 const RATE_LIMIT_WINDOW_MS = 60000;
 const RATE_LIMIT_MAX = 20;

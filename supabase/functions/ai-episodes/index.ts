@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.run/@supabase/supabase-js@2";
 import { getArchitectPrompt } from "../_shared/architectPrompt.ts";
-import { getAcademyContext, validateEje } from "../_shared/academyContext.ts";
+import { getAcademyContext } from "../_shared/academyContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
