@@ -5,7 +5,7 @@
 # Uso:
 #   1. Configurar variables de entorno:
 #      export SUPABASE_ACCESS_TOKEN="your-token"
-#      export SUPABASE_PROJECT_ID="naikdjreibbugblihgwl"
+#      export SUPABASE_PROJECT_ID="your-project-ref"
 #
 #   2. Ejecutar:
 #      ./deploy-saas.sh
@@ -30,8 +30,9 @@ if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
 fi
 
 if [ -z "$SUPABASE_PROJECT_ID" ]; then
-    export SUPABASE_PROJECT_ID="naikdjreibbugblihgwl"
-    echo "ℹ️  Usando SUPABASE_PROJECT_ID por defecto: $SUPABASE_PROJECT_ID"
+    echo "❌ Falta SUPABASE_PROJECT_ID. Exporta tu propio ref:"
+    echo "   export SUPABASE_PROJECT_ID=tu-project-ref"
+    exit 1
 fi
 
 echo ""

@@ -53,12 +53,12 @@ npx supabase login
 
 # Link al proyecto
 cd supabase
-npx supabase link --project-ref naikdjreibbugblihgwl
+npx supabase link --project-ref TU-PROJECT-REF
 
 # Desplegar funciones
-npx supabase functions deploy external-research --project-ref naikdjreibbugblihgwl
-npx supabase functions deploy socratic-oracle --project-ref naikdjreibbugblihgwl
-npx supabase functions deploy tutoring-oracle --project-ref naikdjreibbugblihgwl
+npx supabase functions deploy external-research --project-ref TU-PROJECT-REF
+npx supabase functions deploy socratic-oracle --project-ref TU-PROJECT-REF
+npx supabase functions deploy tutoring-oracle --project-ref TU-PROJECT-REF
 ```
 
 ## Pruebas
@@ -66,7 +66,7 @@ npx supabase functions deploy tutoring-oracle --project-ref naikdjreibbugblihgwl
 ### Prueba 1: External Research directo
 
 ```bash
-curl -X POST 'https://naikdjreibbugblihgwl.supabase.co/functions/v1/external-research' \
+curl -X POST 'https://TU-PROJECT-REF.supabase.co/functions/v1/external-research' \
   -H 'Authorization: Bearer <SERVICE_ROLE_KEY>' \
   -H 'Content-Type: application/json' \
   -d '{

@@ -7,7 +7,7 @@ Eres un QA Engineer especializado en pruebas de integración de edge functions e
 
 Proyecto: **Lagrange Lab - RAG Oracle with Wikipedia Fallback**
 
-Se han desplegado 3 edge functions en el proyecto `naikdjreibbugblihgwl`:
+Se han desplegado 3 edge functions en el proyecto `TU-PROJECT-REF`:
 
 1. **`external-research`** (v6) - Busca en Wikipedia como fallback
 2. **`tutoring-oracle`** (v17) - Tutor con RAG + Wikipedia fallback
@@ -26,7 +26,7 @@ Ejecutar pruebas de integración completas para verificar que el sistema respond
 Ejecuta esta llamada HTTP:
 
 ```bash
-curl -X POST 'https://naikdjreibbugblihgwl.supabase.co/functions/v1/external-research' \
+curl -X POST 'https://TU-PROJECT-REF.supabase.co/functions/v1/external-research' \
   -H 'Authorization: Bearer <SERVICE_ROLE_KEY>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -60,7 +60,7 @@ LIMIT 5;
 Luego, ejecuta tutoring-oracle con una academia vacía o con la primera academia disponible:
 
 ```bash
-curl -X POST 'https://naikdjreibbugblihgwl.supabase.co/functions/v1/tutoring-oracle' \
+curl -X POST 'https://TU-PROJECT-REF.supabase.co/functions/v1/tutoring-oracle' \
   -H 'Authorization: Bearer <ANON_KEY>' \
   -H 'Content-Type: application/json' \
   -d '{

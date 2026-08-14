@@ -8,10 +8,10 @@
 #   2. Configure variables de entorno en Vercel Dashboard
 #   3. Ejecute: ./deploy-vercel.sh
 #
-# Variables de entorno requeridas en Vercel Dashboard:
-#   VITE_SUPABASE_URL=https://naikdjreibbugblihgwl.supabase.co
-#   VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
-#   VITE_SUPABASE_PROJECT_ID=naikdjreibbugblihgwl
+# Variables de entorno requeridas en Vercel Dashboard (universales, tus propios valores):
+#   VITE_SUPABASE_URL=https://TU-PROJECT-REF.supabase.co
+#   VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_TU_KEY
+#   VITE_SUPABASE_PROJECT_ID=TU-PROJECT-REF
 # ================================================================
 
 set -e
@@ -35,7 +35,7 @@ echo ""
 echo "📋 Paso 1: Verificando configuración..."
 echo "   Proyecto: lagrange-lab-1"
 echo "   Framework: Vite + React + TypeScript"
-echo "   Supabase Project: naikdjreibbugblihgwl"
+echo "   Supabase Project: ${VITE_SUPABASE_PROJECT_ID:-<configurar en Vercel>}"
 
 echo ""
 echo "🔧 Paso 2: Configurando variables de entorno..."

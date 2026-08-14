@@ -14,9 +14,9 @@ El proyecto ya está configurado con GitHub. Solo necesitas:
    - Agrega estas variables:
 
 ```
-VITE_SUPABASE_URL=https://naikdjreibbugblihgwl.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
-VITE_SUPABASE_PROJECT_ID=naikdjreibbugblihgwl
+VITE_SUPABASE_URL=https://TU-PROJECT-REF.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_TU_KEY
+VITE_SUPABASE_PROJECT_ID=TU-PROJECT-REF
 ```
 
 4. **Deploy automático**: Cada push a `main` disparará un deploy automáticamente.

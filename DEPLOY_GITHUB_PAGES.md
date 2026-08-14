@@ -3,12 +3,12 @@
 ## Credenciales Supabase (Producción)
 
 ```env
-VITE_SUPABASE_URL=https://naikdjreibbugblihgwl.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
-VITE_SUPABASE_PROJECT_ID=naikdjreibbugblihgwl
+VITE_SUPABASE_URL=https://TU-PROJECT-REF.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_TU_KEY
+VITE_SUPABASE_PROJECT_ID=TU-PROJECT-REF
 ```
 
-> ⚠️ **IMPORTANT**: This project reference is `naikdjreibbugblihgwl`. All Supabase Edge Functions (including AI functions) are deployed to this project. DO NOT use a different project reference - AI functions will fail.
+> ⚠️ **IMPORTANT**: This project reference is `TU-PROJECT-REF`. All Supabase Edge Functions (including AI functions) are deployed to this project. DO NOT use a different project reference - AI functions will fail.
 
 ## Paso 1: Clonar el Repositorio
 
@@ -56,7 +56,7 @@ npm run deploy:ghpages
 
 Añade tu dominio de GitHub Pages en la configuración de Supabase:
 
-1. Ve a https://supabase.com/dashboard/project/naikdjreibbugblihgwl/auth/url-configuration
+1. Ve a https://supabase.com/dashboard/project/TU-PROJECT-REF/auth/url-configuration
 2. En "Site URL", añade: `https://albertomaydayjhondoe.github.io/lagrange-lab-1`
 3. En "Redirect URLs", añade: `https://albertomaydayjhondoe.github.io/lagrange-lab-1/**`
 
@@ -65,10 +65,10 @@ Añade tu dominio de GitHub Pages en la configuración de Supabase:
 | Recurso | URL |
 |---------|-----|
 | GitHub Pages | https://albertomaydayjhondoe.github.io/lagrange-lab-1 |
-| Supabase Dashboard | https://supabase.com/dashboard/project/naikdjreibbugblihgwl |
-| Edge Functions | https://naikdjreibbugblihgwl.supabase.co/functions/v1/ |
-| Storage | https://naikdjreibbugblihgwl.supabase.co/storage/v1/ |
-| Auth | https://naikdjreibbugblihgwl.supabase.co/auth/v1/ |
+| Supabase Dashboard | https://supabase.com/dashboard/project/TU-PROJECT-REF |
+| Edge Functions | https://TU-PROJECT-REF.supabase.co/functions/v1/ |
+| Storage | https://TU-PROJECT-REF.supabase.co/storage/v1/ |
+| Auth | https://TU-PROJECT-REF.supabase.co/auth/v1/ |
 
 ## 🔧 Edge Functions Disponibles
 
@@ -90,8 +90,8 @@ Añade tu dominio de GitHub Pages en la configuración de Supabase:
 
 ```bash
 # Probar conexión a Supabase
-curl https://naikdjreibbugblihgwl.supabase.co/rest/v1/topology_nodes?select=id,label&limit=1 \
-  -H "apikey: sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc"
+curl https://TU-PROJECT-REF.supabase.co/rest/v1/topology_nodes?select=id,label&limit=1 \
+  -H "apikey: sb_publishable_TU_KEY"
 ```
 
 Si recibes datos JSON, ¡la conexión funciona!

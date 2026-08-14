@@ -14,9 +14,9 @@ Usuario pregunta → RAG interno (similarity) →
 
 | Función | URL | Estado |
 |---------|-----|--------|
-| `external-research` | `https://naikdjreibbugblihgwl.supabase.co/functions/v1/external-research` | ACTIVE v6 |
-| `socratic-oracle` | `https://naikdjreibbugblihgwl.supabase.co/functions/v1/socratic-oracle` | ACTIVE v17 |
-| `tutoring-oracle` | `https://naikdjreibbugblihgwl.supabase.co/functions/v1/tutoring-oracle` | ACTIVE v29 |
+| `external-research` | `https://TU-PROJECT-REF.supabase.co/functions/v1/external-research` | ACTIVE v6 |
+| `socratic-oracle` | `https://TU-PROJECT-REF.supabase.co/functions/v1/socratic-oracle` | ACTIVE v17 |
+| `tutoring-oracle` | `https://TU-PROJECT-REF.supabase.co/functions/v1/tutoring-oracle` | ACTIVE v29 |
 
 ---
 

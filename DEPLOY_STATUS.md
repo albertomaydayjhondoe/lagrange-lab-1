@@ -42,7 +42,7 @@
 ### Paso 1: Aplicar Migración SQL
 
 1. Ve a [Supabase Dashboard](https://supabase.com/dashboard)
-2. Selecciona el proyecto: `naikdjreibbugblihgwl`
+2. Selecciona el proyecto: `TU-PROJECT-REF`
 3. Ve a **SQL Editor**
 4. Copia y pega el contenido de:
    ```
@@ -60,7 +60,7 @@ npm install -g supabase
 npx supabase login
 
 # Link al proyecto
-npx supabase link --project-ref naikdjreibbugblihgwl
+npx supabase link --project-ref TU-PROJECT-REF
 
 # Deploy de cada función
 npx supabase functions deploy student-oracle

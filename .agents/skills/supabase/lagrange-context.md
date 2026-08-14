@@ -4,8 +4,8 @@
 
 This file provides specific context for the Lagrange Lab project.
 
-**Project ID:** `naikdjreibbugblihgwl`
-**Project URL:** https://naikdjreibbugblihgwl.supabase.co
+**Project ID:** `TU-PROJECT-REF`
+**Project URL:** https://TU-PROJECT-REF.supabase.co
 
 ## AI Configuration (Edge Functions Secrets)
 

@@ -65,13 +65,13 @@ npx vercel --prod
 
 ```bash
 # List academies
-curl "https://naikdjreibbugblihgwl.supabase.co/functions/v1/list-academies"
+curl "https://TU-PROJECT-REF.supabase.co/functions/v1/list-academies"
 
 # Get academy
-curl "https://naikdjreibbugblihgwl.supabase.co/functions/v1/get-academy/socrates"
+curl "https://TU-PROJECT-REF.supabase.co/functions/v1/get-academy/socrates"
 
 # REST - academies (sin auth)
-curl "https://naikdjreibbugblihgwl.supabase.co/rest/v1/academies?select=id,name"
+curl "https://TU-PROJECT-REF.supabase.co/rest/v1/academies?select=id,name"
 ```
 
 ---
@@ -87,7 +87,7 @@ AI_API_KEY=sk-...
 
 ### Environment Variables Vercel:
 ```
-VITE_SUPABASE_PROJECT_ID=naikdjreibbugblihgwl
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
-VITE_SUPABASE_URL=https://naikdjreibbugblihgwl.supabase.co
+VITE_SUPABASE_PROJECT_ID=TU-PROJECT-REF
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_TU_KEY
+VITE_SUPABASE_URL=https://TU-PROJECT-REF.supabase.co
 ```

@@ -1,4 +1,6 @@
-project_id = "naikdjreibbugblihgwl"
+# project_id = "TU-PROJECT-REF"
+# Universality: leave project_id unset so each deployer links their own
+# Supabase project via `supabase link --project-ref <ref>`.
 
 [api]
 enabled = true

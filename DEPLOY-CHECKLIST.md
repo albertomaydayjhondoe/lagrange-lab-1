@@ -14,7 +14,7 @@
 
 ### 1. Configurar Secrets de AI en Supabase
 
-**Ir a:** https://supabase.com/dashboard/project/naikdjreibbugblihgwl/functions/secrets
+**Ir a:** https://supabase.com/dashboard/project/TU-PROJECT-REF/functions/secrets
 
 **Agregar estos secretos:**
 
@@ -33,9 +33,9 @@
 
 | Name | Value |
 |------|-------|
-| `VITE_SUPABASE_URL` | `https://naikdjreibbugblihgwl.supabase.co` |
+| `VITE_SUPABASE_URL` | `https://TU-PROJECT-REF.supabase.co` |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | _(de Supabase Settings > API)_ |
-| `VITE_SUPABASE_PROJECT_ID` | `naikdjreibbugblihgwl` |
+| `VITE_SUPABASE_PROJECT_ID` | `TU-PROJECT-REF` |
 
 **Feature Flags (opcional):**
 
@@ -50,7 +50,7 @@
 
 ### 3. Ejecutar Migraciones en Supabase
 
-**Ir a:** https://supabase.com/dashboard/project/naikdjreibbugblihgwl/sql/new
+**Ir a:** https://supabase.com/dashboard/project/TU-PROJECT-REF/sql/new
 
 **Ejecutar en orden (migraciones del MVP):**
 
@@ -63,9 +63,9 @@
 | Servicio | URL |
 |----------|-----|
 | **Producción** | https://lagrange-lab-1.vercel.app |
-| **Supabase Dashboard** | https://supabase.com/dashboard/project/naikdjreibbugblihgwl |
-| **Edge Functions** | https://supabase.com/dashboard/project/naikdjreibbugblihgwl/functions |
-| **Function Secrets** | https://supabase.com/dashboard/project/naikdjreibbugblihgwl/functions/secrets |
+| **Supabase Dashboard** | https://supabase.com/dashboard/project/TU-PROJECT-REF |
+| **Edge Functions** | https://supabase.com/dashboard/project/TU-PROJECT-REF/functions |
+| **Function Secrets** | https://supabase.com/dashboard/project/TU-PROJECT-REF/functions/secrets |
 | **GitHub Repository** | https://github.com/albertomaydayjhondoe/lagrange-lab-1 |
 
 ## ✅ Verificación Post-Deploy

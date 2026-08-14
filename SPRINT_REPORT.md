@@ -102,7 +102,7 @@
 
 ```bash
 # 1. Aplicar migraciones en producción
-npx supabase db push --project-ref naikdjreibbugblihgwl
+npx supabase db push --project-ref TU-PROJECT-REF
 
 # 2. Deploy Edge Functions
 npx supabase functions deploy

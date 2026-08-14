@@ -1,7 +1,7 @@
 # Backend Checklist — Lagrange Lab
 
 **Fecha:** 2026-07-26  
-**Proyecto Ref:** naikdjreibbugblihgwl
+**Proyecto Ref:** TU-PROJECT-REF
 
 ---
 
@@ -139,7 +139,7 @@
 
 | Variable | Set | Notas |
 |----------|-----|-------|
-| SUPABASE_URL | ✅ | naikdjreibbugblihgwl.supabase.co |
+| SUPABASE_URL | ✅ | TU-PROJECT-REF.supabase.co |
 | SUPABASE_ANON_KEY | ✅ | Verificada en headers |
 | SUPABASE_SERVICE_ROLE_KEY | ✅ | Solo en server |
 | AI_API_KEY | ✅ | Configurada en Edge Functions |

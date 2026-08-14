@@ -86,9 +86,9 @@
 
 ### Verificar Environment Variables en Vercel:
 ```
-VITE_SUPABASE_PROJECT_ID=naikdjreibbugblihgwl
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc
-VITE_SUPABASE_URL=https://naikdjreibbugblihgwl.supabase.co
+VITE_SUPABASE_PROJECT_ID=TU-PROJECT-REF
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_TU_KEY
+VITE_SUPABASE_URL=https://TU-PROJECT-REF.supabase.co
 ```
 
 ---
@@ -141,10 +141,10 @@ npm install supabase@1 --save-dev
 npx supabase login
 
 # Configurar secrets
-npx supabase secrets set "AI_API_KEY=<tu_openai_api_key>" --project-ref naikdjreibbugblihgwl
-npx supabase secrets set "AI_GATEWAY_URL=https://api.openai.com/v1" --project-ref naikdjreibbugblihgwl
-npx supabase secrets set "AI_CHAT_MODEL=gpt-4o-mini" --project-ref naikdjreibbugblihgwl
-npx supabase secrets set "AI_EMBEDDING_MODEL=text-embedding-3-small" --project-ref naikdjreibbugblihgwl
+npx supabase secrets set "AI_API_KEY=<tu_openai_api_key>" --project-ref TU-PROJECT-REF
+npx supabase secrets set "AI_GATEWAY_URL=https://api.openai.com/v1" --project-ref TU-PROJECT-REF
+npx supabase secrets set "AI_CHAT_MODEL=gpt-4o-mini" --project-ref TU-PROJECT-REF
+npx supabase secrets set "AI_EMBEDDING_MODEL=text-embedding-3-small" --project-ref TU-PROJECT-REF
 ```
 
 ### Secrets Obligatorios
@@ -198,16 +198,16 @@ Ejecuta el script de configuración:
 
 ```bash
 # Verificar que las funciones están desplegadas
-npx supabase functions list --project-ref naikdjreibbugblihgwl
+npx supabase functions list --project-ref TU-PROJECT-REF
 
 # Probar función simple
-curl "https://naikdjreibbugblihgwl.supabase.co/functions/v1/list-academies"
+curl "https://TU-PROJECT-REF.supabase.co/functions/v1/list-academies"
 ```
 
 ### Dashboard de Secrets
 
 Para configurar secrets manualmente:
-1. Ve a: https://supabase.com/dashboard/project/naikdjreibbugblihgwl/functions/secrets
+1. Ve a: https://supabase.com/dashboard/project/TU-PROJECT-REF/functions/secrets
 2. Click en "New Secret"
 3. Añade cada secret de la tabla anterior
 

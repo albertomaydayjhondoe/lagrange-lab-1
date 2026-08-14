@@ -22,7 +22,7 @@ supabase login
 ### 3. Link al proyecto
 ```bash
 cd supabase
-supabase link --project-ref naikdjreibbugblihgwl
+supabase link --project-ref TU-PROJECT-REF
 ```
 
 ### 4. Desplegar funciones
@@ -40,14 +40,14 @@ supabase functions deploy fix-rls
 ## Opción 2: Desde Dashboard de Supabase
 
 ### 1. Ir al Dashboard
-https://supabase.com/dashboard/project/naikdjreibbugblihgwl/functions
+https://supabase.com/dashboard/project/TU-PROJECT-REF/functions
 
 ### 2. Crear función "seed-pitagoras"
 Copiar el contenido de: `supabase/functions/seed-pitagoras/index.ts`
 
 ### 3. Invocar la función
 ```bash
-curl -X POST 'https://naikdjreibbugblihgwl.supabase.co/functions/v1/seed-pitagoras' \
+curl -X POST 'https://TU-PROJECT-REF.supabase.co/functions/v1/seed-pitagoras' \
   -H 'Authorization: Bearer <SERVICE_ROLE_KEY>' \
   -H 'Content-Type: application/json'
 ```
@@ -57,7 +57,7 @@ curl -X POST 'https://naikdjreibbugblihgwl.supabase.co/functions/v1/seed-pitagor
 ## Opción 3: Ejecutar SQL para arreglar RLS
 
 ### 1. Ir al SQL Editor
-https://supabase.com/dashboard/project/naikdjreibbugblihgwl/sql/new
+https://supabase.com/dashboard/project/TU-PROJECT-REF/sql/new
 
 ### 2. Ejecutar este SQL
 ```sql

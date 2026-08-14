@@ -6,8 +6,14 @@
 
 set -e
 
-PROJECT_REF="naikdjreibbugblihgwl"
-PROJECT_URL="https://naikdjreibbugblihgwl.supabase.co"
+PROJECT_REF="${SUPABASE_PROJECT_ID:-${VITE_SUPABASE_PROJECT_ID:-}}"
+PROJECT_URL="${VITE_SUPABASE_URL:-https://${PROJECT_REF}.supabase.co}"
+
+if [ -z "$PROJECT_REF" ]; then
+  echo "❌ Falta SUPABASE_PROJECT_ID (o VITE_SUPABASE_PROJECT_ID)."
+  echo "   Exporta tu propio ref: export SUPABASE_PROJECT_ID=tu-project-ref"
+  exit 1
+fi
 
 echo "🚀 DEPLOY EXTERNAL RESEARCH FUNCTION"
 echo "=============================================="

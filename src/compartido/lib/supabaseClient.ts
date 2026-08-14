@@ -6,18 +6,24 @@ import { authApi, setAuthToken, getAuthToken } from '../../lib/apiClient';
 
 // Check if using custom API
 const USE_CUSTOM_API = import.meta.env.VITE_USE_CUSTOM_API === 'true';
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://naikdjreibbugblihgwl.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 // Validate that URL doesn't have duplicate paths
-if (SUPABASE_URL.includes('/rest/v1/')) {
-  console.error('❌ VITE_SUPABASE_URL contains duplicate /rest/v1/. Please set it to the base URL only (e.g., https://xxx.supabase.co)');
+if (SUPABASE_URL && SUPABASE_URL.includes('/rest/v1/')) {
+  console.error('❌ VITE_SUPABASE_URL must be the base URL only (e.g. https://<ref>.supabase.co), not /rest/v1/.');
 }
 
-// Browser client with session persistence
-// Always use the correct Supabase project (naikdjreibbugblihgwl)
+if (!USE_CUSTOM_API && (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY)) {
+  console.error(
+    '❌ [Lagrange] Missing VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY. ' +
+      'Copy .env.example to .env and fill in your own Supabase project values.'
+  );
+}
+
+// Browser client with session persistence (config-driven, no hardcoded project)
 export const supabase: SupabaseClient<Database> = !USE_CUSTOM_API
-  ? createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  ? createClient<Database>(SUPABASE_URL || 'https://placeholder.supabase.co', SUPABASE_PUBLISHABLE_KEY || 'placeholder', {
       auth: {
         storage: typeof window !== 'undefined' ? localStorage : undefined,
         persistSession: true,

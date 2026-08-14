@@ -20,9 +20,15 @@ NC='\033[0m' # No Color
 # ============================================================
 echo -e "\n${YELLOW}[1/5] Configurando variables de entorno...${NC}"
 
-export VITE_SUPABASE_URL="https://naikdjreibbugblihgwl.supabase.co"
-export VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_ZeZ0R4rQpNbvhEfHMjtQrQ_BrjDJXrc"
-export VITE_SUPABASE_PROJECT_ID="naikdjreibbugblihgwl"
+# Universales: leídas de entorno, sin refs de proyecto hardcodeados.
+if [ -z "$VITE_SUPABASE_PROJECT_ID" ]; then
+  echo "❌ Falta VITE_SUPABASE_PROJECT_ID. Exporta tus valores propios, p.ej.:"
+  echo "   export VITE_SUPABASE_PROJECT_ID=tu-project-ref"
+  echo "   export VITE_SUPABASE_URL=https://tu-project-ref.supabase.co"
+  echo "   export VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_tu_key"
+  exit 1
+fi
+export VITE_SUPABASE_URL="${VITE_SUPABASE_URL:-https://${VITE_SUPABASE_PROJECT_ID}.supabase.co}"
 
 echo "✅ Variables configuradas"
 echo "   - SUPABASE_URL: $VITE_SUPABASE_URL"
@@ -73,7 +79,7 @@ echo "=============================================="
 echo ""
 echo "📋 RESUMEN:"
 echo "   - Frontend: GitHub Pages"
-echo "   - Supabase: https://naikdjreibbugblihgwl.supabase.co"
+echo "   - Supabase: $VITE_SUPABASE_URL"
 echo "   - Edge Functions: Desplegadas via Supabase CLI"
 echo ""
 echo "⚠️  ACCIONES REQUERIDAS MANUALMENTE:"
@@ -83,5 +89,5 @@ echo "   3. Configurar AI_CHAT_MODEL y AI_EMBEDDING_MODEL"
 echo ""
 echo "🌐 URLs:"
 echo "   - App: https://albertomaydayjhondoe.github.io/lagrange-lab-1/"
-echo "   - Supabase: https://supabase.com/dashboard/project/naikdjreibbugblihgwl"
+echo "   - Supabase: https://supabase.com/dashboard/project/$VITE_SUPABASE_PROJECT_ID"
 echo "=============================================="

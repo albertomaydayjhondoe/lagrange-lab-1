@@ -30,3 +30,8 @@ dist-ssr
 .vercel
 deno.lock
 .env*
+
+# Supabase CLI local artifacts (project-specific, never commit)
+supabase/.temp/
+supabase/.branches/
+supabase/.env

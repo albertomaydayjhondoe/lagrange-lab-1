@@ -43,9 +43,9 @@ vercel env pull
 
 **Variables requeridas:**
 ```
-VITE_SUPABASE_PROJECT_ID=naikdjreibbugblihgwl
+VITE_SUPABASE_PROJECT_ID=TU-PROJECT-REF
 VITE_SUPABASE_PUBLISHABLE_KEY=<from Supabase dashboard>
-VITE_SUPABASE_URL=https://naikdjreibbugblihgwl.supabase.co
+VITE_SUPABASE_URL=https://TU-PROJECT-REF.supabase.co
 ```
 
 #### 7.2 Redploy de Producción
