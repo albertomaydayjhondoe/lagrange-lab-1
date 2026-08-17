@@ -184,7 +184,7 @@ export function AprendizajeNav() {
   const handleAcademyChange = (academy: Academy) => {
     setActiveAcademy(academy);
     setIsOwner(academy.role === 'owner');
-    navigate(`/aprendizaje/${academy.slug}`);
+    navigate(`/aprendizaje/${academy.slug}/asignatura`);
     localStorage.setItem('currentAcademySlug', academy.slug);
   };
 
@@ -382,7 +382,7 @@ export function AprendizajeNav() {
                     {userEmail}
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate(`/aprendizaje/${activeAcademy?.slug || ''}/portfolio`)}>
+                  <DropdownMenuItem onClick={() => navigate('/aprendizaje/perfil')}>
                     <FolderOpen className="w-4 h-4 mr-2" />
                     Mi Portfolio
                   </DropdownMenuItem>

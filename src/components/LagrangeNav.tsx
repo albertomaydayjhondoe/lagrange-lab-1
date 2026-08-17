@@ -92,26 +92,33 @@ export function LagrangeNav() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Navegación principal - Oráculo es la entrada principal
+  // Navegación principal conectada al árbol real del producto
   const navItems = [
-    { path: 'lab', label: 'Oráculo', icon: Sparkles, description: 'El corazón' },
-    { path: 'map', label: 'Mapa', icon: Map, description: 'La topología' },
-    { path: 'podcast', label: 'Podcast', icon: Radio, description: 'El audio' },
+    { path: '/aprendizaje', label: 'Aprendizaje', icon: Sparkles, description: 'Tu espacio de estudio' },
+    { path: '/soberania', label: 'Soberanía', icon: Map, description: 'Administración' },
+    { path: '/aprendizaje/perfil', label: 'Perfil', icon: User, description: 'Mi portfolio' },
   ];
 
   const handleAcademyChange = (newSlug: string) => {
-    navigate(`/academia/${newSlug}/lab`);
+    navigate(`/aprendizaje/${newSlug}/asignatura`);
   };
 
   const handleNavClick = (path: string) => {
-    const baseSlug = slug || 'genesis';
-    navigate(`/academia/${baseSlug}/${path}`);
+    if (path === 'profile') {
+      navigate('/aprendizaje/perfil');
+    } else if (path === 'soberania') {
+      navigate('/soberania');
+    } else if (path === 'aprendizaje') {
+      navigate(slug ? `/aprendizaje/${slug}/asignatura` : '/aprendizaje');
+    } else {
+      navigate('/aprendizaje');
+    }
     setMobileMenuOpen(false);
   };
 
-  // Determinar si estamos dentro de una academia
-  const isInAcademy = location.pathname.includes('/academia/');
-  const currentAcademySlug = slug || 'genesis';
+  // Determinar si estamos dentro del árbol real del producto
+  const isInAcademy = location.pathname.startsWith('/aprendizaje/') || location.pathname.startsWith('/soberania/');
+  const currentAcademySlug = slug || academy?.slug || 'genesis';
   const currentAcademy = academies.find(a => a.slug === currentAcademySlug);
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
@@ -150,7 +157,7 @@ export function LagrangeNav() {
         className={cn(
           "gap-2",
           mobile && "w-full justify-start text-lg",
-          location.pathname.includes('profile') 
+          location.pathname.includes('/aprendizaje/perfil') 
             ? "text-primary bg-secondary/30" 
             : "text-muted-foreground hover:text-foreground"
         )}

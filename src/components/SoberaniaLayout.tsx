@@ -32,7 +32,7 @@ export function SoberaniaLayout() {
             {/* Miembros */}
             <Card
               className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => navigate(`/centro/${slug}/miembros`)}
+              onClick={() => navigate('/soberania/centro')}
             >
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -53,7 +53,7 @@ export function SoberaniaLayout() {
             {/* Asignaturas */}
             <Card
               className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => navigate(`/centro/${slug}/asignaturas`)}
+              onClick={() => navigate('/soberania/corpus')}
             >
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -74,7 +74,7 @@ export function SoberaniaLayout() {
             {/* Corpus RAG */}
             <Card
               className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => navigate(`/centro/${slug}/corpus`)}
+              onClick={() => navigate('/soberania/corpus')}
             >
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -95,7 +95,7 @@ export function SoberaniaLayout() {
             {/* Estadísticas */}
             <Card
               className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => navigate(`/centro/${slug}/estadisticas`)}
+              onClick={() => navigate('/soberania/auditoria')}
             >
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ export function SoberaniaLayout() {
             {/* Features */}
             <Card
               className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => navigate(`/centro/${slug}/features`)}
+              onClick={() => navigate('/soberania/plataforma')}
             >
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -137,7 +137,7 @@ export function SoberaniaLayout() {
             {/* Settings */}
             <Card
               className="cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => navigate(`/centro/${slug}/settings`)}
+              onClick={() => navigate('/soberania/plataforma')}
             >
               <CardHeader>
                 <div className="flex items-center gap-3">

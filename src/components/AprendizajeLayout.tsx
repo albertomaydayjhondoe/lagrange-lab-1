@@ -88,7 +88,7 @@ export function AprendizajeLayout() {
               title="Asignaturas"
               description="Explora y selecciona tus materias"
               icon={BookOpen}
-              path={`/aprendizaje/${slug}/asignaturas`}
+              path={slug ? `/aprendizaje/${slug}/asignatura` : '/aprendizaje'}
               enabled={true}
               color="#8B5CF6"
             />
@@ -96,7 +96,7 @@ export function AprendizajeLayout() {
               title="Oráculo Socrático"
               description="Consulta el motor de preguntas"
               icon={MessageCircle}
-              path={`/aprendizaje/${slug}/oraculo`}
+              path={slug ? `/aprendizaje/${slug}/oraculo` : '/aprendizaje'}
               enabled={true}
               color="#10B981"
             />
@@ -104,7 +104,7 @@ export function AprendizajeLayout() {
               title="Mi Portfolio"
               description="Tu historial de aprendizaje"
               icon={FolderOpen}
-              path={`/aprendizaje/${slug}/portfolio`}
+              path="/aprendizaje/perfil"
               enabled={true}
               color="#F59E0B"
             />

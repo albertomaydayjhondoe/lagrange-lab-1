@@ -26,6 +26,7 @@
 
 import { Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from 'react';
+import { useParams } from 'react-router-dom';
 import NotFound from "@/pages/NotFound";
 
 // Pages existentes reutilizadas
@@ -69,6 +70,21 @@ function LoadingFallback() {
       <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
+}
+
+function LegacyAcademyHomeRedirect() {
+  const { slug } = useParams();
+  return <Navigate to={slug ? `/aprendizaje/${slug}/asignatura` : '/aprendizaje'} replace />;
+}
+
+function LegacyAcademyOracleRedirect() {
+  const { slug } = useParams();
+  return <Navigate to={slug ? `/aprendizaje/${slug}/oraculo` : '/aprendizaje'} replace />;
+}
+
+function LegacyAcademyMateriaRedirect() {
+  const { slug, materiaId } = useParams();
+  return <Navigate to={slug && materiaId ? `/aprendizaje/${slug}/materia/${materiaId}/aportar` : '/aprendizaje'} replace />;
 }
 
 /**
@@ -209,7 +225,7 @@ export function Rutas() {
       {/* Alias: /aprendizaje/:slug es igual a /aprendizaje/:slug/asignatura */}
       <Route 
         path="/aprendizaje/:slug" 
-        element={<Navigate to="/aprendizaje/:slug/asignatura" replace />} 
+        element={<LegacyAcademyHomeRedirect />} 
       />
       
       {/* Oráculo Socrático — CORE del sistema */}
@@ -377,13 +393,13 @@ export function Rutas() {
       {/* Legacy /carrera/:slug/oraculo → /aprendizaje/:slug/oraculo */}
       <Route 
         path="/carrera/:slug/oraculo" 
-        element={<Navigate to="/aprendizaje/:slug/oraculo" replace />} 
+        element={<LegacyAcademyOracleRedirect />} 
       />
       
       {/* Legacy /carrera/:slug/materia/:id/aportar → nuevo equivalente */}
       <Route 
         path="/carrera/:slug/materia/:materiaId/aportar" 
-        element={<Navigate to="/aprendizaje/:slug/materia/:materiaId/aportar" replace />} 
+        element={<LegacyAcademyMateriaRedirect />} 
       />
       
       {/* Legacy módulos avanzados → nuevos equivalentes */}

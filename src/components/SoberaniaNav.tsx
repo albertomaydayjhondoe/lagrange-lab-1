@@ -166,7 +166,7 @@ export function SoberaniaNav() {
 
   const handleAcademyChange = (academy: Academy) => {
     setActiveAcademy(academy);
-    navigate(`/centro/${academy.slug}/admin`);
+    navigate(`/soberania/centro`);
   };
 
   const isActive = (path: string) => {
@@ -175,21 +175,19 @@ export function SoberaniaNav() {
 
   // Items de navegación para Plataforma (L1)
   const platformItems = isPlatformAdmin ? [
-    { path: '/plataforma/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/plataforma/centros', label: 'Centros', icon: Building2 },
-    { path: '/plataforma/planes', label: 'Planes', icon: CreditCard },
-    { path: '/plataforma/audit', label: 'Auditoría', icon: BarChart3 },
-    { path: '/plataforma/settings', label: 'Configuración', icon: Settings },
+    { path: '/soberania', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/soberania/centro', label: 'Centro', icon: Building2 },
+    { path: '/soberania/corpus', label: 'Corpus', icon: Database },
+    { path: '/soberania/auditoria', label: 'Auditoría', icon: BarChart3 },
+    { path: '/soberania/plataforma', label: 'Plataforma', icon: Settings },
   ] : [];
 
   // Items de navegación para Centro (L2)
   const centroItems = activeAcademy && isAcademyAdmin ? [
-    { path: `/centro/${activeAcademy.slug}/dashboard`, label: 'Dashboard', icon: LayoutDashboard },
-    { path: `/centro/${activeAcademy.slug}/miembros`, label: 'Miembros', icon: Users },
-    { path: `/centro/${activeAcademy.slug}/asignaturas`, label: 'Asignaturas', icon: BookOpen },
-    { path: `/centro/${activeAcademy.slug}/corpus`, label: 'Corpus RAG', icon: Database },
-    { path: `/centro/${activeAcademy.slug}/estadisticas`, label: 'Estadísticas', icon: BarChart3 },
-    { path: `/centro/${activeAcademy.slug}/features`, label: 'Features', icon: Zap },
+    { path: '/soberania/centro', label: 'Centro', icon: LayoutDashboard },
+    { path: '/soberania/corpus', label: 'Corpus RAG', icon: Database },
+    { path: '/soberania/auditoria', label: 'Estadísticas', icon: BarChart3 },
+    { path: '/soberania/plataforma', label: 'Features', icon: Zap },
   ] : [];
 
   if (loading) {
